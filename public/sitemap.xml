@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://de.pollframe.workers.dev/</loc></url>
+  <url><loc>https://de.pollframe.workers.dev/?region=bundestag</loc></url>
+  <url><loc>https://de.pollframe.workers.dev/?view=map</loc></url>
+  <url><loc>https://de.pollframe.workers.dev/?region=baden-wuerttemberg</loc></url>
+  <url><loc>https://de.pollframe.workers.dev/?region=bayern</loc></url>
+  <url><loc>https://de.pollframe.workers.dev/?region=berlin</loc></url>
+  <url><loc>https://de.pollframe.workers.dev/?region=brandenburg</loc></url>
+  <url><loc>https://de.pollframe.workers.dev/?region=bremen</loc></url>
+  <url><loc>https://de.pollframe.workers.dev/?region=hamburg</loc></url>
+  <url><loc>https://de.pollframe.workers.dev/?region=hessen</loc></url>
+  <url><loc>https://de.pollframe.workers.dev/?region=mecklenburg-vorpommern</loc></url>
+  <url><loc>https://de.pollframe.workers.dev/?region=niedersachsen</loc></url>
+  <url><loc>https://de.pollframe.workers.dev/?region=nordrhein-westfalen</loc></url>
+  <url><loc>https://de.pollframe.workers.dev/?region=rheinland-pfalz</loc></url>
+  <url><loc>https://de.pollframe.workers.dev/?region=saarland</loc></url>
+  <url><loc>https://de.pollframe.workers.dev/?region=sachsen</loc></url>
+  <url><loc>https://de.pollframe.workers.dev/?region=sachsen-anhalt</loc></url>
+  <url><loc>https://de.pollframe.workers.dev/?region=schleswig-holstein</loc></url>
+  <url><loc>https://de.pollframe.workers.dev/?region=thueringen</loc></url>
+  <url><loc>https://de.pollframe.workers.dev/?page=lizenzen</loc></url>
+</urlset>
