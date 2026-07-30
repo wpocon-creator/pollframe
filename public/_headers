@@ -35,18 +35,22 @@
   Cross-Origin-Resource-Policy: cross-origin
   Cache-Control: public, max-age=300, stale-while-revalidate=3600
   Access-Control-Allow-Origin: *
+  X-Robots-Tag: noindex, noarchive
 
 /regions.json
   Cross-Origin-Resource-Policy: cross-origin
   Cache-Control: public, max-age=300, stale-while-revalidate=3600
   Access-Control-Allow-Origin: *
+  X-Robots-Tag: noindex, noarchive
 
 /state-map-data.json
   Cross-Origin-Resource-Policy: cross-origin
   Cache-Control: public, max-age=300, stale-while-revalidate=3600
   Access-Control-Allow-Origin: *
+  X-Robots-Tag: noindex, noarchive
 
 /data/*
   Cross-Origin-Resource-Policy: cross-origin
   Cache-Control: public, max-age=300, stale-while-revalidate=3600
   Access-Control-Allow-Origin: *
+  X-Robots-Tag: noindex, noarchive

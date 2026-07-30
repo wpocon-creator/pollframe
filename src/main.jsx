@@ -13,20 +13,24 @@ const MAP_ORIGINAL_URL = "https://mapsvg.com/maps/germany";
 const MAP_LICENSE_URL = "https://creativecommons.org/licenses/by/4.0/";
 const ELECTION_SOURCE_URL = "https://www.bundeswahlleiterin.de/bundestagswahlen.html";
 const CONTACT_EMAIL = "opinionpoll.redaktion@proton.me";
+const SITE_ORIGIN = "https://de.pollframe.workers.dev";
 const IS_EMBED_ENTRY = window.location.pathname === EMBED_PATH;
 const PARTY_DEFINITIONS = [
-  { id: "7", slug: "afd", name: "AfD", color: "#178ec5" },
+  // Plenary order from left to right (as viewed from the Bundestag presidium).
+  // BSW's position reflects its last official Bundestag seating; regional
+  // parties are placed beside the closest comparable parliamentary group.
+  { id: "23", slug: "bsw", name: "BSW", color: "#79566f" },
+  { id: "5", slug: "left", name: "Linke", color: "#9b438b" },
+  { id: "2", slug: "spd", name: "SPD", color: "#d9485f" },
+  { id: "4", slug: "greens", name: "Grüne", color: "#3b9950" },
+  { id: "10", slug: "ssw", name: "SSW", color: "#315e9f" },
+  { id: "3", slug: "fdp", name: "FDP", color: "#d7aa00" },
+  { id: "8", slug: "free-voters", name: "Freie Wähler", color: "#e27b22" },
   { id: "1", slug: "union", name: "CDU/CSU", color: "var(--party-union)" },
   { id: "101", slug: "cdu", name: "CDU", color: "var(--party-union)" },
   { id: "102", slug: "csu", name: "CSU", color: "#4d82b8" },
-  { id: "4", slug: "greens", name: "Grüne", color: "#3b9950" },
-  { id: "2", slug: "spd", name: "SPD", color: "#d9485f" },
-  { id: "5", slug: "left", name: "Linke", color: "#9b438b" },
-  { id: "3", slug: "fdp", name: "FDP", color: "#d7aa00" },
-  { id: "23", slug: "bsw", name: "BSW", color: "#79566f" },
-  { id: "8", slug: "free-voters", name: "Freie Wähler", color: "#e27b22" },
-  { id: "10", slug: "ssw", name: "SSW", color: "#315e9f" },
   { id: "14", slug: "bvb-fw", name: "BVB/FW", color: "#cf6b28" },
+  { id: "7", slug: "afd", name: "AfD", color: "#178ec5" },
 ];
 
 const MAP_PARTY_GROUPS = [
@@ -62,23 +66,23 @@ const STATE_MAP_LABELS = {
 };
 
 const REGION_META = [
-  { slug: "bundestag", mapId: null, type: "federal", name: "Deutschland", parliament: "Bundestag", electionName: "Bundestagswahl" },
-  { slug: "baden-wuerttemberg", mapId: "bw", type: "state", name: "Baden-Württemberg", parliament: "Landtag", electionName: "Landtagswahl" },
-  { slug: "bayern", mapId: "by", type: "state", name: "Bayern", parliament: "Landtag", electionName: "Landtagswahl" },
-  { slug: "berlin", mapId: "be", type: "state", name: "Berlin", parliament: "Abgeordnetenhaus", electionName: "Abgeordnetenhauswahl" },
-  { slug: "brandenburg", mapId: "bb", type: "state", name: "Brandenburg", parliament: "Landtag", electionName: "Landtagswahl" },
-  { slug: "bremen", mapId: "hb", type: "state", name: "Bremen", parliament: "Bürgerschaft", electionName: "Bürgerschaftswahl" },
-  { slug: "hamburg", mapId: "hh", type: "state", name: "Hamburg", parliament: "Bürgerschaft", electionName: "Bürgerschaftswahl" },
-  { slug: "hessen", mapId: "he", type: "state", name: "Hessen", parliament: "Landtag", electionName: "Landtagswahl" },
-  { slug: "mecklenburg-vorpommern", mapId: "mv", type: "state", name: "Mecklenburg-Vorpommern", parliament: "Landtag", electionName: "Landtagswahl" },
-  { slug: "niedersachsen", mapId: "ni", type: "state", name: "Niedersachsen", parliament: "Landtag", electionName: "Landtagswahl" },
-  { slug: "nordrhein-westfalen", mapId: "nw", type: "state", name: "Nordrhein-Westfalen", parliament: "Landtag", electionName: "Landtagswahl" },
-  { slug: "rheinland-pfalz", mapId: "rp", type: "state", name: "Rheinland-Pfalz", parliament: "Landtag", electionName: "Landtagswahl" },
-  { slug: "saarland", mapId: "sl", type: "state", name: "Saarland", parliament: "Landtag", electionName: "Landtagswahl" },
-  { slug: "sachsen", mapId: "sn", type: "state", name: "Sachsen", parliament: "Landtag", electionName: "Landtagswahl" },
-  { slug: "sachsen-anhalt", mapId: "st", type: "state", name: "Sachsen-Anhalt", parliament: "Landtag", electionName: "Landtagswahl" },
-  { slug: "schleswig-holstein", mapId: "sh", type: "state", name: "Schleswig-Holstein", parliament: "Landtag", electionName: "Landtagswahl" },
-  { slug: "thueringen", mapId: "th", type: "state", name: "Thüringen", parliament: "Landtag", electionName: "Landtagswahl" },
+  { slug: "bundestag", mapId: null, type: "federal", name: "Deutschland", parliament: "Bundestag", electionName: "Bundestagswahl", baseSeats: 630 },
+  { slug: "baden-wuerttemberg", mapId: "bw", type: "state", name: "Baden-Württemberg", parliament: "Landtag", electionName: "Landtagswahl", baseSeats: 120 },
+  { slug: "bayern", mapId: "by", type: "state", name: "Bayern", parliament: "Landtag", electionName: "Landtagswahl", baseSeats: 180 },
+  { slug: "berlin", mapId: "be", type: "state", name: "Berlin", parliament: "Abgeordnetenhaus", electionName: "Abgeordnetenhauswahl", baseSeats: 130 },
+  { slug: "brandenburg", mapId: "bb", type: "state", name: "Brandenburg", parliament: "Landtag", electionName: "Landtagswahl", baseSeats: 88 },
+  { slug: "bremen", mapId: "hb", type: "state", name: "Bremen", parliament: "Bürgerschaft", electionName: "Bürgerschaftswahl", baseSeats: 87 },
+  { slug: "hamburg", mapId: "hh", type: "state", name: "Hamburg", parliament: "Bürgerschaft", electionName: "Bürgerschaftswahl", baseSeats: 121 },
+  { slug: "hessen", mapId: "he", type: "state", name: "Hessen", parliament: "Landtag", electionName: "Landtagswahl", baseSeats: 110 },
+  { slug: "mecklenburg-vorpommern", mapId: "mv", type: "state", name: "Mecklenburg-Vorpommern", parliament: "Landtag", electionName: "Landtagswahl", baseSeats: 71 },
+  { slug: "niedersachsen", mapId: "ni", type: "state", name: "Niedersachsen", parliament: "Landtag", electionName: "Landtagswahl", baseSeats: 135 },
+  { slug: "nordrhein-westfalen", mapId: "nw", type: "state", name: "Nordrhein-Westfalen", parliament: "Landtag", electionName: "Landtagswahl", baseSeats: 181 },
+  { slug: "rheinland-pfalz", mapId: "rp", type: "state", name: "Rheinland-Pfalz", parliament: "Landtag", electionName: "Landtagswahl", baseSeats: 101 },
+  { slug: "saarland", mapId: "sl", type: "state", name: "Saarland", parliament: "Landtag", electionName: "Landtagswahl", baseSeats: 51 },
+  { slug: "sachsen", mapId: "sn", type: "state", name: "Sachsen", parliament: "Landtag", electionName: "Landtagswahl", baseSeats: 120 },
+  { slug: "sachsen-anhalt", mapId: "st", type: "state", name: "Sachsen-Anhalt", parliament: "Landtag", electionName: "Landtagswahl", baseSeats: 83 },
+  { slug: "schleswig-holstein", mapId: "sh", type: "state", name: "Schleswig-Holstein", parliament: "Landtag", electionName: "Landtagswahl", baseSeats: 69, thresholdExemptPartyIds: ["10"] },
+  { slug: "thueringen", mapId: "th", type: "state", name: "Thüringen", parliament: "Landtag", electionName: "Landtagswahl", baseSeats: 88 },
 ];
 
 const STATE_ELECTION_DATES = {
@@ -111,6 +115,62 @@ const ELECTION_RESULTS = {
     "1": 28.5, "2": 16.4, "3": 4.3, "4": 11.6, "5": 8.8, "7": 20.8, "23": 4.981,
   },
 };
+
+function setMetaByName(name, content) {
+  let element = document.head.querySelector(`meta[name="${name}"]`);
+  if (!element) {
+    element = document.createElement("meta");
+    element.setAttribute("name", name);
+    document.head.append(element);
+  }
+  element.setAttribute("content", content);
+}
+
+function setMetaByProperty(property, content) {
+  let element = document.head.querySelector(`meta[property="${property}"]`);
+  if (!element) {
+    element = document.createElement("meta");
+    element.setAttribute("property", property);
+    document.head.append(element);
+  }
+  element.setAttribute("content", content);
+}
+
+function setCanonicalUrl(path) {
+  let element = document.head.querySelector('link[rel="canonical"]');
+  if (!element) {
+    element = document.createElement("link");
+    element.setAttribute("rel", "canonical");
+    document.head.append(element);
+  }
+  element.setAttribute("href", new URL(path, SITE_ORIGIN).href);
+}
+
+function updatePageMetadata({
+  title,
+  description,
+  canonicalPath,
+  locale,
+  indexable = true,
+}) {
+  const canonicalUrl = new URL(canonicalPath, SITE_ORIGIN).href;
+  const openGraphLocale = locale === "de" ? "de_DE" : locale === "en-US" ? "en_US" : "en_GB";
+  document.title = title;
+  setMetaByName("description", description);
+  setMetaByName("robots", indexable
+    ? "index, follow, max-image-preview:large"
+    : "noindex, follow, noarchive");
+  setMetaByName("twitter:card", "summary");
+  setMetaByName("twitter:title", title);
+  setMetaByName("twitter:description", description);
+  setMetaByProperty("og:type", "website");
+  setMetaByProperty("og:site_name", "Pollframe");
+  setMetaByProperty("og:locale", openGraphLocale);
+  setMetaByProperty("og:title", title);
+  setMetaByProperty("og:description", description);
+  setMetaByProperty("og:url", canonicalUrl);
+  setCanonicalUrl(canonicalPath);
+}
 
 const EVENT_CATEGORIES = [
   {
@@ -908,10 +968,19 @@ function queryListPreference(query, key, fallback, allowed, enabled) {
   return values.length ? values : fallback;
 }
 
-function allocateSeats(results, totalSeats = 630) {
-  const eligible = PARTY_DEFINITIONS
+function allocateSeats(
+  results,
+  totalSeats = 630,
+  partyDefinitions = PARTY_DEFINITIONS,
+  thresholdExemptPartyIds = [],
+) {
+  const thresholdExempt = new Set(thresholdExemptPartyIds);
+  const eligible = partyDefinitions
     .map((party) => ({ ...party, value: results[party.id] }))
-    .filter((party) => Number.isFinite(party.value) && party.value >= 5);
+    .filter((party) => (
+      Number.isFinite(party.value)
+      && (party.value >= 5 || thresholdExempt.has(party.id))
+    ));
   const representedVote = eligible.reduce((sum, party) => sum + party.value, 0);
   if (!representedVote) return { parties: [], representedVote: 0 };
 
@@ -926,21 +995,25 @@ function allocateSeats(results, totalSeats = 630) {
   }
 
   return {
-    parties: quotas.sort((a, b) => b.seats - a.seats),
+    // PARTY_DEFINITIONS is deliberately kept in plenary order, so retaining
+    // this order makes the bar read politically from left to right.
+    parties: quotas,
     representedVote,
   };
 }
 
 const PARLIAMENTARY_POSITION = new Map([
+  ["23", -1], // BSW (last official Bundestag seating)
   ["5", 0],   // Linke
-  ["23", 0.5],
   ["2", 1],   // SPD
   ["4", 2],   // Grüne
-  ["3", 3],
-  ["1", 3],   // CDU/CSU
-  ["101", 3],
-  ["102", 3],
-  ["8", 3.5],
+  ["10", 2.5], // SSW
+  ["3", 3],   // FDP
+  ["8", 3.5], // Freie Wähler
+  ["1", 4],   // CDU/CSU
+  ["101", 4],
+  ["102", 4],
+  ["14", 4.5], // BVB/FW
   ["7", 5],   // AfD
 ]);
 
@@ -1777,15 +1850,62 @@ function TendencySection({ t, locale, current, baseline, onSelectParty, partyDef
   );
 }
 
-function ParliamentProjection({ t, locale, current }) {
+function ParliamentProjection({
+  t,
+  locale,
+  current,
+  region = REGION_META[0],
+  partyDefinitions = PARTY_DEFINITIONS,
+}) {
   const numberLocale = getNumberLocale(locale);
-  const { parties, representedVote } = allocateSeats(current.results);
-  const majority = 316;
+  const totalSeats = region.baseSeats ?? 630;
+  const thresholdExemptPartyIds = region.thresholdExemptPartyIds ?? [];
+  const thresholdExempt = new Set(thresholdExemptPartyIds);
+  const { parties, representedVote } = allocateSeats(
+    current.results,
+    totalSeats,
+    partyDefinitions,
+    thresholdExemptPartyIds,
+  );
+  const majority = Math.floor(totalSeats / 2) + 1;
   const coalitions = findMajorities(parties, majority);
-  const belowThreshold = PARTY_DEFINITIONS
+  const belowThreshold = partyDefinitions
     .map((party) => ({ ...party, value: current.results[party.id] }))
-    .filter((party) => Number.isFinite(party.value) && party.value < 5)
+    .filter((party) => (
+      Number.isFinite(party.value)
+      && party.value < 5
+      && !thresholdExempt.has(party.id)
+    ))
     .sort((a, b) => b.value - a.value);
+  const maxSeats = Math.max(...parties.map((party) => party.seats), 1);
+  const isGerman = locale === "de";
+  const isFederal = region.type === "federal";
+  const projectionLabel = isFederal
+    ? t.projectionLabel
+    : (isGerman ? `Regierungsrechner · ${region.name}` : `Government calculator · ${region.name}`);
+  const projectionTitle = isFederal
+    ? t.electionTomorrow
+    : (isGerman
+      ? `Rechnerische Sitzverteilung für den ${region.parliament}`
+      : `Modelled seat allocation for the ${region.parliament}`);
+  const partiesInParliament = isFederal
+    ? t.partiesInParliament
+    : (isGerman ? `Parteien im ${region.parliament}` : `Parties in the ${region.parliament}`);
+  const thresholdException = thresholdExemptPartyIds.length
+    ? (isGerman
+      ? " Der SSW wird als Partei der dänischen Minderheit ohne Fünf-Prozent-Hürde berücksichtigt."
+      : " The SSW is included without a five-percent threshold as the party of the Danish minority.")
+    : "";
+  const bremenCaveat = region.slug === "bremen"
+    ? (isGerman
+      ? " Die in Bremen getrennt für Bremen und Bremerhaven geltende Sperrklausel kann aus landesweiten Umfragen nicht nachgebildet werden."
+      : " Bremen's separate thresholds for Bremen and Bremerhaven cannot be reconstructed from statewide polling.")
+    : "";
+  const projectionMethod = isFederal
+    ? t.projectionMethod
+    : (isGerman
+      ? `${totalSeats} Regelsitze werden als einheitliches Vergleichsmodell mit Sainte-Laguë auf Parteien ab 5 % verteilt. Das tatsächliche Landeswahlrecht, Wahlkreise, Direkt-, Überhang- und Ausgleichsmandate sowie Rundungseffekte können das Ergebnis und die Parlamentsgröße verändern.${thresholdException}${bremenCaveat} Die Balken folgen der parlamentarischen Links-rechts-Sitzordnung; das ist keine inhaltliche Bewertung. Koalitionen sind nach Sitznähe geordnet, Kombinationen mit der AfD stehen nachrangig. Die Reihenfolge ist keine Wahrscheinlichkeitsangabe.`
+      : `${totalSeats} standard seats are allocated as a consistent comparison model using Sainte-Laguë for parties at or above 5%. The actual state electoral law, constituencies, direct, overhang and compensatory mandates, and rounding can change the result and parliament size.${thresholdException}${bremenCaveat} Bars follow parliamentary left-to-right seating and do not express an editorial judgement. Coalitions are ordered by seating proximity, with combinations including the AfD shown later. The order is not a probability assessment.`);
 
   if (!parties.length) return null;
 
@@ -1793,20 +1913,20 @@ function ParliamentProjection({ t, locale, current }) {
     <section className="projection-section" aria-labelledby="projection-title">
       <div className="projection-heading">
         <div>
-          <p className="section-label">{t.projectionLabel}</p>
-          <h3 id="projection-title">{t.electionTomorrow}</h3>
+          <p className="section-label">{projectionLabel}</p>
+          <h3 id="projection-title">{projectionTitle}</h3>
           <p>{t.projectionIntro}</p>
         </div>
         <div className="majority-badge">
           <span>{t.majority}</span>
-          <strong>316</strong>
+          <strong>{majority}</strong>
           <small>{t.seats}</small>
         </div>
       </div>
 
       <div className="projection-summary">
         <div>
-          <span>{t.partiesInParliament}</span>
+          <span>{partiesInParliament}</span>
           <strong>{parties.length}</strong>
         </div>
         <div>
@@ -1824,13 +1944,13 @@ function ParliamentProjection({ t, locale, current }) {
           <span
             key={party.id}
             className={`seat-segment seat-segment-${party.slug}`}
-            style={{ width: `${(party.seats / 630) * 100}%`, background: party.color }}
+            style={{ width: `${(party.seats / totalSeats) * 100}%`, background: party.color }}
             title={`${party.name}: ${party.value.toLocaleString(numberLocale, { maximumFractionDigits: 1 })}% · ${party.seats} ${t.seats}`}
           >
             {party.value.toLocaleString(numberLocale, { maximumFractionDigits: 1 })}%
           </span>
         ))}
-        <i style={{ left: `${(majority / 630) * 100}%` }} aria-hidden="true" />
+        <i style={{ left: `${(majority / totalSeats) * 100}%` }} aria-hidden="true" />
       </div>
 
       <div className="projection-grid">
@@ -1839,7 +1959,7 @@ function ParliamentProjection({ t, locale, current }) {
           {parties.map((party) => (
             <div className="seat-row" key={party.id}>
               <span className="seat-party"><i style={{ background: party.color }} />{party.name}</span>
-              <span className="seat-meter"><i style={{ width: `${(party.seats / parties[0].seats) * 100}%`, background: party.color }} /></span>
+              <span className="seat-meter"><i style={{ width: `${(party.seats / maxSeats) * 100}%`, background: party.color }} /></span>
               <strong>{party.seats}</strong>
             </div>
           ))}
@@ -1873,7 +1993,7 @@ function ParliamentProjection({ t, locale, current }) {
         </div>
       </div>
 
-      <p className="projection-method"><Icon name="info" size={15} />{t.projectionMethod}</p>
+      <p className="projection-method"><Icon name="info" size={15} />{projectionMethod}</p>
     </section>
   );
 }
@@ -3957,19 +4077,85 @@ function RegionalApp() {
     document.documentElement.dataset.text = textSize;
     document.documentElement.dataset.motion = motion;
     document.documentElement.dataset.embed = embedMode ? "true" : "false";
-    document.title = legalPage
-      ? "Impressum · Pollframe"
-      : privacyPage
-        ? (isGerman ? "Datenschutz · Pollframe" : "Privacy · Pollframe")
-      : licencesPage
-        ? (isGerman ? "Quellen und Lizenzen · Pollframe" : "Sources and licences · Pollframe")
-      : contactPage
-        ? (isGerman ? "Kontakt · Pollframe" : "Contact · Pollframe")
-      : mapPage
-        ? (isGerman ? "Deutschland im Überblick · Pollframe" : "Germany at a glance · Pollframe")
-      : isOverview
-        ? (isGerman ? "Pollframe · Wahlumfragen in Deutschland" : "Pollframe · Polling in Germany")
-        : `${t.title} · Pollframe`;
+    let title;
+    let description;
+    let canonicalPath = "/";
+    let indexable = true;
+
+    if (embedMode) {
+      title = "Pollframe · Embed";
+      description = isGerman
+        ? "Einbettbare Pollframe-Grafik."
+        : "Embeddable Pollframe chart.";
+      canonicalPath = region ? `/?region=${encodeURIComponent(region.slug)}` : "/?view=map";
+      indexable = false;
+    } else if (legalPage) {
+      title = "Impressum · Pollframe";
+      description = isGerman
+        ? "Anbieterkennzeichnung und Verantwortlichkeit für Pollframe."
+        : "Provider identification and responsibility for Pollframe.";
+      canonicalPath = "/?page=impressum";
+      indexable = false;
+    } else if (privacyPage) {
+      title = isGerman ? "Datenschutz · Pollframe" : "Privacy · Pollframe";
+      description = isGerman
+        ? "Datenschutzerklärung von Pollframe."
+        : "Pollframe privacy notice.";
+      canonicalPath = "/?page=datenschutz";
+      indexable = false;
+    } else if (contactPage) {
+      title = isGerman ? "Kontakt · Pollframe" : "Contact · Pollframe";
+      description = isGerman
+        ? "Kontakt zur Pollframe-Redaktion."
+        : "Contact the Pollframe editorial team.";
+      canonicalPath = "/?page=kontakt";
+      indexable = false;
+    } else if (licencesPage) {
+      title = isGerman ? "Quellen und Lizenzen · Pollframe" : "Sources and licences · Pollframe";
+      description = isGerman
+        ? "Datenquellen, Verarbeitungsschritte und offene Lizenzen der Pollframe-Darstellungen."
+        : "Data sources, processing steps and open licences used by Pollframe.";
+      canonicalPath = "/?page=lizenzen";
+    } else if (mapPage) {
+      title = isGerman
+        ? "Deutschland im Überblick – Länderumfragen · Pollframe"
+        : "Germany at a glance – State polling · Pollframe";
+      description = isGerman
+        ? "Vergleiche die aktuellen Umfragedurchschnitte aller 16 Bundesländer auf einer interaktiven Deutschlandkarte."
+        : "Compare current polling averages for all 16 German states on an interactive map.";
+      canonicalPath = "/?view=map";
+    } else if (isOverview) {
+      title = isGerman
+        ? "Pollframe – Wahlumfragen für Bund und Länder"
+        : "Pollframe – Federal and state polling in Germany";
+      description = isGerman
+        ? "Aktuelle Wahlumfragen für Bundestag und Bundesländer: transparente Durchschnittswerte, langfristige Trends und rechnerische Sitzverteilungen."
+        : "Current federal and state polling in Germany, with transparent averages, long-term trends and modelled seat allocations.";
+    } else if (region.type === "federal") {
+      title = isGerman
+        ? "Bundestagswahl-Umfragen: aktueller Durchschnitt · Pollframe"
+        : "German federal election polls: current average · Pollframe";
+      description = isGerman
+        ? "Aktueller Durchschnitt deutscher Bundestagswahl-Umfragen mit langfristigem Verlauf, Ereignissen, Institutsvergleich und Sitzmodell."
+        : "Current average of German federal election polls with long-term trends, events, pollster comparison and a seat model.";
+      canonicalPath = `/?region=${encodeURIComponent(region.slug)}`;
+    } else {
+      title = isGerman
+        ? `${region.electionName}-Umfragen ${region.name}: aktueller Durchschnitt · Pollframe`
+        : `${region.name} election polls: current average · Pollframe`;
+      description = isGerman
+        ? `Aktuelle Umfragen zur ${region.electionName} in ${region.name}: Durchschnitt, langfristiger Verlauf, Ereignisse und rechnerische Sitzverteilung.`
+        : `Current election polling for ${region.name}, including averages, long-term trends, events and a modelled seat allocation.`;
+      canonicalPath = `/?region=${encodeURIComponent(region.slug)}`;
+    }
+
+    updatePageMetadata({
+      title,
+      description,
+      canonicalPath,
+      locale,
+      indexable,
+    });
     try {
       window.localStorage.setItem("opinion-poll-locale", locale);
       window.localStorage.setItem("opinion-poll-theme", theme);
@@ -3978,7 +4164,7 @@ function RegionalApp() {
     } catch {
       // Preferences remain active for this visit.
     }
-  }, [locale, theme, textSize, motion, embedMode, isGerman, isOverview, legalPage, privacyPage, licencesPage, contactPage, mapPage, t.title]);
+  }, [locale, theme, textSize, motion, embedMode, isGerman, isOverview, legalPage, privacyPage, licencesPage, contactPage, mapPage, region]);
 
   const latestDate = pollData?.polls.at(-1)?.date;
   const activePartyDefinitions = useMemo(
@@ -4261,7 +4447,13 @@ function RegionalApp() {
               onSelectParty={selectPartyDetail}
               partyDefinitions={activePartyDefinitions}
             />
-            {region.type === "federal" && <ParliamentProjection t={t} locale={locale} current={current} />}
+            <ParliamentProjection
+              t={t}
+              locale={locale}
+              current={current}
+              region={region}
+              partyDefinitions={activePartyDefinitions}
+            />
           </>
         )}
       </main>

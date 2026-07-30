@@ -64,6 +64,8 @@ test.describe("core routes", () => {
     await expect(page.getByRole("link", { name: /Umfragen zur Bundestagswahl|Federal election polling/i })).toBeVisible();
     await expect(page.locator(".germany-map")).toBeVisible();
     await expect(page.locator(".state-grid a")).toHaveCount(16);
+    await expect(page.locator('link[rel="canonical"]')).toHaveAttribute("href", "https://de.pollframe.workers.dev/");
+    await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /index, follow/);
     await expectDocumentFits(page);
     await expectNoBrokenVisibleText(page);
 
@@ -91,6 +93,10 @@ test.describe("core routes", () => {
     await expect(page.locator(".series-line")).not.toHaveCount(0);
     await expect(page.locator(".chart-footer .data-attribution")).toContainText("dawum.de");
     await expect(page.locator(".chart-footer .data-attribution")).toContainText("Bundeswahlleiterin");
+    await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
+      "href",
+      "https://de.pollframe.workers.dev/?region=bundestag",
+    );
     await expectDocumentFits(page);
 
     await page.getByRole("button", { name: /Diagramm anpassen|Customise chart|Customize chart/i }).click();
@@ -167,6 +173,34 @@ test.describe("core routes", () => {
       await expect(page.locator(".poll-chart")).toBeVisible();
       await expect(page.locator(".coverage-banner")).toBeVisible();
       await expect(page.locator(".chart-footer .data-attribution")).toContainText("dawum.de");
+      await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
+        "href",
+        `https://de.pollframe.workers.dev${route}`,
+      );
+      const projection = page.locator(".projection-section");
+      await projection.scrollIntoViewIfNeeded();
+      await expect(projection).toBeVisible();
+      await expect(projection).toContainText(/Regierungsrechner|Government calculator/i);
+
+      const partyNames = await projection.locator(".seat-party").allTextContents();
+      const plenaryOrder = new Map([
+        ["BSW", -1],
+        ["Linke", 0],
+        ["SPD", 1],
+        ["Grüne", 2],
+        ["SSW", 2.5],
+        ["FDP", 3],
+        ["Freie Wähler", 3.5],
+        ["CDU/CSU", 4],
+        ["CDU", 4],
+        ["CSU", 4],
+        ["BVB/FW", 4.5],
+        ["AfD", 5],
+      ]);
+      const positions = partyNames.map((name) => plenaryOrder.get(name.trim()));
+      expect(positions.every(Number.isFinite)).toBe(true);
+      expect(positions).toEqual([...positions].sort((a, b) => a - b));
+
       await expectDocumentFits(page);
       await expectNoBrokenVisibleText(page);
     }
@@ -181,6 +215,7 @@ test.describe("core routes", () => {
     await expect(page.getByText("Katharina O'Connor")).toBeVisible();
     await expect(page.getByText("23570 Lübeck")).toBeVisible();
     await expect(page.locator(".placeholder-warning")).toHaveCount(0);
+    await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
     await expectDocumentFits(page);
 
     await page.goto("/?page=kontakt");
@@ -219,6 +254,7 @@ test.describe("core routes", () => {
     await settle(page);
     await expect(page.locator(".embed-page .poll-chart")).toBeVisible();
     await expect(page.locator(".embed-footer .data-attribution")).toContainText("Bundeswahlleiterin");
+    await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
     await expectDocumentFits(page);
     await page.screenshot({ path: testInfo.outputPath("chart-embed.png"), fullPage: true });
 
