@@ -18,7 +18,19 @@ async function listFiles(directory) {
   return output;
 }
 
-const [source, headers, workflow, packageJson, packageLock, viteConfig, wranglerConfig, mainHtml, embedHtml] = await Promise.all([
+const [
+  source,
+  headers,
+  workflow,
+  packageJson,
+  packageLock,
+  viteConfig,
+  wranglerConfig,
+  mainHtml,
+  embedHtml,
+  robots,
+  sitemap,
+] = await Promise.all([
   read("src/main.jsx"),
   read("public/_headers"),
   read(".github/workflows/update-poll-data.yml"),
@@ -28,6 +40,8 @@ const [source, headers, workflow, packageJson, packageLock, viteConfig, wrangler
   read("wrangler.jsonc").then(JSON.parse),
   read("index.html"),
   read("embed.html"),
+  read("public/robots.txt"),
+  read("public/sitemap.xml"),
 ]);
 
 const forbiddenBrowserSinks = [
@@ -118,8 +132,26 @@ requireCondition(wranglerConfig.assets?.html_handling === "none", "Cloudflare HT
 requireCondition(wranglerConfig.assets?.not_found_handling === "single-page-application", "Cloudflare does not serve the app shell at the site root");
 requireCondition(wranglerConfig.preview_urls === false, "Cloudflare version preview URLs are publicly enabled");
 requireCondition(!wranglerConfig.main, "unexpected Worker runtime code is configured");
+requireCondition(wranglerConfig.name === "de", "Cloudflare Worker name does not match de.pollframe.workers.dev");
 requireCondition(mainHtml.includes('name="referrer" content="no-referrer"'), "main HTML lacks a no-referrer fallback");
+requireCondition(mainHtml.includes('rel="canonical" href="https://de.pollframe.workers.dev/"'), "main HTML lacks the production canonical URL");
+requireCondition(mainHtml.includes('property="og:title"'), "main HTML lacks Open Graph metadata");
 requireCondition(embedHtml.includes('name="robots" content="noindex, nofollow, noarchive"'), "embed HTML lacks noindex");
+requireCondition(robots.includes("Disallow: /embed.html"), "robots.txt does not exclude the embed entry");
+requireCondition(
+  robots.includes("Sitemap: https://de.pollframe.workers.dev/sitemap.xml"),
+  "robots.txt does not advertise the production sitemap",
+);
+requireCondition(headers.includes("X-Robots-Tag: noindex, noarchive"), "raw JSON responses are not marked noindex");
+
+const sitemapUrls = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => match[1]);
+requireCondition(sitemapUrls.length === 20, `sitemap contains ${sitemapUrls.length} URLs instead of 20`);
+requireCondition(new Set(sitemapUrls).size === sitemapUrls.length, "sitemap contains duplicate URLs");
+requireCondition(
+  sitemapUrls.every((url) => url.startsWith("https://de.pollframe.workers.dev/")),
+  "sitemap contains a URL outside the production origin",
+);
+requireCondition(!sitemap.includes("/embed.html"), "sitemap exposes the noindex embed entry");
 
 const distInfo = await stat(resolve(root, "dist")).catch(() => null);
 requireCondition(distInfo?.isDirectory(), "dist is missing; build before running the security check");
@@ -128,6 +160,8 @@ if (distInfo?.isDirectory()) {
   requireCondition(distFiles.includes("dist/index.html"), "production index entry is missing");
   requireCondition(distFiles.includes("dist/embed.html"), "production embed entry is missing");
   requireCondition(distFiles.includes("dist/_headers"), "Cloudflare headers are missing from the production output");
+  requireCondition(distFiles.includes("dist/robots.txt"), "production robots.txt is missing");
+  requireCondition(distFiles.includes("dist/sitemap.xml"), "production sitemap.xml is missing");
   requireCondition(!distFiles.some((path) => path.endsWith(".map")), "production output contains source maps");
   requireCondition(
     !distFiles.some((path) => /(?:^|\/)(?:\.env|.*\.(?:pem|key|p12|pfx))$/i.test(path)),
