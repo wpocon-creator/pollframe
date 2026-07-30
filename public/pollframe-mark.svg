@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Pollframe">
+  <rect width="32" height="32" rx="8" fill="#14171a"/>
+  <path d="M10.5 7.5H7.5v17h3M21.5 7.5h3v17h-3" fill="none" stroke="#fbfbf7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.25"/>
+  <path d="m10 20 4.25-4.25 3.5 2.5L22 11.5" fill="none" stroke="#fbfbf7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"/>
+  <circle cx="17.75" cy="18.25" r="1.65" fill="#fbfbf7"/>
+</svg>

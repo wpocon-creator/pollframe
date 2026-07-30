@@ -1,0 +1,22 @@
+# Dependencies and generated output
+node_modules/
+dist/
+
+# Test and coverage artifacts
+test-results/
+playwright-report/
+coverage/
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+.dev.vars
+.wrangler/
+
+# Editor and operating-system files
+.DS_Store
+Thumbs.db
+*.log
+*.swp
+*.swo
