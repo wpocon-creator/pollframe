@@ -3303,7 +3303,7 @@ function PrivacyPage({ locale }) {
 
         <section>
           <h2>2. Hosting and delivery</h2>
-          <p>Pollframe is delivered through Cloudflare Pages, a service provided by Cloudflare, Inc. To deliver and protect the website, Cloudflare processes technical connection data. This may include the IP address, time of access, requested file, HTTP status, transferred data volume, browser and device information, and a referrer if the browser provides one.</p>
+          <p>Pollframe is delivered through Cloudflare Workers with Static Assets, a service provided by Cloudflare, Inc. To deliver and protect the website, Cloudflare processes technical connection data. This may include the IP address, time of access, requested file, HTTP status, transferred data volume, browser and device information, and a referrer if the browser provides one.</p>
           <p>The legal basis is Article 6(1)(f) GDPR. Our legitimate interests are reliable delivery, protection against attacks and technical fault diagnosis. We do not operate our own visitor database or access-log analysis.</p>
           <p>Cloudflare operates a global network, so processing may also take place outside the European Economic Area. Cloudflare describes the safeguards used for these transfers in its <a href="https://www.cloudflare.com/cloudflare-customer-dpa/" target="_blank" rel="noreferrer">Data Processing Addendum</a> and <a href="https://www.cloudflare.com/policies/privacy/" target="_blank" rel="noreferrer">Privacy Policy</a>.</p>
         </section>
@@ -3367,7 +3367,7 @@ function PrivacyPage({ locale }) {
 
       <section>
         <h2>2. Hosting und Auslieferung</h2>
-        <p>Pollframe wird über Cloudflare Pages, einen Dienst der Cloudflare, Inc., ausgeliefert. Für die Auslieferung und Absicherung der Website verarbeitet Cloudflare technische Verbindungsdaten. Dazu können IP-Adresse, Zeitpunkt des Zugriffs, aufgerufene Datei, HTTP-Status, übertragene Datenmenge, Browser- und Geräteangaben sowie ein vom Browser übermittelter Referrer gehören.</p>
+        <p>Pollframe wird über Cloudflare Workers mit Static Assets, einen Dienst der Cloudflare, Inc., ausgeliefert. Für die Auslieferung und Absicherung der Website verarbeitet Cloudflare technische Verbindungsdaten. Dazu können IP-Adresse, Zeitpunkt des Zugriffs, aufgerufene Datei, HTTP-Status, übertragene Datenmenge, Browser- und Geräteangaben sowie ein vom Browser übermittelter Referrer gehören.</p>
         <p>Rechtsgrundlage ist Art. 6 Abs. 1 lit. f DSGVO. Unsere berechtigten Interessen sind eine zuverlässige Auslieferung, der Schutz vor Angriffen und die technische Fehlerdiagnose. Wir betreiben keine eigene Besucherdatenbank und keine eigene Auswertung von Zugriffsprotokollen.</p>
         <p>Cloudflare betreibt ein weltweites Netzwerk, sodass eine Verarbeitung auch außerhalb des Europäischen Wirtschaftsraums stattfinden kann. Die hierfür verwendeten Schutzmaßnahmen beschreibt Cloudflare in seinem <a href="https://www.cloudflare.com/cloudflare-customer-dpa/" target="_blank" rel="noreferrer">Auftragsverarbeitungszusatz</a> und seiner <a href="https://www.cloudflare.com/policies/privacy/" target="_blank" rel="noreferrer">Datenschutzerklärung</a>.</p>
       </section>

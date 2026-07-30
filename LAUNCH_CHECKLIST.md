@@ -17,7 +17,7 @@
 - [ ] Tastaturbedienung, Fokusreihenfolge, Screenreader-Beschriftungen, Farbkontrast, größere Schrift und reduzierte Bewegung prüfen.
 - [ ] Performance auf einem langsameren Mobilgerät testen; Ziel: Hauptansicht schnell sichtbar, keine unnötigen Drittanbieter-Skripte.
 - [x] Sichere HTTP-Header, strikte CSP, Einbettungsschutz und getrennten Embed-Einstieg in den Produktions-Build integrieren.
-- [ ] Cloudflare Pages mit Produktions-Build, HTTPS, Cache-Regeln und eigener Fehlerseite konfigurieren; nach dem ersten Deployment die Header aus `dist/_headers` extern verifizieren.
+- [ ] Cloudflare Workers mit Static Assets, Produktions-Build, HTTPS und Cache-Regeln konfigurieren; nach dem ersten Deployment die Header aus `dist/_headers` extern verifizieren.
 - [ ] GitHub-, Cloudflare-, Domain- und Proton-Konten mit Passkey oder Hardware-Key-2FA absichern; Wiederherstellungscodes offline bei den Eltern aufbewahren.
 - [ ] Produktionsbranch schützen: keine Force-Pushes, erfolgreiche Checks verlangen und GitHub Actions nur mit vollständigen Commit-SHAs erlauben.
 - [ ] Keine Analyse-, Werbe- oder Cookie-Dienste aktivieren, bevor Datenschutz und Einwilligung sauber gelöst sind.

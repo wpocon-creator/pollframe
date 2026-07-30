@@ -31,10 +31,11 @@ server-side request surfaces from the production site.
 
 ## Required hosting and account settings
 
-Use Cloudflare Pages with `npm run build`, output directory `dist`, and Node 22.
-The generated `dist/_headers` file must be deployed unchanged. Pages Functions
-are not used; if they are added later, Cloudflare requires the headers to be
-applied in the Function response instead.
+Use Cloudflare Workers Builds with `npm run build`, `npx wrangler deploy`, and
+Node 22. `wrangler.jsonc` publishes the generated `dist` directory as static
+assets. The generated `dist/_headers` file must be deployed unchanged. Worker
+runtime code is not used; if it is added later, Cloudflare requires the headers
+to be applied in generated responses instead.
 
 Before publication:
 

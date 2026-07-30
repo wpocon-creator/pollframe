@@ -49,7 +49,7 @@ npm run data:update
 at 06:17 UTC. A read-only job validates Germany and all 16 state archives and
 builds the site. A separate minimal publishing job receives write access and
 only commits the validated public JSON files. It creates no commit when the
-selected data did not change. When Cloudflare Pages is connected to the
+selected data did not change. When Cloudflare Workers Builds is connected to the
 repository, a successful data commit triggers the normal production
 deployment.
 
@@ -66,13 +66,14 @@ npm install
 npm run dev
 ```
 
-## Cloudflare Pages
+## Cloudflare Workers with Static Assets
 
 - Build command: `npm run build`
-- Build output directory: `dist`
+- Deploy command: `npx wrangler deploy`
 - Node version: 22
 
-No server runtime or environment variables are required.
+`wrangler.jsonc` publishes the generated `dist` directory as static assets. No
+server runtime or environment variables are required.
 
 ## Security
 
