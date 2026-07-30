@@ -115,6 +115,7 @@ requireCondition(viteConfig.includes('host: "127.0.0.1"'), "Vite server is not r
 requireCondition(viteConfig.includes("sourcemap: false"), "production source maps are not explicitly disabled");
 requireCondition(wranglerConfig.assets?.directory === "./dist", "Cloudflare does not deploy the checked production directory");
 requireCondition(wranglerConfig.assets?.html_handling === "none", "Cloudflare HTML rewriting would break the dedicated embed path");
+requireCondition(wranglerConfig.assets?.not_found_handling === "single-page-application", "Cloudflare does not serve the app shell at the site root");
 requireCondition(wranglerConfig.preview_urls === false, "Cloudflare version preview URLs are publicly enabled");
 requireCondition(!wranglerConfig.main, "unexpected Worker runtime code is configured");
 requireCondition(mainHtml.includes('name="referrer" content="no-referrer"'), "main HTML lacks a no-referrer fallback");
