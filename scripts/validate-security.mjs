@@ -18,13 +18,14 @@ async function listFiles(directory) {
   return output;
 }
 
-const [source, headers, workflow, packageJson, packageLock, viteConfig, mainHtml, embedHtml] = await Promise.all([
+const [source, headers, workflow, packageJson, packageLock, viteConfig, wranglerConfig, mainHtml, embedHtml] = await Promise.all([
   read("src/main.jsx"),
   read("public/_headers"),
   read(".github/workflows/update-poll-data.yml"),
   read("package.json").then(JSON.parse),
   read("package-lock.json").then(JSON.parse),
   read("vite.config.js"),
+  read("wrangler.jsonc").then(JSON.parse),
   read("index.html"),
   read("embed.html"),
 ]);
@@ -112,6 +113,10 @@ for (const [path, entry] of Object.entries(packageLock.packages ?? {})) {
 }
 requireCondition(viteConfig.includes('host: "127.0.0.1"'), "Vite server is not restricted to localhost");
 requireCondition(viteConfig.includes("sourcemap: false"), "production source maps are not explicitly disabled");
+requireCondition(wranglerConfig.assets?.directory === "./dist", "Cloudflare does not deploy the checked production directory");
+requireCondition(wranglerConfig.assets?.html_handling === "none", "Cloudflare HTML rewriting would break the dedicated embed path");
+requireCondition(wranglerConfig.preview_urls === false, "Cloudflare version preview URLs are publicly enabled");
+requireCondition(!wranglerConfig.main, "unexpected Worker runtime code is configured");
 requireCondition(mainHtml.includes('name="referrer" content="no-referrer"'), "main HTML lacks a no-referrer fallback");
 requireCondition(embedHtml.includes('name="robots" content="noindex, nofollow, noarchive"'), "embed HTML lacks noindex");
 
@@ -139,4 +144,4 @@ if (distInfo?.isDirectory()) {
 if (errors.length) {
   throw new Error(`Security validation failed:\n- ${errors.join("\n- ")}`);
 }
-console.log("Security validation passed: browser policy, embed isolation, workflow pins, and build output");
+console.log("Security validation passed: browser policy, embed isolation, Cloudflare routing, workflow pins, and build output");
