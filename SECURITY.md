@@ -1,17 +1,20 @@
 # Security model
 
 Pollframe is intentionally static. It has no login, cookies, database,
-server-side contact endpoint, advertising, analytics or server-side application
-code. Its contact assistant only builds a local `mailto:` link. Published poll
-JSON is public by design. This removes authentication, session, CSRF, SQL and
-server-side request surfaces from the production site.
+server-side contact endpoint, advertising or server-side application code. Its
+contact assistant only builds a local `mailto:` link. Published poll JSON is
+public by design. The normal site uses Cloudflare Web Analytics for aggregate
+reach and performance measurement; the dedicated journalist embed does not
+load the beacon. This removes authentication, session, CSRF, SQL and server-side
+request surfaces from the production site.
 
 ## Implemented controls
 
 - A restrictive Content Security Policy allows scripts, styles, frames and
-  network requests only from Pollframe itself. Inline/eval scripts, objects,
-  workers, forms and DOM injection sinks are blocked. Trusted Types is enforced
-  in supporting browsers.
+  network requests only from Pollframe itself, plus the explicitly configured
+  Cloudflare Web Analytics script and reporting endpoint on the normal site.
+  Inline/eval scripts, objects, workers, forms and DOM injection sinks are
+  blocked. Trusted Types is enforced in supporting browsers.
 - The normal site cannot be framed. Journalist embeds use the separate
   `/embed.html` entry, are marked `noindex`, use a no-referrer policy and the
   generated iframe is sandboxed.
@@ -50,8 +53,9 @@ Before publication:
    DNS, Pages settings and deployment tokens.
 5. Enable notifications for failed updater/deployment workflows. Periodically
    run `npm audit` and review CSP/browser console violations.
-6. Do not add third-party analytics, fonts, ads or scripts without a new privacy
-   and security review. The current CSP intentionally blocks them.
+6. Do not add further third-party analytics, fonts, ads or scripts without a new
+   privacy and security review. The current CSP permits only the reviewed
+   Cloudflare Web Analytics endpoints.
 
 HSTS preloading and `includeSubDomains` are deliberately not enabled until the
 final domain and every subdomain are permanently HTTPS. Enabling them too early
