@@ -3408,7 +3408,7 @@ function PrivacyPage({ locale }) {
         <a className="breadcrumb" href="/">← Back to overview</a>
         <p className="section-label">Legal</p>
         <h1>Privacy notice</h1>
-        <p className="privacy-updated">Last updated: 30 July 2026</p>
+        <p className="privacy-updated">Last updated: 1 August 2026</p>
 
         <section>
           <h2>1. Controller</h2>
@@ -3424,7 +3424,7 @@ function PrivacyPage({ locale }) {
         <section>
           <h2>2. Hosting and delivery</h2>
           <p>Pollframe is delivered through Cloudflare Workers with Static Assets, a service provided by Cloudflare, Inc. To deliver and protect the website, Cloudflare processes technical connection data. This may include the IP address, time of access, requested file, HTTP status, transferred data volume, browser and device information, and a referrer if the browser provides one.</p>
-          <p>The legal basis is Article 6(1)(f) GDPR. Our legitimate interests are reliable delivery, protection against attacks and technical fault diagnosis. We do not operate our own visitor database or access-log analysis.</p>
+          <p>The legal basis is Article 6(1)(f) GDPR. Our legitimate interests are reliable delivery, protection against attacks and technical fault diagnosis. We do not operate our own visitor database or analyse raw access logs ourselves.</p>
           <p>Cloudflare operates a global network, so processing may also take place outside the European Economic Area. Cloudflare describes the safeguards used for these transfers in its <a href="https://www.cloudflare.com/cloudflare-customer-dpa/" target="_blank" rel="noreferrer">Data Processing Addendum</a> and <a href="https://www.cloudflare.com/policies/privacy/" target="_blank" rel="noreferrer">Privacy Policy</a>.</p>
         </section>
 
@@ -3434,8 +3434,10 @@ function PrivacyPage({ locale }) {
         </section>
 
         <section>
-          <h2>4. Cookies, analytics and advertising</h2>
-          <p>Pollframe currently uses no cookies, audience analytics, advertising networks, tracking pixels or third-party scripts. We do not sell personal data and do not make automated decisions about visitors.</p>
+          <h2>4. Cookies, audience measurement and advertising</h2>
+          <p>Pollframe uses Cloudflare Web Analytics, provided by Cloudflare, Inc., to measure aggregate visits and page views and to understand referrer hosts, countries, device and browser categories, page-load performance and Core Web Vitals. We use these aggregated measurements to improve Pollframe&apos;s reach, usability and technical performance. The analytics beacon is loaded from <code>static.cloudflareinsights.com</code> and sends measurements to <code>cloudflareinsights.com</code>. It is not loaded in the dedicated journalist embed.</p>
+          <p>Cloudflare states that Web Analytics does not use cookies or local storage, does not track individuals across websites and does not collect or use visitors&apos; personal data. Query strings are not logged. Pollframe does not receive IP addresses or identifiers that would allow us to recognise an individual visitor. The legal basis is Article 6(1)(f) GDPR; our legitimate interests are privacy-preserving aggregate reach measurement and improving the website.</p>
+          <p>Cloudflare retains unsampled beacon data for seven days and subsequently keeps aggregated data; dashboard reports are available for up to six months. Details are provided in Cloudflare&apos;s <a href="https://developers.cloudflare.com/web-analytics/data-metrics/data-origin-and-collection/" target="_blank" rel="noreferrer">Web Analytics documentation</a>. Pollframe does not use advertising networks, sell personal data or make automated decisions about visitors.</p>
         </section>
 
         <section>
@@ -3451,7 +3453,7 @@ function PrivacyPage({ locale }) {
 
         <section>
           <h2>7. Retention and recipients</h2>
-          <p>Local preferences remain until you remove them. Contact messages are kept only as long as necessary for the request or a legal obligation. Technical security data processed by Cloudflare is retained under Cloudflare’s applicable policies. Data is disclosed only to the service providers named above where necessary, or where required by law.</p>
+          <p>Local preferences remain until you remove them. Contact messages are kept only as long as necessary for the request or a legal obligation. Technical security and aggregate Web Analytics data processed by Cloudflare are retained as described above and under Cloudflare’s applicable policies. Data is disclosed only to the service providers named above where necessary, or where required by law.</p>
         </section>
 
         <section>
@@ -3461,7 +3463,7 @@ function PrivacyPage({ locale }) {
 
         <section>
           <h2>9. Changes</h2>
-          <p>This notice will be updated before introducing analytics, advertising, user accounts, payments or other services that process additional personal data.</p>
+          <p>This notice will be updated before introducing advertising, user accounts, payments, additional analytics services or other services that process additional data.</p>
         </section>
       </main>
     );
@@ -3472,7 +3474,7 @@ function PrivacyPage({ locale }) {
       <a className="breadcrumb" href="/">← Zur Übersicht</a>
       <p className="section-label">Rechtliches</p>
       <h1>Datenschutzerklärung</h1>
-      <p className="privacy-updated">Stand: 30. Juli 2026</p>
+      <p className="privacy-updated">Stand: 1. August 2026</p>
 
       <section>
         <h2>1. Verantwortlicher</h2>
@@ -3488,7 +3490,7 @@ function PrivacyPage({ locale }) {
       <section>
         <h2>2. Hosting und Auslieferung</h2>
         <p>Pollframe wird über Cloudflare Workers mit Static Assets, einen Dienst der Cloudflare, Inc., ausgeliefert. Für die Auslieferung und Absicherung der Website verarbeitet Cloudflare technische Verbindungsdaten. Dazu können IP-Adresse, Zeitpunkt des Zugriffs, aufgerufene Datei, HTTP-Status, übertragene Datenmenge, Browser- und Geräteangaben sowie ein vom Browser übermittelter Referrer gehören.</p>
-        <p>Rechtsgrundlage ist Art. 6 Abs. 1 lit. f DSGVO. Unsere berechtigten Interessen sind eine zuverlässige Auslieferung, der Schutz vor Angriffen und die technische Fehlerdiagnose. Wir betreiben keine eigene Besucherdatenbank und keine eigene Auswertung von Zugriffsprotokollen.</p>
+        <p>Rechtsgrundlage ist Art. 6 Abs. 1 lit. f DSGVO. Unsere berechtigten Interessen sind eine zuverlässige Auslieferung, der Schutz vor Angriffen und die technische Fehlerdiagnose. Wir betreiben keine eigene Besucherdatenbank und werten rohe Zugriffsprotokolle nicht selbst aus.</p>
         <p>Cloudflare betreibt ein weltweites Netzwerk, sodass eine Verarbeitung auch außerhalb des Europäischen Wirtschaftsraums stattfinden kann. Die hierfür verwendeten Schutzmaßnahmen beschreibt Cloudflare in seinem <a href="https://www.cloudflare.com/cloudflare-customer-dpa/" target="_blank" rel="noreferrer">Auftragsverarbeitungszusatz</a> und seiner <a href="https://www.cloudflare.com/policies/privacy/" target="_blank" rel="noreferrer">Datenschutzerklärung</a>.</p>
       </section>
 
@@ -3499,7 +3501,9 @@ function PrivacyPage({ locale }) {
 
       <section>
         <h2>4. Cookies, Reichweitenmessung und Werbung</h2>
-        <p>Pollframe verwendet derzeit keine Cookies, keine Reichweitenanalyse, keine Werbenetzwerke, keine Tracking-Pixel und keine fremden Skripte. Wir verkaufen keine personenbezogenen Daten und treffen keine automatisierten Entscheidungen über Besucher.</p>
+        <p>Pollframe verwendet Cloudflare Web Analytics von Cloudflare, Inc., um zusammengefasste Besuche und Seitenaufrufe zu messen und verweisende Websites, Länder, Geräte- und Browserkategorien, Ladezeiten sowie Core Web Vitals zu verstehen. Diese aggregierten Messwerte nutzen wir, um Reichweite, Bedienbarkeit und technische Leistung von Pollframe zu verbessern. Der Analyse-Beacon wird von <code>static.cloudflareinsights.com</code> geladen und übermittelt Messwerte an <code>cloudflareinsights.com</code>. Im gesonderten Journalisten-Embed wird er nicht geladen.</p>
+        <p>Nach Angaben von Cloudflare verwendet Web Analytics weder Cookies noch lokalen Speicher, verfolgt keine einzelnen Personen über Websites hinweg und erhebt oder verwendet keine personenbezogenen Besucherdaten. URL-Abfrageparameter werden nicht protokolliert. Pollframe erhält keine IP-Adressen oder Kennungen, mit denen wir einzelne Besucher wiedererkennen könnten. Rechtsgrundlage ist Art. 6 Abs. 1 lit. f DSGVO; unsere berechtigten Interessen sind eine datensparsame, aggregierte Reichweitenmessung und die Verbesserung der Website.</p>
+        <p>Cloudflare bewahrt nicht hochgerechnete Beacon-Daten sieben Tage auf und speichert anschließend aggregierte Daten; Auswertungen stehen im Dashboard bis zu sechs Monate zur Verfügung. Einzelheiten beschreibt Cloudflare in seiner <a href="https://developers.cloudflare.com/web-analytics/data-metrics/data-origin-and-collection/" target="_blank" rel="noreferrer">Dokumentation zu Web Analytics</a>. Pollframe verwendet keine Werbenetzwerke, verkauft keine personenbezogenen Daten und trifft keine automatisierten Entscheidungen über Besucher.</p>
       </section>
 
       <section>
@@ -3515,7 +3519,7 @@ function PrivacyPage({ locale }) {
 
       <section>
         <h2>7. Speicherdauer und Empfänger</h2>
-        <p>Lokale Einstellungen bleiben bis zu ihrer Löschung bestehen. Kontaktanfragen werden nur so lange gespeichert, wie es für die Bearbeitung oder eine gesetzliche Pflicht erforderlich ist. Technische Sicherheitsdaten bei Cloudflare werden nach den jeweils geltenden Richtlinien von Cloudflare gespeichert. Daten werden nur an die oben genannten Dienstleister weitergegeben, soweit dies erforderlich ist, oder wenn wir gesetzlich dazu verpflichtet sind.</p>
+        <p>Lokale Einstellungen bleiben bis zu ihrer Löschung bestehen. Kontaktanfragen werden nur so lange gespeichert, wie es für die Bearbeitung oder eine gesetzliche Pflicht erforderlich ist. Technische Sicherheitsdaten und aggregierte Web-Analytics-Daten bei Cloudflare werden wie oben beschrieben und nach den jeweils geltenden Richtlinien von Cloudflare gespeichert. Daten werden nur an die oben genannten Dienstleister weitergegeben, soweit dies erforderlich ist, oder wenn wir gesetzlich dazu verpflichtet sind.</p>
       </section>
 
       <section>
@@ -3525,7 +3529,7 @@ function PrivacyPage({ locale }) {
 
       <section>
         <h2>9. Änderungen</h2>
-        <p>Diese Erklärung wird vor der Einführung von Analyse, Werbung, Benutzerkonten, Zahlungen oder anderen Diensten aktualisiert, durch die zusätzliche personenbezogene Daten verarbeitet werden.</p>
+        <p>Diese Erklärung wird vor der Einführung von Werbung, Benutzerkonten, Zahlungen, weiteren Analysediensten oder anderen Diensten aktualisiert, durch die zusätzliche Daten verarbeitet werden.</p>
       </section>
     </main>
   );

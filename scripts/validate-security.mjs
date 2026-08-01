@@ -136,7 +136,21 @@ requireCondition(wranglerConfig.name === "de", "Cloudflare Worker name does not 
 requireCondition(mainHtml.includes('name="referrer" content="no-referrer"'), "main HTML lacks a no-referrer fallback");
 requireCondition(mainHtml.includes('rel="canonical" href="https://de.pollframe.workers.dev/"'), "main HTML lacks the production canonical URL");
 requireCondition(mainHtml.includes('property="og:title"'), "main HTML lacks Open Graph metadata");
+requireCondition(
+  mainHtml.includes("https://static.cloudflareinsights.com/beacon.min.js")
+    && mainHtml.includes('4e1831c7e0754afa811e25e2a7a07943'),
+  "main HTML lacks the configured Cloudflare Web Analytics beacon",
+);
 requireCondition(embedHtml.includes('name="robots" content="noindex, nofollow, noarchive"'), "embed HTML lacks noindex");
+requireCondition(!embedHtml.includes("cloudflareinsights.com"), "journalist embed unexpectedly contains analytics");
+requireCondition(
+  headers.includes("script-src 'self' https://static.cloudflareinsights.com"),
+  "CSP does not permit the Cloudflare Web Analytics beacon",
+);
+requireCondition(
+  headers.includes("connect-src 'self' https://cloudflareinsights.com"),
+  "CSP does not permit Cloudflare Web Analytics reports",
+);
 requireCondition(robots.includes("Disallow: /embed.html"), "robots.txt does not exclude the embed entry");
 requireCondition(
   robots.includes("Sitemap: https://de.pollframe.workers.dev/sitemap.xml"),
@@ -174,6 +188,11 @@ if (distInfo?.isDirectory()) {
   for (const [index, html] of builtEntries.entries()) {
     requireCondition(!html.includes("/src/"), `${index ? "embed" : "main"} production HTML references source files`);
   }
+  requireCondition(
+    builtEntries[0].includes("https://static.cloudflareinsights.com/beacon.min.js"),
+    "main production HTML lacks Web Analytics",
+  );
+  requireCondition(!builtEntries[1].includes("cloudflareinsights.com"), "production embed contains Web Analytics");
 }
 
 if (errors.length) {
