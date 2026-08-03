@@ -27,6 +27,7 @@
   text-rendering: optimizeLegibility;
 }
 
+
 :root[data-theme="dark"] {
   color-scheme: dark;
   --background: #121416;
@@ -127,6 +128,153 @@ body {
 }
 
 /* Germany and state overview */
+.germany-country-overview {
+  padding-block: 76px 44px;
+}
+
+.germany-country-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(230px, 0.34fr);
+  gap: 48px;
+  align-items: end;
+  margin: 34px 0 38px;
+}
+
+.germany-country-hero h1 {
+  margin: 14px 0 16px;
+  font-size: clamp(2.3rem, 4.5vw, 4rem);
+  line-height: 0.98;
+  letter-spacing: -0.055em;
+}
+
+.germany-country-hero p {
+  max-width: 720px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 1.05rem;
+  line-height: 1.65;
+}
+
+.overview-profile-badge {
+  display: grid;
+  gap: 7px;
+  padding: 22px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.overview-profile-badge span,
+.overview-widget-eyebrow {
+  color: var(--accent);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.overview-profile-badge strong {
+  font-size: 1.25rem;
+}
+
+.overview-profile-badge small {
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.overview-widget-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  margin-bottom: 38px;
+}
+
+.overview-info-widget {
+  position: relative;
+  display: grid;
+  grid-template-rows: auto auto 1fr auto;
+  min-height: 270px;
+  padding: 27px 30px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  transition: border-color 160ms ease, transform 160ms ease, box-shadow 160ms ease;
+}
+
+.overview-info-widget::before {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 5px;
+  background: var(--accent);
+  content: "";
+}
+
+.overview-info-widget:hover {
+  border-color: color-mix(in srgb, var(--accent) 46%, var(--line));
+  transform: translateY(-2px);
+}
+
+.overview-info-widget h2 {
+  margin: 10px 0 10px;
+  color: var(--ink);
+  font-size: clamp(1.45rem, 2.5vw, 2.1rem);
+  line-height: 1.05;
+  letter-spacing: -0.035em;
+}
+
+.overview-info-widget > p {
+  max-width: 540px;
+  margin: 0 0 24px;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.overview-info-widget dl {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 28px;
+  margin: 0;
+  padding-top: 17px;
+  border-top: 1px solid var(--line);
+}
+
+.overview-info-widget dl div {
+  display: grid;
+  gap: 3px;
+}
+
+.overview-info-widget dt {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.overview-info-widget dd {
+  margin: 0;
+  color: var(--ink);
+  font-weight: 780;
+}
+
+.overview-widget-arrow {
+  position: absolute;
+  right: 27px;
+  top: 24px;
+  color: var(--accent);
+  font-size: 1.25rem;
+}
+
+.germany-country-note {
+  max-width: 760px;
+  margin: 18px 0 0;
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.55;
+}
+
 .overview-page {
   padding-block: 76px 36px;
 }
@@ -2464,6 +2612,147 @@ footer {
   color: var(--faint);
 }
 
+.poll-table-section {
+  margin: 0 0 22px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.poll-table-section > summary {
+  min-height: 92px;
+  padding: 20px 26px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.poll-table-section > summary::-webkit-details-marker {
+  display: none;
+}
+
+.poll-table-section > summary > span {
+  display: grid;
+  gap: 3px;
+}
+
+.poll-table-section > summary strong {
+  font-size: 1.03rem;
+}
+
+.poll-table-section > summary small {
+  color: var(--muted);
+  font-size: 0.7rem;
+}
+
+.poll-table-section > summary > svg {
+  flex: 0 0 auto;
+  color: var(--muted);
+  transition: transform 150ms ease;
+}
+
+.poll-table-section[open] > summary {
+  border-bottom: 1px solid var(--line);
+}
+
+.poll-table-section[open] > summary > svg {
+  transform: rotate(180deg);
+}
+
+.poll-table-body {
+  padding: 22px 26px 24px;
+}
+
+.poll-table-heading {
+  margin-bottom: 17px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.poll-table-heading p {
+  max-width: 720px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.77rem;
+  line-height: 1.5;
+}
+
+.poll-table-heading button {
+  flex: 0 0 auto;
+}
+
+.poll-table-scroll {
+  max-height: 570px;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+}
+
+.poll-table-scroll table {
+  width: 100%;
+  min-width: 1020px;
+  border-collapse: collapse;
+  font-size: 0.7rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.poll-table-scroll th,
+.poll-table-scroll td {
+  padding: 10px 11px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.poll-table-scroll th {
+  position: sticky;
+  z-index: 1;
+  top: 0;
+  background: var(--surface-soft);
+  color: var(--muted);
+  font-size: 0.6rem;
+  letter-spacing: 0.045em;
+  text-transform: uppercase;
+}
+
+.poll-table-scroll tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.poll-table-scroll tbody tr:hover {
+  background: var(--surface-soft);
+}
+
+.poll-table-scroll td a {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.poll-card-list {
+  display: none;
+}
+
+.poll-table-more {
+  margin: 16px auto 0;
+}
+
+.poll-table-source {
+  margin: 17px 0 0;
+  color: var(--muted);
+  font-size: 0.68rem;
+  line-height: 1.5;
+}
+
 .projection-section {
   margin: 0 0 76px;
   padding: clamp(25px, 4vw, 42px);
@@ -3425,7 +3714,7 @@ footer nav .footer-action:hover {
 
 .embed-actions {
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 9px;
 }
 
@@ -3635,6 +3924,31 @@ footer nav .footer-action:hover {
     display: none;
   }
 
+  /* Keep the phone view focused on the result and controls. These passages
+     repeat context that remains available through Methodik or the desktop
+     layout; source attribution and data-quality warnings stay visible. */
+  .intro-copy > p,
+  .results-note,
+  .chart-heading > div > p:not(.section-label),
+  .tendency-heading > p,
+  .projection-heading > div:first-child > p:last-child,
+  .projection-method,
+  .overview-hero > p,
+  .overview-entry-stack .federal-entry p,
+  .map-copy > p:not(.section-label),
+  .coverage-method,
+  .map-page-hero > p,
+  .map-section-header > div > p:not(.section-label),
+  .poll-map-selection > small,
+  .map-method-note,
+  footer > p {
+    display: none;
+  }
+
+  .coverage-banner.adequate {
+    display: none;
+  }
+
   .result-row {
     grid-template-columns: 78px minmax(50px, 1fr) 50px 35px;
     gap: 7px;
@@ -3665,33 +3979,26 @@ footer nav .footer-action:hover {
   }
 
   .party-selector {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    scrollbar-width: none;
-  }
-
-  .party-selector::-webkit-scrollbar {
-    display: none;
+    flex-wrap: wrap;
+    overflow-x: visible;
   }
 
   .party-selector button {
-    flex: 0 0 auto;
+    flex: 0 1 auto;
+  }
+
+  .chart-wrap {
+    min-height: 0;
+    overflow-x: hidden;
   }
 
   .poll-chart {
-    width: 920px;
+    width: 100%;
+    min-width: 0;
   }
 
   .chart-scroll-hint {
-    margin-top: 13px;
-    display: block;
-    color: var(--faint);
-    font-size: 0.61rem;
-    text-align: right;
-  }
-
-  .chart-scroll-hint + .chart-wrap {
-    margin-top: 5px;
+    display: none;
   }
 
   .event-hover-card {
@@ -3758,6 +4065,139 @@ footer nav .footer-action:hover {
 
   .chart-footer > div {
     justify-content: space-between;
+  }
+
+  .poll-table-section {
+    border-radius: 14px;
+  }
+
+  .poll-table-section > summary {
+    min-height: 78px;
+    padding: 16px 17px;
+  }
+
+  .poll-table-body {
+    padding: 17px;
+  }
+
+  .poll-table-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .poll-table-heading button {
+    width: 100%;
+  }
+
+  .poll-table-desktop {
+    display: none;
+  }
+
+  .poll-card-list {
+    display: grid;
+    gap: 10px;
+  }
+
+  .poll-card-list article {
+    padding: 14px;
+    border: 1px solid var(--line);
+    border-radius: 11px;
+    background: var(--surface-soft);
+  }
+
+  .poll-card-list header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 14px;
+  }
+
+  .poll-card-list header > div {
+    display: grid;
+    gap: 3px;
+  }
+
+  .poll-card-list header time {
+    color: var(--muted);
+    font-size: 0.66rem;
+  }
+
+  .poll-card-list header strong {
+    font-size: 0.85rem;
+  }
+
+  .poll-card-list header a {
+    min-width: 36px;
+    min-height: 36px;
+    display: grid;
+    place-items: center;
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    color: var(--accent);
+  }
+
+  .poll-card-list dl {
+    margin: 13px 0 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1.4fr) minmax(70px, 0.6fr);
+    gap: 8px 14px;
+  }
+
+  .poll-card-list dl div {
+    min-width: 0;
+    display: grid;
+    gap: 2px;
+  }
+
+  .poll-card-list dl div:last-child {
+    grid-column: 1 / -1;
+  }
+
+  .poll-card-list dt {
+    color: var(--muted);
+    font-size: 0.58rem;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+
+  .poll-card-list dd {
+    margin: 0;
+    overflow: hidden;
+    font-size: 0.68rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .poll-card-values {
+    margin-top: 12px;
+    padding-top: 11px;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 7px 12px;
+    border-top: 1px solid var(--line);
+  }
+
+  .poll-card-values span {
+    min-width: 0;
+    display: grid;
+    grid-template-columns: 7px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.66rem;
+  }
+
+  .poll-card-values i {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+  }
+
+  .poll-card-values strong {
+    font-variant-numeric: tabular-nums;
+  }
+
+  .poll-table-more {
+    width: 100%;
   }
 
   .party-modal {
@@ -3845,6 +4285,12 @@ footer nav .footer-action:hover {
     grid-template-columns: 1fr;
   }
 
+  .axis-range-note,
+  .event-key-body > p,
+  .multi-menu .multi-label small {
+    display: none;
+  }
+
   .chart-footer > div {
     display: grid;
     gap: 9px;
@@ -3903,6 +4349,37 @@ footer nav .footer-action:hover {
 }
 
 @media (max-width: 700px) {
+  .germany-country-overview {
+    padding-block: 54px 28px;
+  }
+
+  .germany-country-hero,
+  .overview-widget-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .germany-country-hero {
+    gap: 22px;
+    margin: 24px 0 28px;
+  }
+
+  .germany-country-hero h1 {
+    font-size: clamp(2rem, 11vw, 3rem);
+  }
+
+  .overview-profile-badge {
+    display: none;
+  }
+
+  .overview-info-widget {
+    min-height: 0;
+    padding: 23px 24px;
+  }
+
+  .overview-info-widget > p {
+    margin-bottom: 18px;
+  }
+
   .poll-map-actions {
     flex-wrap: wrap;
   }

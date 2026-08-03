@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-labelledby="title desc">
+  <title id="title">Pollframe – Wahlumfragen für Bund und Länder</title>
+  <desc id="desc">Dunkle Pollframe-Vorschaugrafik mit stilisiertem Umfragetrend.</desc>
+  <defs>
+    <linearGradient id="background" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#111417"/>
+      <stop offset="1" stop-color="#1a1f25"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#88a4ff"/>
+      <stop offset="1" stop-color="#70d3b0"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="18" stdDeviation="28" flood-color="#000" flood-opacity=".28"/>
+    </filter>
+    <style>
+      text { font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    </style>
+  </defs>
+
+  <rect width="1200" height="630" fill="url(#background)"/>
+  <circle cx="1100" cy="-30" r="310" fill="#7997ff" opacity=".08"/>
+  <circle cx="80" cy="670" r="280" fill="#65c4a2" opacity=".055"/>
+
+  <g transform="translate(72 62)">
+    <rect width="58" height="58" rx="14" fill="#f7f7f2"/>
+    <path d="M20 15h-7v29h7M38 15h7v29h-7" fill="none" stroke="#14171a" stroke-linecap="round" stroke-linejoin="round" stroke-width="4"/>
+    <path d="m19 37 10-10 7 5 10-17" fill="none" stroke="#14171a" stroke-linecap="round" stroke-linejoin="round" stroke-width="4.5"/>
+    <circle cx="36" cy="32" r="3.3" fill="#14171a"/>
+    <text x="78" y="39" fill="#f7f7f2" font-size="27" font-weight="760" letter-spacing="3.4">POLLFRAME</text>
+    <rect x="286" y="11" width="63" height="34" rx="9" fill="none" stroke="#525a63"/>
+    <text x="317.5" y="33.5" fill="#aeb7c0" font-size="13" font-weight="700" text-anchor="middle" letter-spacing="1.5">BETA</text>
+  </g>
+
+  <g transform="translate(72 178)">
+    <text fill="#8ea8ff" font-size="17" font-weight="760" letter-spacing="2.5">WAHLUMFRAGEN IN DEUTSCHLAND</text>
+    <text y="69" fill="#f7f7f2" font-size="58" font-weight="760" letter-spacing="-2.7">Klar sehen, wie sich</text>
+    <text y="132" fill="#f7f7f2" font-size="58" font-weight="760" letter-spacing="-2.7">politische Stimmung bewegt.</text>
+    <text y="183" fill="#aeb7c0" font-size="22" font-weight="470">Bundestag · alle 16 Bundesländer · historische Trends</text>
+  </g>
+
+  <g transform="translate(72 448)">
+    <rect width="1056" height="128" rx="22" fill="#20262c" stroke="#353d45" filter="url(#shadow)"/>
+    <g stroke="#35404a" stroke-width="1">
+      <line x1="28" x2="1028" y1="34" y2="34"/>
+      <line x1="28" x2="1028" y1="68" y2="68"/>
+      <line x1="28" x2="1028" y1="102" y2="102"/>
+    </g>
+    <path d="M28 88 C130 84 177 64 260 70 S410 89 493 54 S640 31 718 49 S884 72 1028 34" fill="none" stroke="url(#accent)" stroke-linecap="round" stroke-width="6"/>
+    <path d="M28 62 C126 67 190 91 270 82 S407 58 500 72 S672 93 760 73 S905 55 1028 64" fill="none" stroke="#e05269" stroke-linecap="round" stroke-width="4" opacity=".9"/>
+    <path d="M28 101 C125 95 201 89 283 96 S424 105 516 87 S674 76 762 83 S912 94 1028 80" fill="none" stroke="#49a862" stroke-linecap="round" stroke-width="4" opacity=".9"/>
+    <circle cx="1028" cy="34" r="7" fill="#86a4ff" stroke="#20262c" stroke-width="4"/>
+  </g>
+
+  <text x="1128" y="610" fill="#78828c" font-size="15" text-anchor="end">de.pollframe.workers.dev</text>
+</svg>
