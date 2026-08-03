@@ -10,10 +10,14 @@ institute within the previous 45 days receives one equal share.
 
 Individual polls come from [dawum.de](https://dawum.de/API/) under the
 [ODC Open Database License](https://opendatacommons.org/licenses/odbl/1-0/).
-The included subset covers 3,148 federal and state polls from January 2017
+The included subset covers 3,154 federal and state polls from January 2017
 onwards from Allensbach, Forsa, Forschungsgruppe Wahlen, INSA, Infratest
 dimap, Ipsos, Verian and YouGov. Official federal election results are shown
 for 2017, 2021 and 2025.
+
+Every chart can be shared as an exact, restorable view or embedded without
+analytics. A disclosure below each chart lists the newest individual polls,
+links to their DAWUM detail pages and exports the selected pollsters as CSV.
 
 Earlier polling archives exist, but they are not imported because their
 database reuse terms are not clear enough for a potentially commercial
@@ -65,6 +69,9 @@ Double-click `Pollframe` on the desktop, or run:
 npm install
 npm run dev
 ```
+
+Use Node 22.12.0 (recorded in `.nvmrc` and `.node-version`) for release work
+and the browser suite.
 
 ## Cloudflare Workers with Static Assets
 
