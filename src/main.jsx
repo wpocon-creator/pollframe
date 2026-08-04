@@ -2735,7 +2735,7 @@ function SiteHeader({ t, onSettings, onInfo }) {
   return (
     <header className="site-header">
       <div className="header-inner">
-        <a className="brand" href="/?country=de" aria-label="Pollframe Deutschland-Übersicht">
+        <a className="brand" href="/" aria-label="Pollframe Deutschland-Übersicht">
           <BrandMark />
           <span>POLLFRAME</span>
           <em>BETA</em>
@@ -2758,7 +2758,7 @@ function SiteHeader({ t, onSettings, onInfo }) {
 function SiteFooter({ t, onInfo, sourceUrl }) {
   return (
     <footer>
-      <a className="brand small" href="/?country=de" aria-label="Pollframe Deutschland-Übersicht"><BrandMark /><span>POLLFRAME</span></a>
+      <a className="brand small" href="/" aria-label="Pollframe Deutschland-Übersicht"><BrandMark /><span>POLLFRAME</span></a>
       <p>{t.footerLine}</p>
       <nav>
         {onInfo && <button className="footer-action" onClick={onInfo}>{t.methodology}</button>}
@@ -4251,9 +4251,10 @@ function RegionalApp() {
   const region = retiredExpansionRoute
     ? null
     : REGION_META.find((candidate) => candidate.slug === requestedRegion) ?? null;
-  const germanyCountryPage = !embedMode && (requestedCountry === "de" || retiredExpansionRoute);
-  const isOverview = !legalPage && !privacyPage && !licencesPage && !contactPage && !region && !germanyCountryPage;
-  const mapPage = isOverview && !embedMode && query.get("view") === "map";
+  const isContentRoute = !legalPage && !privacyPage && !licencesPage && !contactPage && !region;
+  const mapPage = isContentRoute && !embedMode && query.get("view") === "map";
+  const germanyCountryPage = isContentRoute && !embedMode && !mapPage;
+  const isOverview = isContentRoute && (embedMode || mapPage);
   const queryList = (key, fallback, allowed) => {
     return queryListPreference(query, key, fallback, allowed, embedMode || sharedView);
   };
@@ -4301,6 +4302,25 @@ function RegionalApp() {
   const [selectedParties, setSelectedParties] = useState([]);
   const [selectedPollsters, setSelectedPollsters] = useState([]);
   const [selectedPartyDetail, setSelectedPartyDetail] = useState(null);
+
+  useEffect(() => {
+    if (embedMode) return;
+    const url = new URL(window.location.href);
+    let changed = false;
+    if (url.searchParams.has("country")) {
+      url.searchParams.delete("country");
+      changed = true;
+    }
+    if (url.searchParams.get("view") === "europe") {
+      url.searchParams.delete("view");
+      changed = true;
+    }
+    if (url.searchParams.get("region") === "europawahl-deutschland") {
+      url.searchParams.delete("region");
+      changed = true;
+    }
+    if (changed) window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
+  }, [embedMode]);
 
   const baseT = copy[locale];
   const isGerman = locale === "de";
@@ -4411,7 +4431,7 @@ function RegionalApp() {
       description = isGerman
         ? "Übersicht über Bundestagswahl und alle 16 deutschen Länderansichten."
         : "Overview of the federal election and all 16 German state views.";
-      canonicalPath = "/?country=de";
+      canonicalPath = "/";
     } else if (mapPage) {
       title = isGerman
         ? "Deutschland im Überblick – Länderumfragen · Pollframe"
