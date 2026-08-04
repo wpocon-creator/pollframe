@@ -70,13 +70,13 @@ test.describe("core routes", () => {
     const errors = watchRuntime(page);
     await page.goto("/");
     await settle(page);
-    await expect(page.getByRole("heading", { name: /Bund und Länder|Federal and state/i })).toBeVisible();
-    await expect(page.locator('.site-header .brand')).toHaveAttribute("href", "/?country=de");
-    await expect(page.getByRole("link", { name: /Umfragen zur Bundestagswahl|Federal election polling/i })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: /Deutschland im Überblick|Germany at a glance/i })).toBeVisible();
+    await expect(page.locator('.site-header .brand')).toHaveAttribute("href", "/");
+    await expect(page.getByRole("link", { name: /Bundestagswahl|Federal election/i })).toBeVisible();
     await expect(page.getByRole("link", { name: /Europawahl in Deutschland|European election in Germany/i })).toHaveCount(0);
     await expect(page.locator('.overview-entry-stack .europe-entry')).toHaveCount(0);
     await expect(page.locator(".germany-map")).toBeVisible();
-    await expect(page.locator(".state-grid a")).toHaveCount(16);
+    await expect(page.locator(".overview-entry-stack .overview-classic-widget")).toHaveCount(2);
     await expect(page.locator('link[rel="canonical"]')).toHaveAttribute("href", "https://de.pollframe.workers.dev/");
     await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /index, follow/);
     await expectDocumentFits(page);
@@ -85,7 +85,7 @@ test.describe("core routes", () => {
     await page.getByRole("button", { name: /Einstellungen|Settings/i }).click();
     await expect(page.getByRole("dialog")).toBeVisible();
     await page.getByRole("button", { name: /English.*United Kingdom/i }).click();
-    await expect(page.getByRole("heading", { name: "Federal and state polling" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Germany at a glance" })).toBeVisible();
     await page.getByRole("button", { name: /Dark/i }).click();
     await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
     await page.getByRole("button", { name: /Larger.*19 px/i }).click();
@@ -272,7 +272,7 @@ test.describe("core routes", () => {
     await expect(page.locator(".europe-overview-page")).toHaveCount(0);
     await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
       "href",
-      "https://de.pollframe.workers.dev/?country=de",
+      "https://de.pollframe.workers.dev/",
     );
     await expectDocumentFits(page);
     await expectNoBrokenVisibleText(page);
@@ -283,7 +283,8 @@ test.describe("core routes", () => {
     await expect(page.getByRole("heading", { level: 1, name: /Deutschland im Überblick|Germany at a glance/i })).toBeVisible();
     await expect(page.locator(".overview-entry-stack .overview-classic-widget")).toHaveCount(2);
     await expect(page.locator(".germany-map .map-state")).toHaveCount(16);
-    await expect(page.locator('link[rel="canonical"]')).toHaveAttribute("href", "https://de.pollframe.workers.dev/?country=de");
+    await expect(page).toHaveURL(/\/$/);
+    await expect(page.locator('link[rel="canonical"]')).toHaveAttribute("href", "https://de.pollframe.workers.dev/");
     await expectDocumentFits(page);
     await expectNoBrokenVisibleText(page);
 
@@ -293,6 +294,7 @@ test.describe("core routes", () => {
       await expect(page.getByRole("heading", { level: 1, name: /Deutschland im Überblick|Germany at a glance/i })).toBeVisible();
       await expect(page.locator(".germany-country-overview")).toBeVisible();
       await expect(page.locator(".europe-overview-page")).toHaveCount(0);
+      await expect(page).toHaveURL(/\/$/);
       await expectDocumentFits(page);
     }
     expect(errors).toEqual([]);
@@ -307,7 +309,7 @@ test.describe("core routes", () => {
     await expect(page.locator(".poll-chart")).toHaveCount(0);
     await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
       "href",
-      "https://de.pollframe.workers.dev/?country=de",
+      "https://de.pollframe.workers.dev/",
     );
     await expectDocumentFits(page);
     await expectNoBrokenVisibleText(page);
