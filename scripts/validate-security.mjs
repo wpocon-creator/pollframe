@@ -166,7 +166,7 @@ requireCondition(
 requireCondition(headers.includes("X-Robots-Tag: noindex, noarchive"), "raw JSON responses are not marked noindex");
 
 const sitemapUrls = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => match[1]);
-requireCondition(sitemapUrls.length === 21, `sitemap contains ${sitemapUrls.length} URLs instead of 21`);
+requireCondition(sitemapUrls.length === 20, `sitemap contains ${sitemapUrls.length} URLs instead of 20`);
 requireCondition(new Set(sitemapUrls).size === sitemapUrls.length, "sitemap contains duplicate URLs");
 requireCondition(
   sitemapUrls.every((url) => url.startsWith("https://de.pollframe.workers.dev/")),
@@ -178,16 +178,16 @@ requireCondition(
   "sitemap exposes the paused Europe overview",
 );
 requireCondition(
-  sitemapUrls.includes("https://de.pollframe.workers.dev/?country=de"),
-  "sitemap is missing the German country overview",
+  sitemapUrls.includes("https://de.pollframe.workers.dev/"),
+  "sitemap is missing the German overview root",
 );
 requireCondition(
   !sitemapUrls.some((url) => url.includes("?region=europawahl-deutschland")),
   "sitemap exposes the paused German European-election archive",
 );
 requireCondition(
-  !sitemapUrls.some((url) => url.includes("?country=") && !url.endsWith("?country=de")),
-  "sitemap exposes an unfinished noindex country prototype",
+  !sitemapUrls.some((url) => url.includes("?country=")),
+  "sitemap exposes a redundant or unfinished country route",
 );
 
 const distInfo = await stat(resolve(root, "dist")).catch(() => null);
