@@ -31,6 +31,10 @@
   Cross-Origin-Resource-Policy: same-origin
   Cache-Control: public, max-age=31536000, immutable
 
+/pollframe-social.png
+  Cross-Origin-Resource-Policy: same-origin
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
+
 /poll-data.json
   Cross-Origin-Resource-Policy: cross-origin
   Cache-Control: public, max-age=300, stale-while-revalidate=3600

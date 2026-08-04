@@ -1,4 +1,4 @@
-# Security audit — 2026-07-28
+# Security audit — updated 2026-08-03
 
 ## Scope
 
@@ -37,9 +37,12 @@ the fixes.
 ## Verification evidence
 
 - `npm audit --audit-level=low`: **0 known vulnerabilities**
-- Data validation: **17 regions and 3,148 polls**
+- Data validation: **17 regions and 3,154 polls**
 - Live DAWUM `--check-only`: trusted source validated; **no files written**
 - Production build: main and embed entries built without source maps
+- Browser/device integration matrix: **90/90 final scenarios passed** across
+  Chromium, Firefox, WebKit, Pixel 5, Galaxy S9+, iPhone SE, iPhone 13, iPad
+  Mini and phone landscape profiles
 - CSP browser smoke tests: main page, chart embed and map embed rendered
 - Trusted Types browser enforcement: rendered without injection-policy errors
 - Negative updater test: non-allowlisted remote URL rejected before fetching
@@ -65,6 +68,6 @@ SHA-512 integrity value; the full advisory audit reports zero vulnerabilities.
 - Cloudflare's deployed response headers must be externally verified after the
   first real deployment. Local and build tests cannot prove an undeployed
   platform configuration.
-- The current local machine uses Node 18, which is end-of-life. Production and
-  CI are declared for Node 22.12 or newer; local tooling should also be upgraded
-  before doing release work.
+- Release verification uses a project-local Node 22.12.0 runtime; production
+  and CI require Node 22.12 or newer. The system-wide Node installation may be
+  older and must not be used for Playwright or deployment commands.

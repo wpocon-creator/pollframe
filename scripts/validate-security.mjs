@@ -137,6 +137,13 @@ requireCondition(mainHtml.includes('name="referrer" content="no-referrer"'), "ma
 requireCondition(mainHtml.includes('rel="canonical" href="https://de.pollframe.workers.dev/"'), "main HTML lacks the production canonical URL");
 requireCondition(mainHtml.includes('property="og:title"'), "main HTML lacks Open Graph metadata");
 requireCondition(
+  mainHtml.includes('property="og:image" content="https://de.pollframe.workers.dev/pollframe-social.png"')
+    && mainHtml.includes('property="og:image:width" content="1200"')
+    && mainHtml.includes('property="og:image:height" content="630"')
+    && mainHtml.includes('name="twitter:card" content="summary_large_image"'),
+  "main HTML lacks the production social-preview metadata",
+);
+requireCondition(
   mainHtml.includes("https://static.cloudflareinsights.com/beacon.min.js")
     && mainHtml.includes('4e1831c7e0754afa811e25e2a7a07943'),
   "main HTML lacks the configured Cloudflare Web Analytics beacon",
@@ -159,13 +166,29 @@ requireCondition(
 requireCondition(headers.includes("X-Robots-Tag: noindex, noarchive"), "raw JSON responses are not marked noindex");
 
 const sitemapUrls = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => match[1]);
-requireCondition(sitemapUrls.length === 20, `sitemap contains ${sitemapUrls.length} URLs instead of 20`);
+requireCondition(sitemapUrls.length === 21, `sitemap contains ${sitemapUrls.length} URLs instead of 21`);
 requireCondition(new Set(sitemapUrls).size === sitemapUrls.length, "sitemap contains duplicate URLs");
 requireCondition(
   sitemapUrls.every((url) => url.startsWith("https://de.pollframe.workers.dev/")),
   "sitemap contains a URL outside the production origin",
 );
 requireCondition(!sitemap.includes("/embed.html"), "sitemap exposes the noindex embed entry");
+requireCondition(
+  !sitemapUrls.some((url) => url.includes("?view=europe")),
+  "sitemap exposes the paused Europe overview",
+);
+requireCondition(
+  sitemapUrls.includes("https://de.pollframe.workers.dev/?country=de"),
+  "sitemap is missing the German country overview",
+);
+requireCondition(
+  !sitemapUrls.some((url) => url.includes("?region=europawahl-deutschland")),
+  "sitemap exposes the paused German European-election archive",
+);
+requireCondition(
+  !sitemapUrls.some((url) => url.includes("?country=") && !url.endsWith("?country=de")),
+  "sitemap exposes an unfinished noindex country prototype",
+);
 
 const distInfo = await stat(resolve(root, "dist")).catch(() => null);
 requireCondition(distInfo?.isDirectory(), "dist is missing; build before running the security check");
@@ -176,6 +199,11 @@ if (distInfo?.isDirectory()) {
   requireCondition(distFiles.includes("dist/_headers"), "Cloudflare headers are missing from the production output");
   requireCondition(distFiles.includes("dist/robots.txt"), "production robots.txt is missing");
   requireCondition(distFiles.includes("dist/sitemap.xml"), "production sitemap.xml is missing");
+  requireCondition(distFiles.includes("dist/pollframe-social.png"), "production social-preview image is missing");
+  requireCondition(
+    !distFiles.some((path) => /(?:country-region-map-(?:at|fr|pl)|europawahl-deutschland)/.test(path)),
+    "production output still contains paused Europe-expansion data",
+  );
   requireCondition(!distFiles.some((path) => path.endsWith(".map")), "production output contains source maps");
   requireCondition(
     !distFiles.some((path) => /(?:^|\/)(?:\.env|.*\.(?:pem|key|p12|pfx))$/i.test(path)),
@@ -193,6 +221,14 @@ if (distInfo?.isDirectory()) {
     "main production HTML lacks Web Analytics",
   );
   requireCondition(!builtEntries[1].includes("cloudflareinsights.com"), "production embed contains Web Analytics");
+  const socialPng = await readFile(resolve(root, "dist/pollframe-social.png"));
+  requireCondition(
+    socialPng.length > 24
+      && socialPng.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))
+      && socialPng.readUInt32BE(16) === 1200
+      && socialPng.readUInt32BE(20) === 630,
+    "production social-preview image is not a valid 1200×630 PNG",
+  );
 }
 
 if (errors.length) {
