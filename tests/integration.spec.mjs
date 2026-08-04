@@ -281,7 +281,7 @@ test.describe("core routes", () => {
     await page.goto("/?country=de");
     await settle(page);
     await expect(page.getByRole("heading", { level: 1, name: /Deutschland im Überblick|Germany at a glance/i })).toBeVisible();
-    await expect(page.locator(".overview-widget-grid .overview-info-widget")).toHaveCount(2);
+    await expect(page.locator(".overview-entry-stack .overview-classic-widget")).toHaveCount(2);
     await expect(page.locator(".germany-map .map-state")).toHaveCount(16);
     await expect(page.locator('link[rel="canonical"]')).toHaveAttribute("href", "https://de.pollframe.workers.dev/?country=de");
     await expectDocumentFits(page);

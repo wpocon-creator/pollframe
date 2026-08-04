@@ -3318,12 +3318,14 @@ function MapEmbedView({ t, locale, data, mapGeometry, mode, setMode, partyId, se
 
 function OverviewInfoWidget({ href, eyebrow, title, text, stats, accent }) {
   return (
-    <a className={`overview-info-widget ${accent}`} href={href}>
-      <span className="overview-widget-eyebrow">{eyebrow}</span>
-      <h2>{title}</h2>
-      <p>{text}</p>
+    <a className={`federal-entry overview-classic-widget ${accent === "opinion" ? "map-entry" : ""}`} href={href}>
+      <div>
+        <span>{eyebrow}</span>
+        <h2>{title}</h2>
+        <p>{text}</p>
+      </div>
       <dl>{stats.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>
-      <span className="overview-widget-arrow" aria-hidden="true">→</span>
+      <span className="entry-arrow" aria-hidden="true">→</span>
     </a>
   );
 }
@@ -3350,9 +3352,9 @@ function GermanyCountryOverview({ locale, summary }) {
         <div><div className="eyebrow"><span />{isGerman ? "Bundestag und Länder" : "Federal and state elections"}</div><h1>🇩🇪 {isGerman ? "Deutschland im Überblick" : "Germany at a glance"}</h1><p>{isGerman ? "Bundesweite Wahlen oben, die 16 Länder in der großen Karte darunter. Jede Karte führt zu einer vollständigen Informationsseite." : "National elections first, with all 16 states in the main map below. Every card leads to a complete information page."}</p></div>
         <div className="overview-profile-badge"><span>{isGerman ? "Länderübersicht" : "Country overview"}</span><strong>Deutschland</strong><small>{isGerman ? "Laufende Umfragen · historische Reihen" : "Current polls · historical series"}</small></div>
       </section>
-      <section className="overview-widget-grid two-up" aria-label={isGerman ? "Wahlen und Karten in Deutschland" : "Elections and maps in Germany"}>
-        <OverviewInfoWidget accent="parliament" href="/?region=bundestag" eyebrow={isGerman ? "Nationale Ebene" : "National level"} title={isGerman ? "Bundestagswahl" : "Federal election"} text={isGerman ? "Aktueller Durchschnitt, langfristiger Trend, Institute, Ereignisse und Sitzmodell." : "Current average, long-term trend, pollsters, events and seat model."} stats={[[isGerman ? "Umfragen" : "Polls", federal?.pollCount?.toLocaleString(isGerman ? "de-DE" : "en-GB") ?? "–"], [isGerman ? "Zuletzt" : "Latest", federal ? formatDate(federal.latestDate, locale, { year: true }) : "–"]]} />
-        <OverviewInfoWidget accent="opinion" href="/?view=map" eyebrow={isGerman ? "Vergleich der Länder" : "State comparison"} title={isGerman ? "Deutschland im Überblick" : "Germany at a glance"} text={isGerman ? "Parteistärken und Bewegungen auf einer anpassbaren Karte über alle 16 Länder vergleichen." : "Compare party strength and movement across all 16 states on a customisable map."} stats={[[isGerman ? "Länder" : "States", "16"], [isGerman ? "Ansichten" : "Views", "3"]]} />
+      <section className="overview-entry-stack" aria-label={isGerman ? "Wahlen und Karten in Deutschland" : "Elections and maps in Germany"}>
+        <OverviewInfoWidget accent="parliament" href="/?region=bundestag" eyebrow={isGerman ? "Nationale Ebene" : "National level"} title={isGerman ? "Bundestagswahl" : "Federal election"} text={isGerman ? "Aktueller Durchschnitt, langfristiger Trend, Institute, Ereignisse und Sitzmodell." : "Current average, long-term trend, pollsters, events and seat model."} stats={[[isGerman ? "Umfragen" : "Polls", federal?.pollCount?.toLocaleString(isGerman ? "de-DE" : "en-GB") ?? "–"], [isGerman ? "Seit" : "Since", federal?.firstDate ? new Date(parseDate(federal.firstDate)).getUTCFullYear() : "–"], [isGerman ? "Zuletzt" : "Latest", federal ? formatDate(federal.latestDate, locale, { year: true }) : "–"]]} />
+        <OverviewInfoWidget accent="opinion" href="/?view=map" eyebrow={isGerman ? "Vergleich der Länder" : "State comparison"} title={isGerman ? "Deutschland im Überblick" : "Germany at a glance"} text={isGerman ? "Parteistärken und Bewegungen auf einer anpassbaren Karte über alle 16 Länder vergleichen." : "Compare party strength and movement across all 16 states on a customisable map."} stats={[[isGerman ? "Länder" : "States", "16"], [isGerman ? "Ansichten" : "Views", "3"], [isGerman ? "Teilen" : "Sharing", "Embed"]]} />
       </section>
       {states.length > 0 && <StateCoverageMap states={states} locale={locale} mapGeometry={mapGeometry} />}
       <p className="germany-country-note">{isGerman ? "Länderkarte und jede Länderansicht verwenden ausschließlich vorhandene Werte; Datenlücken bleiben an den einzelnen Punkten sichtbar." : "The state map and every state page use available values only; data gaps remain visible at individual points."}</p>
