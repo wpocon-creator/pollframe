@@ -165,8 +165,7 @@ body {
   box-shadow: var(--shadow);
 }
 
-.overview-profile-badge span,
-.overview-widget-eyebrow {
+.overview-profile-badge span {
   color: var(--accent);
   font-size: 0.72rem;
   font-weight: 800;
@@ -181,90 +180,6 @@ body {
 .overview-profile-badge small {
   color: var(--muted);
   line-height: 1.45;
-}
-
-.overview-widget-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 18px;
-  margin-bottom: 38px;
-}
-
-.overview-info-widget {
-  position: relative;
-  display: grid;
-  grid-template-rows: auto auto 1fr auto;
-  min-height: 270px;
-  padding: 27px 30px;
-  overflow: hidden;
-  border: 1px solid var(--line);
-  border-radius: 20px;
-  background: var(--surface);
-  box-shadow: var(--shadow);
-  transition: border-color 160ms ease, transform 160ms ease, box-shadow 160ms ease;
-}
-
-.overview-info-widget::before {
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: 5px;
-  background: var(--accent);
-  content: "";
-}
-
-.overview-info-widget:hover {
-  border-color: color-mix(in srgb, var(--accent) 46%, var(--line));
-  transform: translateY(-2px);
-}
-
-.overview-info-widget h2 {
-  margin: 10px 0 10px;
-  color: var(--ink);
-  font-size: clamp(1.45rem, 2.5vw, 2.1rem);
-  line-height: 1.05;
-  letter-spacing: -0.035em;
-}
-
-.overview-info-widget > p {
-  max-width: 540px;
-  margin: 0 0 24px;
-  color: var(--muted);
-  line-height: 1.55;
-}
-
-.overview-info-widget dl {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px 28px;
-  margin: 0;
-  padding-top: 17px;
-  border-top: 1px solid var(--line);
-}
-
-.overview-info-widget dl div {
-  display: grid;
-  gap: 3px;
-}
-
-.overview-info-widget dt {
-  color: var(--muted);
-  font-size: 0.72rem;
-  font-weight: 700;
-  text-transform: uppercase;
-}
-
-.overview-info-widget dd {
-  margin: 0;
-  color: var(--ink);
-  font-weight: 780;
-}
-
-.overview-widget-arrow {
-  position: absolute;
-  right: 27px;
-  top: 24px;
-  color: var(--accent);
-  font-size: 1.25rem;
 }
 
 .germany-country-note {
@@ -4353,8 +4268,7 @@ footer nav .footer-action:hover {
     padding-block: 54px 28px;
   }
 
-  .germany-country-hero,
-  .overview-widget-grid {
+  .germany-country-hero {
     grid-template-columns: 1fr;
   }
 
@@ -4369,15 +4283,6 @@ footer nav .footer-action:hover {
 
   .overview-profile-badge {
     display: none;
-  }
-
-  .overview-info-widget {
-    min-height: 0;
-    padding: 23px 24px;
-  }
-
-  .overview-info-widget > p {
-    margin-bottom: 18px;
   }
 
   .poll-map-actions {
