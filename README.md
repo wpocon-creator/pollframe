@@ -73,6 +73,25 @@ npm run dev
 Use Node 22.12.0 (recorded in `.nvmrc` and `.node-version`) for release work
 and the browser suite.
 
+## Installable web app
+
+Pollframe is a progressive web app (PWA). Supporting browsers offer the app in
+the header once their own installability checks pass; the same action and the
+iPhone/iPad Safari instructions remain available in Settings. When launched
+from the home screen, the single app identity is simply “Pollframe”. It uses a
+compact app header and a fixed, country-aware bottom navigation, opens on the
+Watchlist and restores the country used most recently.
+
+The service worker caches the app shell and the core Germany/UK polling views.
+Pages opened later are cached as they are used. If a live request fails, the UI
+clearly labels the saved-data fallback; the embedded journalist views are not
+cached by the app worker. A newly deployed worker waits until the reader accepts
+the in-app update prompt, avoiding a mid-session reload.
+
+When the cache strategy or pre-cached files change, bump `VERSION` in
+`public/sw.js`. Validate installability, installed navigation and offline
+fallbacks with `tests/pwa.spec.mjs` before deployment.
+
 ## Cloudflare Workers with Static Assets
 
 - Build command: `npm run build`
@@ -81,6 +100,20 @@ and the browser suite.
 
 `wrangler.jsonc` publishes the generated `dist` directory as static assets. No
 server runtime or environment variables are required.
+
+The production Worker is connected to the GitHub repository through Cloudflare
+Workers Builds. A merge or direct push to `main` automatically runs the build
+and deploys the result; routine releases therefore require no interactive
+Cloudflare or Wrangler login. The build script validates every polling dataset
+before Vite runs and validates the generated security policy and output after
+the bundle is written. Cloudflare publishes nothing when one of these steps
+fails.
+
+For a normal release: run `npm run check` and the relevant browser tests, commit
+the reviewed files, and push or merge them into `main`. Cloudflare reports the
+result back to GitHub as the **Workers Builds: de** check. Interactive
+`wrangler login` is reserved for account-level recovery or configuration
+changes, not ordinary Pollframe versions.
 
 ## Security
 

@@ -30,6 +30,9 @@ const [
   embedHtml,
   robots,
   sitemap,
+  manifest,
+  manifestContext,
+  serviceWorker,
 ] = await Promise.all([
   read("src/main.jsx"),
   read("public/_headers"),
@@ -42,6 +45,9 @@ const [
   read("embed.html"),
   read("public/robots.txt"),
   read("public/sitemap.xml"),
+  read("public/manifest.webmanifest").then(JSON.parse),
+  read("public/manifest-context.js"),
+  read("public/sw.js"),
 ]);
 
 const forbiddenBrowserSinks = [
@@ -63,7 +69,10 @@ for (const anchor of source.match(/<a\b[\s\S]*?>/g) ?? []) {
   }
 }
 
-requireCondition(!/\bhttp:\/\//.test(source), "frontend contains a non-HTTPS external URL");
+requireCondition(
+  !/\bhttp:\/\/(?!www\.w3\.org\/2000\/svg)/.test(source),
+  "frontend contains a non-HTTPS external URL",
+);
 requireCondition(source.includes('const EMBED_PATH = "/embed.html"'), "dedicated embed entry is not enforced");
 requireCondition(source.includes('sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"'), "generated embeds are not sandboxed");
 requireCondition(source.includes('referrerpolicy="no-referrer"'), "generated embeds do not suppress referrers");
@@ -77,6 +86,7 @@ const requiredCspDirectives = [
   "script-src-attr 'none'",
   "style-src-elem 'self'",
   "style-src-attr 'unsafe-inline'",
+  "worker-src 'self'",
   "form-action 'none'",
   "require-trusted-types-for 'script'",
   "trusted-types 'none'",
@@ -85,6 +95,7 @@ for (const directive of requiredCspDirectives) {
   requireCondition(headers.includes(directive), `CSP is missing: ${directive}`);
 }
 requireCondition(!/script-src[^;\n]*'unsafe-(?:inline|eval)'/.test(headers), "CSP permits unsafe inline/eval scripts");
+requireCondition(!headers.includes("worker-src 'none'"), "CSP blocks the Pollframe service worker");
 requireCondition(headers.includes("X-Frame-Options: DENY"), "main pages are not protected by X-Frame-Options");
 requireCondition(headers.includes("! X-Frame-Options"), "embed page does not detach X-Frame-Options");
 requireCondition(headers.includes("Content-Security-Policy: frame-ancestors 'none'"), "main entry lacks frame-ancestors 'none'");
@@ -135,6 +146,9 @@ requireCondition(!wranglerConfig.main, "unexpected Worker runtime code is config
 requireCondition(wranglerConfig.name === "de", "Cloudflare Worker name does not match de.pollframe.workers.dev");
 requireCondition(mainHtml.includes('name="referrer" content="no-referrer"'), "main HTML lacks a no-referrer fallback");
 requireCondition(mainHtml.includes('rel="canonical" href="https://de.pollframe.workers.dev/"'), "main HTML lacks the production canonical URL");
+requireCondition(mainHtml.includes('<script src="/manifest-context.js"></script>'), "main HTML lacks the app manifest loader");
+requireCondition(mainHtml.includes('rel="apple-touch-icon" href="/apple-touch-icon.png"'), "main HTML lacks the iOS app icon");
+requireCondition(mainHtml.includes('name="apple-mobile-web-app-capable" content="yes"'), "main HTML lacks iOS standalone support");
 requireCondition(mainHtml.includes('property="og:title"'), "main HTML lacks Open Graph metadata");
 requireCondition(
   mainHtml.includes('property="og:image" content="https://de.pollframe.workers.dev/pollframe-social.png"')
@@ -164,9 +178,18 @@ requireCondition(
   "robots.txt does not advertise the production sitemap",
 );
 requireCondition(headers.includes("X-Robots-Tag: noindex, noarchive"), "raw JSON responses are not marked noindex");
+requireCondition(headers.includes("/sw.js") && headers.includes("Cache-Control: no-cache, no-store, must-revalidate"), "service worker is not served with a no-store update policy");
+requireCondition(manifestContext.includes("/manifest.webmanifest") && !manifestContext.includes("manifest-uk.webmanifest") && !manifestContext.includes("manifest-de.webmanifest"), "manifest loader does not use the unified Pollframe app identity");
+requireCondition(manifest.id === "/" && manifest.name === "Pollframe" && manifest.start_url === "/?view=watchlist&source=app" && manifest.scope === "/", "Pollframe app identity, name, start URL or scope is invalid");
+requireCondition(manifest.display === "standalone", "Pollframe app manifest does not request standalone display");
+requireCondition(manifest.icons?.some((icon) => icon.sizes === "512x512" && icon.purpose === "maskable"), "Pollframe app manifest lacks a maskable 512px icon");
+requireCondition(!/importScripts\s*\(/.test(serviceWorker), "service worker imports uncontrolled scripts");
+requireCondition(serviceWorker.includes('url.origin !== self.location.origin'), "service worker does not restrict interception to the Pollframe origin");
+requireCondition(serviceWorker.includes('url.pathname === "/embed.html"'), "service worker does not exclude journalist embeds");
+requireCondition(serviceWorker.includes("POLLFRAME_CACHED_DATA"), "service worker does not disclose cached-data fallback to the UI");
 
 const sitemapUrls = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => match[1]);
-requireCondition(sitemapUrls.length === 20, `sitemap contains ${sitemapUrls.length} URLs instead of 20`);
+requireCondition(sitemapUrls.length === 24, `sitemap contains ${sitemapUrls.length} URLs instead of 24`);
 requireCondition(new Set(sitemapUrls).size === sitemapUrls.length, "sitemap contains duplicate URLs");
 requireCondition(
   sitemapUrls.every((url) => url.startsWith("https://de.pollframe.workers.dev/")),
@@ -182,12 +205,16 @@ requireCondition(
   "sitemap is missing the German overview root",
 );
 requireCondition(
+  sitemapUrls.includes("https://de.pollframe.workers.dev/?view=countries"),
+  "sitemap is missing the country selector",
+);
+requireCondition(
   !sitemapUrls.some((url) => url.includes("?region=europawahl-deutschland")),
   "sitemap exposes the paused German European-election archive",
 );
 requireCondition(
-  !sitemapUrls.some((url) => url.includes("?country=")),
-  "sitemap exposes a redundant or unfinished country route",
+  sitemapUrls.filter((url) => url.includes("?country=")).every((url) => url.endsWith("?country=uk")),
+  "sitemap exposes an unfinished country route",
 );
 
 const distInfo = await stat(resolve(root, "dist")).catch(() => null);
@@ -200,6 +227,15 @@ if (distInfo?.isDirectory()) {
   requireCondition(distFiles.includes("dist/robots.txt"), "production robots.txt is missing");
   requireCondition(distFiles.includes("dist/sitemap.xml"), "production sitemap.xml is missing");
   requireCondition(distFiles.includes("dist/pollframe-social.png"), "production social-preview image is missing");
+  for (const appFile of [
+    "dist/manifest.webmanifest",
+    "dist/manifest-context.js",
+    "dist/sw.js",
+    "dist/apple-touch-icon.png",
+    "dist/pollframe-app-192.png",
+    "dist/pollframe-app-512.png",
+    "dist/pollframe-maskable-512.png",
+  ]) requireCondition(distFiles.includes(appFile), `production app asset is missing: ${appFile}`);
   requireCondition(
     !distFiles.some((path) => /(?:country-region-map-(?:at|fr|pl)|europawahl-deutschland)/.test(path)),
     "production output still contains paused Europe-expansion data",

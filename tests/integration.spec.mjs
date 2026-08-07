@@ -23,6 +23,20 @@ async function expectDocumentFits(page) {
   const dimensions = await page.evaluate(() => ({
     client: document.documentElement.clientWidth,
     scroll: document.documentElement.scrollWidth,
+    offenders: [...document.querySelectorAll("body *")]
+      .filter((element) => {
+        const rect = element.getBoundingClientRect();
+        const style = getComputedStyle(element);
+        return style.position !== "fixed" && (rect.right > document.documentElement.clientWidth + 2 || rect.left < -2);
+      })
+      .slice(0, 8)
+      .map((element) => ({
+        tag: element.tagName,
+        className: typeof element.className === "string" ? element.className : element.getAttribute("class"),
+        text: element.textContent?.trim().slice(0, 60),
+        left: Math.round(element.getBoundingClientRect().left),
+        right: Math.round(element.getBoundingClientRect().right),
+      })),
   }));
   expect(dimensions.scroll, `document overflow: ${JSON.stringify(dimensions)}`).toBeLessThanOrEqual(dimensions.client + 2);
 }
@@ -60,6 +74,32 @@ async function expectNoBrokenVisibleText(page) {
   expect(broken).toEqual([]);
 }
 
+async function expectPngHasVisibleContent(page, png) {
+  const stats = await page.evaluate(async (base64) => {
+    const image = new Image();
+    image.src = `data:image/png;base64,${base64}`;
+    await image.decode();
+    const canvas = document.createElement("canvas");
+    canvas.width = 160;
+    canvas.height = 100;
+    const context = canvas.getContext("2d", { willReadFrequently: true });
+    context.drawImage(image, 0, 0, canvas.width, canvas.height);
+    const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+    let minimum = 255;
+    let maximum = 0;
+    let total = 0;
+    for (let index = 0; index < pixels.length; index += 4) {
+      const luminance = (pixels[index] * 0.2126) + (pixels[index + 1] * 0.7152) + (pixels[index + 2] * 0.0722);
+      minimum = Math.min(minimum, luminance);
+      maximum = Math.max(maximum, luminance);
+      total += luminance;
+    }
+    return { minimum, maximum, average: total / (pixels.length / 4) };
+  }, png.toString("base64"));
+  expect(stats.maximum - stats.minimum, `PNG looks blank: ${JSON.stringify(stats)}`).toBeGreaterThan(35);
+  expect(stats.average, `PNG looks black: ${JSON.stringify(stats)}`).toBeGreaterThan(80);
+}
+
 async function settle(page) {
   await page.waitForLoadState("domcontentloaded");
   await page.evaluate(() => document.fonts?.ready);
@@ -85,7 +125,7 @@ test.describe("core routes", () => {
     await page.getByRole("button", { name: /Einstellungen|Settings/i }).click();
     await expect(page.getByRole("dialog")).toBeVisible();
     await page.getByRole("button", { name: /English.*United Kingdom/i }).click();
-    await expect(page.getByRole("heading", { name: "Germany at a glance" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: /Germany at a glance/ })).toBeVisible();
     await page.getByRole("button", { name: /Dark/i }).click();
     await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
     await page.getByRole("button", { name: /Larger.*19 px/i }).click();
@@ -140,11 +180,27 @@ test.describe("core routes", () => {
 
     const tendencyCard = page.locator(".tendency-card").first();
     await tendencyCard.evaluate((element) => element.scrollIntoView({ block: "center" }));
-    await tendencyCard.click({ force: true });
+    if (testInfo.project.use.hasTouch) await tendencyCard.tap();
+    else await tendencyCard.click();
     await expect(page.getByRole("dialog", { name: /im Zeitverlauf|over time/i })).toBeVisible();
+    expect(await page.evaluate(() => getComputedStyle(document.body).overflow)).toBe("hidden");
     await expect(page.locator(".party-periods button")).toHaveCount(8);
     await page.locator(".party-periods button").last().click();
     await expect(page.locator(".party-detail-chart")).toBeVisible();
+    if (testInfo.project.use.hasTouch) {
+      await expect(page.locator(".party-metric-relative")).toBeHidden();
+      await expectDocumentFits(page);
+    }
+    await page.screenshot({ path: testInfo.outputPath("party-detail.png"), fullPage: false });
+    await page.getByRole("button", { name: /Schließen|Close/i }).click();
+    expect(await page.evaluate(() => getComputedStyle(document.body).overflow)).not.toBe("hidden");
+
+    await page.locator(".chart-actions .primary-button").click();
+    await expect(page.locator(".embed-modal")).toBeVisible();
+    const previewFrame = page.frameLocator(".embed-live-preview iframe");
+    await expect(previewFrame.locator(".embed-page")).toBeVisible();
+    await expect(previewFrame.locator(".series-line")).not.toHaveCount(0);
+    await page.locator(".embed-live-preview").screenshot({ path: testInfo.outputPath("share-preview.png") });
     await page.getByRole("button", { name: /Schließen|Close/i }).click();
 
     const pollTable = page.locator(".poll-table-section");
@@ -161,10 +217,67 @@ test.describe("core routes", () => {
     const csv = await readFile(await download.path(), "utf8");
     expect(csv.startsWith('\uFEFF"publication_date","fieldwork_start","fieldwork_end"')).toBe(true);
     expect(csv).toContain('"source_url","license"');
-    expect(csv).toMatch(/"https:\/\/dawum\.de\/Bundestag\/[^"\r\n]+\/","ODbL 1\.0"/);
+    expect(csv).toMatch(/"https:\/\/dawum\.de\/Bundestag\/[^"\r\n]+\/","ODC-ODbL"/);
+
+    if (page.viewportSize().width <= 700) {
+      const visibleCoalitions = () => page.locator(".coalition-row").evaluateAll((rows) => rows.filter((row) => getComputedStyle(row).display !== "none").length);
+      expect(await visibleCoalitions()).toBeLessThanOrEqual(5);
+      if (await page.locator(".coalition-more").isVisible().catch(() => false)) {
+        await page.locator(".coalition-more").click();
+        expect(await visibleCoalitions()).toBeGreaterThan(5);
+      }
+    }
 
     await expectNoBrokenVisibleText(page);
     await page.screenshot({ path: testInfo.outputPath("federal.png"), fullPage: false });
+    expect(errors).toEqual([]);
+  });
+
+  test("journalist PNG exports include a high-resolution chart", async ({ page }, testInfo) => {
+    const errors = watchRuntime(page);
+    await page.goto("/?region=bundestag");
+    await settle(page);
+    const downloadPromise = page.waitForEvent("download");
+    await page.getByRole("button", { name: /PNG exportieren|Export PNG/i }).click();
+    const download = await downloadPromise;
+    await download.saveAs(testInfo.outputPath("bundestag-export.png"));
+    expect(download.suggestedFilename()).toMatch(/^pollframe-bundestag-all-trend-\d{4}-\d{2}-\d{2}\.png$/);
+    const png = await readFile(await download.path());
+    expect([...png.subarray(0, 8)]).toEqual([137, 80, 78, 71, 13, 10, 26, 10]);
+    expect(png.readUInt32BE(16)).toBeGreaterThanOrEqual(2200);
+    expect(png.readUInt32BE(20)).toBeGreaterThan(900);
+    await expectPngHasVisibleContent(page, png);
+    await expect(page.getByRole("button", { name: /PNG gespeichert|PNG saved/i })).toBeVisible();
+    expect(errors).toEqual([]);
+  });
+
+  test("Turkish, Russian and Arabic settings update language, formats and direction", async ({ page }) => {
+    const errors = watchRuntime(page);
+    await page.goto("/");
+    await settle(page);
+    await page.getByRole("button", { name: /Einstellungen|Settings/i }).click();
+    await expect(page.locator(".language-option")).toHaveCount(6);
+
+    await page.getByRole("button", { name: /Türkçe.*Türkiye/i }).click();
+    await expect(page.locator("html")).toHaveAttribute("lang", "tr");
+    await expect(page.getByRole("heading", { level: 1, name: /Almanya'ya genel bakış/ })).toBeVisible();
+
+    await page.getByRole("button", { name: /Русский/i }).click();
+    await expect(page.locator("html")).toHaveAttribute("lang", "ru");
+    await expect(page.getByRole("heading", { level: 1, name: /Германия в целом/ })).toBeVisible();
+
+    await page.getByRole("button", { name: /العربية/i }).click();
+    await expect(page.locator("html")).toHaveAttribute("lang", "ar");
+    await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
+    await expect(page.getByRole("heading", { level: 1, name: /نظرة عامة على ألمانيا/ })).toBeVisible();
+    await expectDocumentFits(page);
+    await expectNoBrokenVisibleText(page);
+
+    await page.goto("/?region=berlin&share=1&lang=ar");
+    await settle(page);
+    await expect(page.getByRole("heading", { level: 1, name: /استطلاعات انتخابات ولاية Berlin/ })).toBeVisible();
+    await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
+    await expectDocumentFits(page);
     expect(errors).toEqual([]);
   });
 
@@ -185,6 +298,15 @@ test.describe("core routes", () => {
     await mapControls.getByRole("radio", { name: /Partei vergleichen|Compare party/i }).click();
     await mapControls.getByRole("radio", { name: /Grüne|Greens/i }).click();
     await expect(page.locator(".intensity-legend")).toBeVisible();
+
+    const mapDownloadPromise = page.waitForEvent("download");
+    await page.getByRole("button", { name: /PNG exportieren|Export PNG/i }).click();
+    const mapDownload = await mapDownloadPromise;
+    await mapDownload.saveAs(testInfo.outputPath("map-export.png"));
+    expect(mapDownload.suggestedFilename()).toMatch(/^pollframe-deutschlandkarte-party-\d{4}-\d{2}-\d{2}\.png$/);
+    const mapPng = await readFile(await mapDownload.path());
+    expect([...mapPng.subarray(0, 8)]).toEqual([137, 80, 78, 71, 13, 10, 26, 10]);
+    expect(mapPng.readUInt32BE(16)).toBeGreaterThanOrEqual(2200);
 
     await page.getByRole("button", { name: /Karte einbetten|Embed map/i }).click();
     await expect(page.getByRole("dialog", { name: /Deutschlandkarte einbetten|Embed map of Germany/i })).toBeVisible();
@@ -264,7 +386,7 @@ test.describe("core routes", () => {
     expect(errors).toEqual([]);
   });
 
-  test("Germany is the only public country level while Europe expansion is paused", async ({ page }, testInfo) => {
+  test("Germany remains the default country while retired expansion routes stay paused", async ({ page }, testInfo) => {
     const errors = watchRuntime(page);
     await page.goto("/?view=europe");
     await settle(page);
@@ -300,6 +422,195 @@ test.describe("core routes", () => {
     expect(errors).toEqual([]);
   });
 
+  test("UK overview and Westminster detail use a distinct, responsive product flow", async ({ page }, testInfo) => {
+    const errors = watchRuntime(page);
+    await page.goto("/?view=countries");
+    await settle(page);
+    await expect(page.getByRole("heading", { level: 1, name: /Select a country|Land auswählen/i })).toBeVisible();
+    await expect(page.locator(".country-index-grid .overview-classic-widget")).toHaveCount(2);
+    await page.getByRole("link", { name: /United Kingdom/i }).click();
+    await settle(page);
+    await expect(page.getByRole("heading", { level: 1, name: /United Kingdom at a glance|Vereinigtes Königreich im Überblick/i })).toBeVisible();
+    await expect(page.locator('.site-header .brand')).toHaveAttribute("href", "/?country=uk");
+    await expect(page.locator(".header-country-menu")).toBeVisible();
+    await expect(page.locator(".overview-entry-stack .overview-classic-widget")).toHaveCount(2);
+    await expect(page.locator(".overview-profile-badge")).toHaveCount(0);
+    await expect(page.locator(".uk-devolution")).toHaveCount(0);
+    await expect(page.locator(".uk-map-visual svg")).toBeVisible();
+    await expect(page.locator(".uk-map-visual svg > .uk-map-active-overlay")).toHaveCount(1);
+    await expect(page.locator(".uk-map-detail")).toContainText(/Greater London/);
+    if (testInfo.project.name === "pixel-5") await expect(page.locator(".uk-map-pointer-advice")).toHaveCount(0);
+    await page.getByRole("button", { name: /Compare party|Partei vergleichen/i }).click();
+    await expect(page.locator(".uk-map-value-label")).not.toHaveCount(0);
+    await page.locator(".uk-map-card").screenshot({ path: testInfo.outputPath("uk-map-compare.png") });
+    if (!testInfo.project.name.includes("pixel") && !testInfo.project.name.includes("galaxy") && !testInfo.project.name.includes("iphone")) {
+      await page.locator('.uk-map-visual path[id^="Scotland-"]').hover();
+      await expect(page.locator(".uk-map-detail")).toContainText("Scotland");
+      await expect(page.locator(".uk-map-visual svg > .uk-map-active-overlay")).toHaveCount(1);
+    }
+    await expect(page.locator('link[rel="canonical"]')).toHaveAttribute("href", "https://de.pollframe.workers.dev/?country=uk");
+    await expectDocumentFits(page);
+    await expectNoBrokenVisibleText(page);
+
+    await page.getByRole("link", { name: /Constituency finder|Wahlkreisfinder/i }).click();
+    await settle(page);
+    await expect(page).toHaveURL(/view=uk-constituencies/);
+    await expect(page.getByRole("heading", { level: 1, name: /Find your constituency|Finde deinen Wahlkreis/i })).toBeVisible();
+    if (!testInfo.project.use.hasTouch) {
+      const exploreSeat = page.locator(".battleground-list button").first();
+      const restingSeatColour = await exploreSeat.evaluate((node) => getComputedStyle(node).backgroundColor);
+      await exploreSeat.hover();
+      await expect.poll(() => exploreSeat.evaluate((node) => getComputedStyle(node).backgroundColor)).not.toBe(restingSeatColour);
+    }
+    await page.getByLabel(/Postcode, town or constituency|Postcode, Ort oder Wahlkreis/i).fill("Bristol Central");
+    await page.getByRole("option", { name: /Bristol Central/i }).click();
+    await expect(page.getByRole("heading", { level: 2, name: "Bristol Central" })).toBeVisible();
+    await expect(page.locator(".constituency-detail")).toContainText(/Official election result|Amtliches Wahlergebnis/i);
+    await expect(page.locator(".constituency-detail")).toContainText(/no projection or estimate|keine Hochrechnung und keine Schätzung/i);
+    await expect(page.locator(".constituency-detail")).not.toContainText(/Simple model|Einfaches Modell|UNS/i);
+    await expectDocumentFits(page);
+    await page.screenshot({ path: testInfo.outputPath("uk-constituency.png"), fullPage: false });
+
+    await page.goto("/?country=uk");
+    await settle(page);
+
+    await page.getByRole("link", { name: /Westminster polling|Unterhaus-Umfragen/i }).click();
+    await settle(page);
+    await expect(page).toHaveURL(/region=uk-westminster/);
+    await expect(page.getByRole("heading", { level: 1, name: /Westminster voting intention|Umfragen zur britischen Unterhauswahl/i })).toBeVisible();
+    await expect(page.locator(".poll-chart")).toBeVisible();
+    await expect(page.locator(".chart-footer .data-attribution")).toContainText("UK Election Data Vault");
+    await expect(page.locator(".uk-votes-seats")).toBeVisible();
+    await expect(page.locator(".uk-seat-projection")).toHaveCount(0);
+    await expect(page.locator(".uk-votes-seats")).toContainText(/official result.*2024|amtliches Ergebnis.*2024/i);
+    await expect(page.locator(".uk-votes-seats")).not.toContainText(/Why this matters|Warum das wichtig ist/i);
+    if (page.viewportSize().width <= 600) {
+      await expect(page.locator(".uk-minor-toggle")).toBeVisible();
+      await page.locator(".uk-minor-toggle").click();
+      await expect(page.locator(".uk-result-list")).toContainText("SNP");
+    }
+    if (testInfo.project.name === "chromium-desktop") {
+      const pngDownloadPromise = page.waitForEvent("download");
+      await page.getByRole("button", { name: /PNG exportieren|Export PNG/i }).click();
+      const pngDownload = await pngDownloadPromise;
+      await pngDownload.saveAs(testInfo.outputPath("uk-export.png"));
+      const png = await readFile(await pngDownload.path());
+      await expectPngHasVisibleContent(page, png);
+    }
+
+    await page.getByRole("button", { name: /Customise chart|Diagramm anpassen/i }).click();
+    await expect(page.locator(".customize-panel")).toBeVisible();
+    await expect(page.locator(".customize-panel")).toContainText(/Connected averages|Verbundene Durchschnittswerte/i);
+    await expect(page.locator(".customize-panel .select-control").nth(1)).toContainText(/10 years|10 Jahre/i);
+    await expect(page.locator(".customize-panel")).toContainText(/Poll of polls.*weighted trend/i);
+    await expect(page.locator(".customize-panel")).not.toContainText(/FindOutNow/);
+    await page.locator(".customize-panel .select-control").nth(0).locator("summary").click();
+    await page.getByRole("button", { name: /Connected averages|Verbundene Durchschnittswerte/i }).click();
+    await expect(page.locator(".average-series-line")).not.toHaveCount(0);
+    await expect(page.locator(".average-series-points")).toHaveCount(0);
+    await expect(page.locator(".series-line")).toHaveCount(0);
+    await page.locator(".customize-panel .select-control").nth(1).locator("summary").click();
+    await page.getByRole("button", { name: /Custom dates|Eigener Zeitraum/i }).click();
+    await expect(page.locator('.custom-date-slider input[type="range"]')).toHaveCount(2);
+    await expectDocumentFits(page);
+    await expectNoBrokenVisibleText(page);
+    await page.screenshot({ path: testInfo.outputPath("uk-westminster.png"), fullPage: false });
+    expect(errors).toEqual([]);
+  });
+
+  test("since-last-visit appears only for a real polling change", async ({ page }) => {
+    await page.goto("/");
+    await settle(page);
+    await expect(page.locator(".since-visit")).toHaveCount(0);
+    await page.reload();
+    await settle(page);
+    await expect(page.locator(".since-visit")).toHaveCount(0);
+    await page.evaluate(() => {
+      const key = "pollframe-last-snapshot-de";
+      const snapshot = JSON.parse(localStorage.getItem(key));
+      snapshot.results["7"] = Number(snapshot.results["7"]) - 0.1;
+      localStorage.setItem(key, JSON.stringify(snapshot));
+    });
+    await page.reload();
+    await settle(page);
+    await expect(page.locator(".since-visit")).toBeVisible();
+    await expect(page.locator(".since-visit")).toContainText(/0[,.]1/);
+    await page.reload();
+    await settle(page);
+    await expect(page.locator(".since-visit")).toHaveCount(0);
+  });
+
+  test("local Watchlist tracks German parties and modelled majorities", async ({ page }, testInfo) => {
+    await page.addInitScript(() => {
+      const original = window.matchMedia.bind(window);
+      window.matchMedia = (query) => query === "(display-mode: standalone)"
+        ? {
+            matches: true,
+            media: query,
+            onchange: null,
+            addListener() {},
+            removeListener() {},
+            addEventListener() {},
+            removeEventListener() {},
+            dispatchEvent() { return true; },
+          }
+        : original(query);
+    });
+    await page.goto("/?view=watchlist&country=de");
+    await settle(page);
+    await expect(page.getByRole("heading", { level: 1, name: "Watchlist" })).toBeVisible();
+    if (await page.getByRole("button", { name: /Nicht jetzt|Not now/i }).isVisible().catch(() => false)) await page.getByRole("button", { name: /Nicht jetzt|Not now/i }).click();
+    await expect(page.locator(".watchlist-empty")).toBeVisible();
+    await page.locator(".watchlist-empty").click();
+    await page.locator(".watch-gallery .select-control > summary").click();
+    await page.getByRole("button", { name: /Berlin/ }).click();
+    await page.getByRole("button", { name: /^Grüne/ }).click();
+    await page.getByRole("button", { name: /Zur Watchlist|Add to Watchlist/i }).click();
+    await expect(page.locator(".watch-card")).toHaveCount(1);
+    await expect(page.locator(".watch-card").first()).toContainText(/Grüne/);
+    await expect(page.locator(".watch-gallery")).toBeHidden();
+    await page.getByRole("button", { name: /Watchlist-Eintrag hinzufügen|Add Watchlist item/i }).click();
+    await page.getByRole("button", { name: /Mehrheit|Majority/i }).click();
+    await page.getByRole("button", { name: /^SPD/ }).click();
+    await page.getByRole("button", { name: /^CDU/ }).click();
+    await page.getByRole("button", { name: /Zur Watchlist|Add to Watchlist/i }).click();
+    await expect(page.locator(".watch-card")).toHaveCount(2);
+    await expect(page.locator(".watch-widget-lab")).toHaveCount(0);
+    await page.evaluate(() => {
+      const key = "pollframe-watchlist-de-v2";
+      const items = JSON.parse(localStorage.getItem(key));
+      items[0].lastSnapshot.value -= 1.2;
+      localStorage.setItem(key, JSON.stringify(items));
+    });
+    await page.reload();
+    await settle(page);
+    await expect(page.locator(".watchlist-alerts")).toContainText(/1[,.]2/);
+    await expectDocumentFits(page);
+    await page.screenshot({ path: testInfo.outputPath("watchlist.png"), fullPage: false });
+  });
+
+  test("dropdowns close outside, event clicks open their source and the timeline stays controlled", async ({ page, context }) => {
+    await page.goto("/?region=bundestag");
+    await settle(page);
+    await page.getByRole("button", { name: /Diagramm anpassen|Customise chart/i }).click();
+    const display = page.locator(".customize-panel .select-control").first();
+    await display.locator("summary").click();
+    await expect(display).toHaveAttribute("open", "");
+    await page.locator(".chart-heading h2").click();
+    await expect(display).not.toHaveAttribute("open", "");
+    await page.locator(".customize-panel .select-control").nth(1).locator("summary").click();
+    await page.getByRole("button", { name: /Eigener Zeitraum|Custom dates/i }).click();
+    await expect(page.locator(".custom-date-slider input[type=range]")).toHaveCount(2);
+    await expect(page.locator(".dual-range-ticks span")).toHaveCount(5);
+    await expect(page.locator(".event-marker title")).toHaveCount(0);
+    const popupPromise = page.waitForEvent("popup");
+    await page.locator(".event-marker").last().click({ force: true });
+    const popup = await popupPromise;
+    expect(new URL(popup.url()).protocol).toMatch(/^https?:$/);
+    await popup.close();
+    expect(context.pages()).toHaveLength(1);
+  });
+
   test("the paused German European-election archive returns to Germany overview", async ({ page }) => {
     const errors = watchRuntime(page);
     await page.goto("/?region=europawahl-deutschland");
@@ -313,6 +624,70 @@ test.describe("core routes", () => {
     );
     await expectDocumentFits(page);
     await expectNoBrokenVisibleText(page);
+    expect(errors).toEqual([]);
+  });
+
+  test("constituency search handles a Buxton address, an outward code and small typos", async ({ page }, testInfo) => {
+    const errors = watchRuntime(page);
+    const lookupRequests = [];
+    await page.route("https://api.postcodes.io/**", async (route) => {
+      const url = new URL(route.request().url());
+      lookupRequests.push(url.href);
+      const headers = { "access-control-allow-origin": "*", "content-type": "application/json" };
+      if (url.pathname === "/postcodes" && url.searchParams.get("query") === "SK17 6BE") {
+        await route.fulfill({ status: 200, headers, body: JSON.stringify({ status: 200, result: [{ postcode: "SK17 6BE", parliamentary_constituency_2024: "High Peak" }] }) });
+      } else if (url.pathname === "/postcodes") {
+        await route.fulfill({ status: 200, headers, body: JSON.stringify({ status: 200, result: [] }) });
+      } else if (url.pathname === "/outcodes/SK17") {
+        await route.fulfill({ status: 200, headers, body: JSON.stringify({ status: 200, result: { outcode: "SK17", parliamentary_constituency: ["Derbyshire Dales", "High Peak", "Staffordshire Moorlands"] } }) });
+      } else if (url.pathname === "/places") {
+        await route.fulfill({ status: 200, headers, body: JSON.stringify({ status: 200, result: [{ name_1: "Buxton", name_2: null, outcode: "SK17", country: "England" }] }) });
+      } else {
+        await route.fulfill({ status: 404, headers, body: JSON.stringify({ status: 404, error: "Not found" }) });
+      }
+    });
+    await page.goto("/?view=uk-constituencies&country=uk");
+    await settle(page);
+    const search = page.getByLabel(/Postcode, town or constituency|Postcode, Ort oder Wahlkreis/i);
+
+    await search.fill("Flat 4, 12 Example Road, Buxton SK17 6BE");
+    await page.getByRole("button", { name: /^Search$|^Suchen$/i }).click();
+    await expect(page.locator(".selected-constituency")).toContainText("High Peak");
+    await expect(search).toHaveValue("High Peak");
+    expect(lookupRequests.some((url) => new URL(url).pathname === "/postcodes" && new URL(url).searchParams.get("query") === "SK17 6BE")).toBeTruthy();
+    expect(lookupRequests.some((url) => url.includes("Example"))).toBeFalsy();
+
+    await page.locator(".selected-constituency").getByRole("button", { name: /Change|Ändern/i }).click();
+    await search.fill("SK17");
+    await page.getByRole("button", { name: /^Search$|^Suchen$/i }).click();
+    await expect(page.getByRole("listbox")).toContainText(/High Peak/);
+    await page.getByRole("option", { name: /High Peak/i }).click();
+    await expect(page.locator(".selected-constituency")).toContainText("High Peak");
+    expect(lookupRequests.some((url) => url.endsWith("/outcodes/SK17"))).toBeTruthy();
+
+    await page.locator(".selected-constituency").getByRole("button", { name: /Change|Ändern/i }).click();
+    await search.fill("SK17 6ZZ");
+    await page.getByRole("button", { name: /^Search$|^Suchen$/i }).click();
+    await expect(page.getByRole("status")).toContainText(/exact postcode was not found|genaue Postcode wurde nicht gefunden/i);
+    await page.getByRole("option", { name: /High Peak/i }).click();
+
+    await page.locator(".selected-constituency").getByRole("button", { name: /Change|Ändern/i }).click();
+    await search.fill("Bristol");
+    await page.getByRole("button", { name: /^Search$|^Suchen$/i }).click();
+    await expect(page.getByRole("status")).toContainText(/Several constituencies|Mehrere Wahlkreise/i);
+    await expect(page.getByRole("listbox").getByRole("option")).toHaveCount(5);
+    await page.getByRole("option", { name: /^Bristol Central/i }).click();
+
+    await page.locator(".selected-constituency").getByRole("button", { name: /Change|Ändern/i }).click();
+    await search.fill("Bristl Centrl");
+    await page.getByRole("button", { name: /^Search$|^Suchen$/i }).click();
+    await expect(page.locator(".selected-constituency")).toContainText("Bristol Central");
+    await expect(search).toHaveValue("Bristol Central");
+    await expect(page.locator(".constituency-detail")).toContainText(/Official vote shares|Amtliche Stimmenanteile/i);
+    await expect(page.locator(".constituency-model-summary")).toHaveCount(0);
+    await expectDocumentFits(page);
+    await page.screenshot({ path: testInfo.outputPath("uk-constituency-search.png"), fullPage: false });
+    await page.locator(".constituency-detail").screenshot({ path: testInfo.outputPath("uk-constituency-detail.png") });
     expect(errors).toEqual([]);
   });
 
@@ -369,6 +744,7 @@ test.describe("core routes", () => {
     await expect(page.getByRole("heading", { name: /Quellen und Lizenzen|Sources and licences/i })).toBeVisible();
     await expect(page.getByText(/Derivative Pollframe|abgeleitete Pollframe/i)).toBeVisible();
     await expect(page.getByText(/Meta Platforms/).first()).toBeVisible();
+    await expect(page.getByRole("heading", { name: "UK Election Data Vault" })).toBeVisible();
     await expect(page.locator(".placeholder-warning")).toHaveCount(0);
     await expectDocumentFits(page);
     await expectNoBrokenVisibleText(page);
