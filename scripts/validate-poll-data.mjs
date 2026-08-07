@@ -128,6 +128,35 @@ const federal = await readJson("public/poll-data.json");
 if (federal.metadata?.region?.slug !== "bundestag") {
   addError("legacy federal data file does not contain Bundestag data");
 }
+
+const uk = await readJson("public/data/uk-westminster.json");
+const ukRaw = await readJson("public/data/uk-westminster-polls.json");
+const ukSummary = await readJson("public/uk-summary.json");
+if (uk.metadata?.source !== "UK Election Data Vault") addError("UK source identity is invalid");
+if (uk.metadata?.sourceUrl !== "https://electiondatavault.co.uk/data/") addError("UK source URL is invalid");
+if (uk.metadata?.licenseUrl !== "https://electiondatavault.co.uk/about/") addError("UK reuse statement URL is invalid");
+if (uk.metadata?.region?.slug !== "uk-westminster") addError("UK region metadata is invalid");
+if (!Array.isArray(uk.polls) || uk.polls.length < 500 || uk.polls.length > 6_000) addError("UK weighted archive size is implausible");
+if (!Array.isArray(ukRaw.polls) || ukRaw.polls.length < 4_000 || ukRaw.polls.length > 10_000) addError("UK individual-poll archive size is implausible");
+if (!isRecord(uk.pollsters) || !isRecord(uk.parties)) addError("UK metadata maps are missing");
+if (!Array.isArray(uk.metadata?.defaultPollsters) || uk.metadata.defaultPollsters[0] !== uk.metadata.weightedAveragePollsterId) addError("UK weighted default is not configured");
+let previousUkDate = "";
+const combinedUkPolls = [...(uk.polls ?? []), ...(ukRaw.polls ?? [])].sort((a, b) => a.date.localeCompare(b.date));
+for (const [index, poll] of combinedUkPolls.entries()) {
+  const label = `UK poll ${index + 1}`;
+  if (!realIsoDate(poll.date) || poll.date < previousUkDate) addError(`${label} date is invalid or unordered`);
+  previousUkDate = poll.date;
+  if (!uk.pollsters[poll.pollster]) addError(`${label} uses an unknown pollster`);
+  if (!Array.isArray(poll.fieldwork) || poll.fieldwork.length !== 2 || poll.fieldwork.some((date) => !realIsoDate(date))) addError(`${label} fieldwork is invalid`);
+  if (poll.sample !== null && (!Number.isInteger(poll.sample) || poll.sample < 100 || poll.sample > 10_000_000)) addError(`${label} sample is implausible`);
+  if (!safeText(poll.method, 160)) addError(`${label} method is unsafe`);
+  const values = Object.values(poll.results ?? {});
+  if (values.length < 2 || values.some((value) => !Number.isFinite(value) || value < 0 || value > 100)) addError(`${label} results are invalid`);
+  const total = values.reduce((sum, value) => sum + value, 0);
+  if (total < 75 || total > 112) addError(`${label} result total is implausible: ${total}`);
+}
+if (ukSummary.westminster?.latestDate !== uk.polls.at(-1)?.date || ukSummary.westminster?.firstDate !== uk.polls[0]?.date) addError("UK summary date range differs");
+if (!isRecord(ukSummary.map?.areas) || Object.keys(ukSummary.map.areas).length < 40) addError("UK regional map data is incomplete");
 for (const region of stateMap.regions ?? []) {
   if (
     !/^[a-z]{2}$/.test(region.mapId ?? "")

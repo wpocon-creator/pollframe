@@ -8,7 +8,16 @@
   Strict-Transport-Security: max-age=31536000
   Origin-Agent-Cluster: ?1
   Cross-Origin-Opener-Policy: same-origin
-  Content-Security-Policy: default-src 'none'; base-uri 'none'; connect-src 'self' https://cloudflareinsights.com; font-src 'self'; frame-src 'self'; img-src 'self' data:; manifest-src 'self'; media-src 'none'; object-src 'none'; script-src 'self' https://static.cloudflareinsights.com; script-src-attr 'none'; style-src 'self'; style-src-elem 'self'; style-src-attr 'unsafe-inline'; worker-src 'none'; form-action 'none'; require-trusted-types-for 'script'; trusted-types 'none'; upgrade-insecure-requests
+  Content-Security-Policy: default-src 'none'; base-uri 'none'; connect-src 'self' https://cloudflareinsights.com https://api.postcodes.io; font-src 'self'; frame-src 'self'; img-src 'self' data:; manifest-src 'self'; media-src 'none'; object-src 'none'; script-src 'self' https://static.cloudflareinsights.com; script-src-attr 'none'; style-src 'self'; style-src-elem 'self'; style-src-attr 'unsafe-inline'; worker-src 'self'; form-action 'none'; require-trusted-types-for 'script'; trusted-types 'none'; upgrade-insecure-requests
+
+https://pollframe-test.pollframe.workers.dev/*
+  X-Robots-Tag: noindex, nofollow, noarchive
+
+https://pollframe-test.pages.dev/*
+  X-Robots-Tag: noindex, nofollow, noarchive
+
+https://*.pollframe-test.pages.dev/*
+  X-Robots-Tag: noindex, nofollow, noarchive
 
 /
   Content-Security-Policy: frame-ancestors 'none'
@@ -31,6 +40,28 @@
   Cross-Origin-Resource-Policy: same-origin
   Cache-Control: public, max-age=31536000, immutable
 
+/sw.js
+  Cross-Origin-Resource-Policy: same-origin
+  Cache-Control: no-cache, no-store, must-revalidate
+  X-Robots-Tag: noindex, noarchive
+
+/manifest.webmanifest
+  Cross-Origin-Resource-Policy: same-origin
+  Cache-Control: public, max-age=3600, must-revalidate
+  X-Content-Type-Options: nosniff
+
+/pollframe-app-*.png
+  Cross-Origin-Resource-Policy: same-origin
+  Cache-Control: public, max-age=31536000, immutable
+
+/pollframe-maskable-*.png
+  Cross-Origin-Resource-Policy: same-origin
+  Cache-Control: public, max-age=31536000, immutable
+
+/apple-touch-icon.png
+  Cross-Origin-Resource-Policy: same-origin
+  Cache-Control: public, max-age=31536000, immutable
+
 /pollframe-social.png
   Cross-Origin-Resource-Policy: same-origin
   Cache-Control: public, max-age=86400, stale-while-revalidate=604800
@@ -48,6 +79,12 @@
   X-Robots-Tag: noindex, noarchive
 
 /state-map-data.json
+  Cross-Origin-Resource-Policy: cross-origin
+  Cache-Control: public, max-age=300, stale-while-revalidate=3600
+  Access-Control-Allow-Origin: *
+  X-Robots-Tag: noindex, noarchive
+
+/uk-summary.json
   Cross-Origin-Resource-Policy: cross-origin
   Cache-Control: public, max-age=300, stale-while-revalidate=3600
   Access-Control-Allow-Origin: *
