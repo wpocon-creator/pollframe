@@ -1,0 +1,56 @@
+{
+  "id": "/",
+  "name": "Pollframe",
+  "short_name": "Pollframe",
+  "description": "Current election polling, transparent averages and long-term political trends.",
+  "lang": "de",
+  "dir": "auto",
+  "start_url": "/?view=watchlist&source=app",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "any",
+  "background_color": "#f3f3f0",
+  "theme_color": "#f3f3f0",
+  "categories": ["news", "reference"],
+  "icons": [
+    {
+      "src": "/pollframe-app-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pollframe-app-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pollframe-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Bundestagsumfragen",
+      "short_name": "Bundestag",
+      "url": "/?region=bundestag&source=shortcut",
+      "icons": [{ "src": "/pollframe-app-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Deutschlandkarte",
+      "short_name": "Karte",
+      "url": "/?view=map&source=shortcut",
+      "icons": [{ "src": "/pollframe-app-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "UK Westminster polling",
+      "short_name": "Westminster",
+      "url": "/?region=uk-westminster&source=shortcut",
+      "icons": [{ "src": "/pollframe-app-192.png", "sizes": "192x192" }]
+    }
+  ]
+}

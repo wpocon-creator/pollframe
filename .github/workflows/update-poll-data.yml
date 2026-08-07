@@ -2,8 +2,8 @@ name: Update polling data
 
 on:
   schedule:
-    # Tuesday and Friday at 06:17 UTC (07:17 CET / 08:17 CEST).
-    - cron: "17 6 * * 2,5"
+    # Daily at 06:17 UTC. A commit is created only when a source changed.
+    - cron: "17 6 * * *"
   workflow_dispatch:
 
 permissions:
@@ -40,6 +40,7 @@ jobs:
         run: |
           set -euo pipefail
           npm run data:update
+          npm run data:update:uk
           npm run check
 
       - name: Pass only validated public data to the publishing job
@@ -50,6 +51,7 @@ jobs:
             public/poll-data.json
             public/regions.json
             public/state-map-data.json
+            public/uk-summary.json
             public/data
           if-no-files-found: error
           retention-days: 1
@@ -79,6 +81,7 @@ jobs:
           cp incoming-poll-data/poll-data.json public/poll-data.json
           cp incoming-poll-data/regions.json public/regions.json
           cp incoming-poll-data/state-map-data.json public/state-map-data.json
+          cp incoming-poll-data/uk-summary.json public/uk-summary.json
           cp -R incoming-poll-data/data/. public/data/
           node scripts/validate-poll-data.mjs
           git diff --check
@@ -87,13 +90,13 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if git diff --quiet -- public/poll-data.json public/regions.json public/state-map-data.json public/data; then
-            echo "No federal or state polling change found."
+          if git diff --quiet -- public/poll-data.json public/regions.json public/state-map-data.json public/uk-summary.json public/data; then
+            echo "No polling change found."
             exit 0
           fi
 
           git config user.name "pollframe-data-bot"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add public/poll-data.json public/regions.json public/state-map-data.json public/data
-          git commit -m "data: update federal and state polls"
+          git add public/poll-data.json public/regions.json public/state-map-data.json public/uk-summary.json public/data
+          git commit -m "data: update German and UK polls"
           git push
