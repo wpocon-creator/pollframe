@@ -19,7 +19,7 @@
     "license": "CC BY-SA 4.0",
     "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/",
     "databaseUpdated": "2026-08-07T00:00:00.000Z",
-    "generatedAt": "2026-08-09T11:34:51.189Z",
+    "generatedAt": "2026-08-09T12:00:40.654Z",
     "derivativeDatabaseNotice": "Pollframe extracts and normalises cited Spanish voting-intention tables and links each row to its original publication where available.",
     "changes": "Dates normalised to ISO format; seat ranges removed; successor-party series kept separate except Podemos/UP; invalid and future rows rejected.",
     "attribution": "Wikipedia contributors, Spanish general-election polling archive pages, CC BY-SA 4.0; individual poll publications remain linked per row.",

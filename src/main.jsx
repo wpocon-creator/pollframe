@@ -8,6 +8,7 @@ import {
   SPAIN_POLITICAL_EVENTS,
   SpainCountryOverview,
   SpainMiniMap,
+  SpainPollingInsights,
 } from "./spain.jsx";
 import "./styles.css";
 
@@ -6531,6 +6532,7 @@ function RegionalApp() {
   const [selectedPartyDetail, setSelectedPartyDetail] = useState(null);
   const [showAllPartyChoices, setShowAllPartyChoices] = useState(false);
   const chartExportRef = useRef(null);
+  const spainInsightsExportRef = useRef(null);
 
   useEffect(() => {
     if (embedMode || legalPage || privacyPage || licencesPage || contactPage || countryIndexPage) return;
@@ -6875,7 +6877,7 @@ function RegionalApp() {
       canonicalPath = `/?region=${encodeURIComponent(region.slug)}`;
     } else if (region.type === "spain-federal") {
       title = locale === "es" ? "Encuestas electorales de España · Pollframe" : isGerman ? "Spanische Wahlumfragen · Pollframe" : "Spanish election polls · Pollframe";
-      description = locale === "es" ? "Media de encuestas, evolución desde 2023, institutos y acontecimientos documentados." : isGerman ? "Umfragedurchschnitt, Verlauf seit 2023, Institute und belegte Ereignisse." : "Polling average, history since 2023, pollsters and sourced events.";
+      description = locale === "es" ? "Media de encuestas, evolución desde 1996, comparación temporal, acuerdo entre institutos y acontecimientos documentados." : isGerman ? "Umfragedurchschnitt und Verlauf seit 1996 mit Zeitvergleich, Institutsstreuung und belegten Ereignissen." : "Polling average and history since 1996, with time comparisons, pollster ranges and sourced events.";
       canonicalPath = `/?region=${encodeURIComponent(region.slug)}`;
     } else if (region.type === "federal") {
       title = isGerman
@@ -7348,6 +7350,28 @@ function RegionalApp() {
                 </div>
               </div>
             </section>
+            {region.type === "spain-federal" && (
+              <div ref={spainInsightsExportRef} className="spain-insights-export-surface">
+                <SpainPollingInsights
+                  locale={locale}
+                  pollData={pollData}
+                  current={current}
+                  latestDate={latestDate}
+                  selectedPollsters={selectedPollsters}
+                  exportControl={(
+                    <PngExportButton
+                      elementRef={spainInsightsExportRef}
+                      filename="pollframe-spain-what-is-changing"
+                      title={locale === "es" ? "Qué está cambiando en España" : isGerman ? "Was sich in Spanien verändert" : "What is changing in Spain"}
+                      subtitle="España · Congreso de los Diputados"
+                      locale={locale}
+                      t={t}
+                      credit="Wikipedia contributors · CC BY-SA 4.0 · Pollframe"
+                    />
+                  )}
+                />
+              </div>
+            )}
             <PollTable
               t={t}
               locale={locale}

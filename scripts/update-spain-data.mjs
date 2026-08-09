@@ -323,6 +323,11 @@ const summary = {
     latestDate,
     pollsterCount: sortedNames.length,
     current: { date: latestDate, instituteCount: latestPollsters.size, results: currentResults },
+    lastElection: {
+      date: "2023-07-23",
+      sourceUrl: pollData.metadata.electionSourceUrl,
+      results: pollData.metadata.electionResults["2023-07-23"],
+    },
   },
   issues: {
     date: "2026-04-01",
