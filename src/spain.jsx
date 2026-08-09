@@ -81,6 +81,193 @@ function language(locale) {
   return locale === "es" ? UI.es : locale === "de" ? UI.de : UI.en;
 }
 
+const DAY = 86_400_000;
+const SPAIN_COMPARISON_GROUPS = [
+  { id: "pp", name: "PP", partyIds: ["401"], color: "#1479c9" },
+  { id: "psoe", name: "PSOE", partyIds: ["402"], color: "#e0272f" },
+  { id: "vox", name: "Vox", partyIds: ["403"], color: "#63a62f" },
+  { id: "sumar-podemos", name: "Sumar + Podemos", partyIds: ["404", "405"], color: "#d454a0" },
+];
+
+const INSIGHT_UI = {
+  es: {
+    eyebrow: "Lectura rápida", title: "Qué está cambiando", intro: "Tres lecturas complementarias del mismo archivo: movimiento, distancia entre los dos primeros partidos y acuerdo entre institutos.",
+    compare: "Cambio desde", election: "23-J de 2023", year: "Hace 12 meses", yearStart: "Inicio de año", now: "ahora", electionResult: "resultado oficial", pollingAverage: "media comparable", currentAverage: "Media actual", points: "pp",
+    raceEyebrow: "La carrera por el primer puesto", raceTitle: "Distancia PP–PSOE", ahead: "por delante", tied: "Empate técnico en la media", sinceElection: "Evolución de la diferencia desde el 23-J", ppLead: "PP por delante", psoeLead: "PSOE por delante",
+    agreementEyebrow: "Transparencia", agreementTitle: "Cuánto coinciden los institutos", agreementIntro: "Última encuesta de cada instituto seleccionado dentro de 45 días. La línea muestra el mínimo y el máximo; el punto, la media.", polls: "institutos", range: "rango", spreadNote: "El rango refleja desacuerdo entre encuestas, no un intervalo de confianza.",
+    combinedNote: "Sumar + Podemos se agrupan para mantener una comparación coherente con la candidatura Sumar de 2023.", exportTitle: "Qué está cambiando en España",
+  },
+  de: {
+    eyebrow: "Schneller Überblick", title: "Was sich gerade verändert", intro: "Drei ergänzende Blicke auf dasselbe Archiv: Bewegung, Abstand der beiden größten Parteien und Übereinstimmung der Institute.",
+    compare: "Veränderung seit", election: "Wahl am 23. Juli 2023", year: "Vor 12 Monaten", yearStart: "Jahresbeginn", now: "jetzt", electionResult: "amtliches Ergebnis", pollingAverage: "vergleichbarer Durchschnitt", currentAverage: "Aktueller Durchschnitt", points: "Pkt.",
+    raceEyebrow: "Rennen um Platz eins", raceTitle: "Abstand PP–PSOE", ahead: "vorn", tied: "Im Durchschnitt praktisch gleichauf", sinceElection: "Entwicklung des Abstands seit der Wahl 2023", ppLead: "PP vorn", psoeLead: "PSOE vorn",
+    agreementEyebrow: "Transparenz", agreementTitle: "Wie stark die Institute übereinstimmen", agreementIntro: "Je ausgewähltem Institut die jüngste Umfrage innerhalb von 45 Tagen. Die Linie zeigt Minimum und Maximum, der Punkt den Mittelwert.", polls: "Institute", range: "Spanne", spreadNote: "Die Spanne zeigt Unterschiede zwischen Umfragen und ist kein Konfidenzintervall.",
+    combinedNote: "Sumar und Podemos werden zusammengefasst, damit der Vergleich mit der gemeinsamen Sumar-Kandidatur von 2023 sinnvoll bleibt.", exportTitle: "Was sich in Spanien verändert",
+  },
+  en: {
+    eyebrow: "Quick read", title: "What is changing", intro: "Three complementary readings of the same archive: movement, the gap between the two largest parties and pollster agreement.",
+    compare: "Change since", election: "23 July 2023 election", year: "12 months ago", yearStart: "Start of year", now: "now", electionResult: "official result", pollingAverage: "comparable average", currentAverage: "Current average", points: "pts",
+    raceEyebrow: "The race for first place", raceTitle: "PP–PSOE gap", ahead: "ahead", tied: "Effectively level in the average", sinceElection: "How the gap has moved since the 2023 election", ppLead: "PP ahead", psoeLead: "PSOE ahead",
+    agreementEyebrow: "Transparency", agreementTitle: "How closely pollsters agree", agreementIntro: "Each selected pollster’s latest poll within 45 days. The line is the minimum-to-maximum range; the dot is the mean.", polls: "pollsters", range: "range", spreadNote: "This range shows disagreement between polls; it is not a confidence interval.",
+    combinedNote: "Sumar and Podemos are grouped to keep the comparison consistent with the joint Sumar candidacy in 2023.", exportTitle: "What is changing in Spain",
+  },
+};
+
+function insightLanguage(locale) {
+  return locale === "es" ? INSIGHT_UI.es : locale === "de" ? INSIGHT_UI.de : INSIGHT_UI.en;
+}
+
+function isoTime(date) {
+  return Date.parse(`${date}T00:00:00Z`);
+}
+
+function isoDate(time) {
+  return new Date(time).toISOString().slice(0, 10);
+}
+
+function groupValue(results, partyIds) {
+  const values = partyIds.map((id) => results?.[id]).filter(Number.isFinite);
+  return values.length ? values.reduce((sum, value) => sum + value, 0) : null;
+}
+
+function pollingSnapshot(polls, pollsterIds, date) {
+  const end = isoTime(date);
+  const start = end - (45 * DAY);
+  const allowed = new Set(pollsterIds);
+  const latest = new Map();
+  for (const poll of polls) {
+    const time = isoTime(poll.date);
+    if (time > end) break;
+    if (time >= start && allowed.has(poll.pollster)) latest.set(poll.pollster, poll);
+  }
+  const results = {};
+  for (const group of SPAIN_COMPARISON_GROUPS) {
+    const values = [...latest.values()].map((poll) => groupValue(poll.results, group.partyIds)).filter(Number.isFinite);
+    if (values.length) results[group.id] = values.reduce((sum, value) => sum + value, 0) / values.length;
+  }
+  return { results, pollsterCount: latest.size, polls: [...latest.values()] };
+}
+
+function formatNumber(value, locale, digits = 1) {
+  return value.toLocaleString(locale === "es" ? "es-ES" : locale === "de" ? "de-DE" : "en-GB", { minimumFractionDigits: digits, maximumFractionDigits: digits });
+}
+
+function comparisonGroups(results) {
+  return SPAIN_COMPARISON_GROUPS.map((group) => ({ ...group, value: groupValue(results, group.partyIds) })).filter((group) => Number.isFinite(group.value));
+}
+
+function SpainCurrentShift({ locale, congress }) {
+  const text = insightLanguage(locale);
+  const election = congress.lastElection?.results ?? {};
+  const currentGroups = comparisonGroups(congress.current.results);
+  return (
+    <a className="spain-shift-card" href="/?region=spain-congress#spain-pulse">
+      <header><span>{text.compare}</span><h2>{text.election}</h2></header>
+      <div className="spain-shift-preview">
+        {currentGroups.map((group) => {
+          const previous = groupValue(election, group.partyIds);
+          const delta = Number.isFinite(previous) ? group.value - previous : null;
+          return <div key={group.id}><span style={{ background: group.color }} /><strong>{group.name}</strong><b>{formatNumber(group.value, locale)}%</b><em className={delta > 0 ? "up" : delta < 0 ? "down" : "flat"}>{Number.isFinite(delta) ? `${delta > 0 ? "+" : ""}${formatNumber(delta, locale)} ${text.points}` : "—"}</em></div>;
+        })}
+      </div>
+      <footer><small>{text.combinedNote}</small><b aria-hidden="true">→</b></footer>
+    </a>
+  );
+}
+
+function RaceSparkline({ series, locale, text }) {
+  if (series.length < 2) return null;
+  const width = 520;
+  const height = 132;
+  const pad = 12;
+  const ceiling = Math.max(4, Math.ceil(Math.max(...series.map((point) => Math.abs(point.gap))) / 2) * 2);
+  const x = (index) => pad + (index / (series.length - 1)) * (width - (pad * 2));
+  const y = (gap) => (height / 2) - ((gap / ceiling) * ((height / 2) - pad));
+  const path = series.map((point, index) => `${index ? "L" : "M"}${x(index).toFixed(1)} ${y(point.gap).toFixed(1)}`).join(" ");
+  const final = series.at(-1);
+  return (
+    <div className="spain-race-chart">
+      <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label={`${text.raceTitle}: ${formatNumber(final.gap, locale)} ${text.points}`}>
+        <defs><linearGradient id="spain-race-gradient" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#1479c9" /><stop offset="49%" stopColor="#1479c9" /><stop offset="51%" stopColor="#e0272f" /><stop offset="100%" stopColor="#e0272f" /></linearGradient></defs>
+        <line className="race-zero" x1={pad} x2={width - pad} y1={height / 2} y2={height / 2} />
+        <path className="race-halo" d={path} />
+        <path className="race-line" d={path} />
+        <circle cx={x(series.length - 1)} cy={y(final.gap)} r="5" fill={final.gap >= 0 ? "#1479c9" : "#e0272f"} />
+      </svg>
+      <div><span>{text.psoeLead}</span><span>{text.ppLead}</span></div>
+    </div>
+  );
+}
+
+export function SpainPollingInsights({ locale, pollData, current, latestDate, selectedPollsters, exportControl = null }) {
+  const text = insightLanguage(locale);
+  const [comparison, setComparison] = useState("election");
+  const groups = useMemo(() => SPAIN_COMPARISON_GROUPS.map((group) => ({ ...group, current: groupValue(current.results, group.partyIds) })).filter((group) => Number.isFinite(group.current)), [current.results]);
+  const snapshots = useMemo(() => {
+    const latestTime = isoTime(latestDate);
+    const election = pollData.metadata?.electionResults?.["2023-07-23"] ?? {};
+    return {
+      election: { results: Object.fromEntries(SPAIN_COMPARISON_GROUPS.map((group) => [group.id, groupValue(election, group.partyIds)])), pollsterCount: null, kind: "election" },
+      year: { ...pollingSnapshot(pollData.polls, selectedPollsters, isoDate(latestTime - (365 * DAY))), kind: "average" },
+      yearStart: { ...pollingSnapshot(pollData.polls, selectedPollsters, `${new Date(latestTime).getUTCFullYear()}-01-01`), kind: "average" },
+    };
+  }, [latestDate, pollData, selectedPollsters]);
+  const spread = useMemo(() => {
+    const snapshot = pollingSnapshot(pollData.polls, selectedPollsters, latestDate);
+    return groups.map((group) => {
+      const values = snapshot.polls.map((poll) => groupValue(poll.results, group.partyIds)).filter(Number.isFinite);
+      return values.length ? { ...group, min: Math.min(...values), max: Math.max(...values), mean: values.reduce((sum, value) => sum + value, 0) / values.length, count: values.length } : null;
+    }).filter(Boolean);
+  }, [groups, latestDate, pollData.polls, selectedPollsters]);
+  const raceSeries = useMemo(() => {
+    const dates = [];
+    const start = isoTime("2023-07-23");
+    const end = isoTime(latestDate);
+    const cursor = new Date(start);
+    while (cursor.getTime() < end) {
+      dates.push(cursor.toISOString().slice(0, 10));
+      cursor.setUTCMonth(cursor.getUTCMonth() + 1);
+    }
+    dates.push(latestDate);
+    return dates.map((date) => {
+      const snapshot = pollingSnapshot(pollData.polls, selectedPollsters, date);
+      const pp = snapshot.results.pp;
+      const psoe = snapshot.results.psoe;
+      return Number.isFinite(pp) && Number.isFinite(psoe) ? { date, gap: pp - psoe } : null;
+    }).filter(Boolean);
+  }, [latestDate, pollData.polls, selectedPollsters]);
+  const activeSnapshot = snapshots[comparison];
+  const gap = (groupValue(current.results, ["401"]) ?? 0) - (groupValue(current.results, ["402"]) ?? 0);
+  const axisMax = Math.max(40, Math.ceil(Math.max(...spread.map((item) => item.max), 40) / 5) * 5);
+  const tabs = [["election", text.election], ["year", text.year], ["yearStart", text.yearStart]];
+  return (
+    <section id="spain-pulse" className="spain-pulse-section" aria-labelledby="spain-pulse-title">
+      <header className="spain-pulse-heading"><div><p className="section-label">{text.eyebrow}</p><h2 id="spain-pulse-title">{text.title}</h2><p>{text.intro}</p></div>{exportControl}</header>
+      <div className="spain-pulse-grid">
+        <article className="spain-change-card">
+          <header><div><span>{text.compare}</span><h3>{tabs.find(([id]) => id === comparison)?.[1]}</h3></div><div className="spain-period-tabs" data-export-ignore="true">{tabs.map(([id, label]) => <button key={id} type="button" className={comparison === id ? "active" : ""} aria-pressed={comparison === id} onClick={() => setComparison(id)}>{label}</button>)}</div></header>
+          <div className="spain-change-list">{groups.map((group) => {
+            const baseline = activeSnapshot.results[group.id];
+            const delta = Number.isFinite(baseline) ? group.current - baseline : null;
+            const extent = Math.min(50, (Math.abs(delta ?? 0) / 12) * 50);
+            return <div className="spain-change-row" key={group.id}><span className="party-dot" style={{ background: group.color }} /><strong>{group.name}</strong><div className="delta-track" aria-hidden="true"><i className={delta >= 0 ? "positive" : "negative"} style={{ left: `${delta >= 0 ? 50 : 50 - extent}%`, width: `${extent}%`, background: group.color }} /></div><b>{formatNumber(group.current, locale)}%</b><em className={delta > 0 ? "up" : delta < 0 ? "down" : "flat"}>{Number.isFinite(delta) ? `${delta > 0 ? "+" : ""}${formatNumber(delta, locale)} ${text.points}` : "—"}</em></div>;
+          })}</div>
+          <footer><span>{activeSnapshot.kind === "election" ? text.electionResult : `${activeSnapshot.pollsterCount} ${text.polls} · ${text.pollingAverage}`}</span><small>{text.combinedNote}</small></footer>
+        </article>
+        <article className="spain-race-card">
+          <span>{text.raceEyebrow}</span><div className="spain-race-summary"><div><h3>{text.raceTitle}</h3><p>{text.sinceElection}</p></div><strong className={Math.abs(gap) < .15 ? "tied" : gap > 0 ? "pp" : "psoe"}>{Math.abs(gap) < .15 ? "≈ 0" : `${formatNumber(Math.abs(gap), locale)} ${text.points}`}<small>{Math.abs(gap) < .15 ? text.tied : `${gap > 0 ? "PP" : "PSOE"} ${text.ahead}`}</small></strong></div>
+          <RaceSparkline series={raceSeries} locale={locale} text={text} />
+        </article>
+        <article className="spain-agreement-card">
+          <header><span>{text.agreementEyebrow}</span><h3>{text.agreementTitle}</h3><p>{text.agreementIntro}</p></header>
+          <div className="spain-range-list">{spread.map((item) => <div key={item.id}><div className="range-label"><span className="party-dot" style={{ background: item.color }} /><strong>{item.name}</strong><small>{item.count} {text.polls}</small><b>{formatNumber(item.min, locale)}–{formatNumber(item.max, locale)}%</b></div><div className="range-track"><i style={{ left: `${(item.min / axisMax) * 100}%`, width: `${((item.max - item.min) / axisMax) * 100}%`, background: item.color }} /><span style={{ left: `${(item.mean / axisMax) * 100}%`, borderColor: item.color }} title={`${text.currentAverage}: ${formatNumber(item.mean, locale)}%`} /></div></div>)}</div>
+          <footer><span>0%</span><small>{text.spreadNote}</small><span>{axisMax}%</span></footer>
+        </article>
+      </div>
+    </section>
+  );
+}
+
 function coordinatesToPath(coordinates) {
   const project = ([longitude, latitude]) => {
     if (longitude < -12) return [25 + ((longitude + 18.5) * 28), 405 + ((29.6 - latitude) * 28)];
@@ -148,6 +335,7 @@ export function SpainCountryOverview({ locale, summary, formatDate, numberLocale
       <section className="germany-country-hero spain-country-hero"><div><div className="eyebrow"><span />{text.label}</div><h1>🇪🇸 {text.title}</h1><p>{text.intro}</p></div></section>
       <section className="spain-overview-grid" aria-label={text.title}>
         <a className="spain-polling-entry" href="/?region=spain-congress"><div><span>{text.pollingEyebrow}</span><h2>{text.pollingTitle}</h2><p>{text.pollingText}</p></div><dl><div><dt>{text.polls}</dt><dd>{congress.pollCount.toLocaleString(numberLocale)}</dd></div><div><dt>{text.since}</dt><dd>{congress.firstDate.slice(0, 4)}</dd></div><div><dt>{text.updated}</dt><dd>{formatDate(congress.latestDate, locale)}</dd></div></dl><b aria-hidden="true">→</b></a>
+        <SpainCurrentShift locale={locale} congress={congress} />
         <article className="spain-issues-card"><header><span>{text.issuesEyebrow}</span><h2>{text.issuesTitle}</h2><p>{text.issuesText}</p></header><div className="spain-issue-bars">{summary.issues.items.map((item) => <div key={item.id}><span>{issueLabels[item.id] ?? item.label}</span><div><i style={{ width: `${(item.value / issueMax) * 100}%`, background: item.color }} /></div><strong>{item.value.toLocaleString(numberLocale)}%</strong></div>)}</div><footer><span>{text.answers}</span><a href={summary.issues.sourceUrl} target="_blank" rel="noreferrer">CIS ↗</a></footer></article>
       </section>
       <SpainMap locale={locale} />

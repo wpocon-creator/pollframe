@@ -428,11 +428,15 @@ test.describe("core routes", () => {
     await settle(page);
     await expect(page.getByRole("heading", { level: 1, name: /España de un vistazo/i })).toBeVisible();
     await expect(page.locator("body")).not.toContainText(/Cómo se forma Gobierno|Cómo una gobierno|How a government is formed|Wie eine Regierung entsteht/i);
+    await expect(page.locator(".spain-shift-card")).toContainText(/PP/);
+    await expect(page.locator(".spain-shift-card")).toContainText(/Sumar \+ Podemos/);
     await expect(page.locator(".spain-map-detail h3")).toHaveText("—");
     await expect(page.locator(".spain-map-svg .active-outline")).toHaveCount(0);
-    await page.locator(".spain-map-svg path[role=button]").first().hover();
+    if (testInfo.project.use.hasTouch) await page.locator(".spain-map-svg path[role=button]").first().click();
+    else await page.locator(".spain-map-svg path[role=button]").first().hover();
     await expect(page.locator(".spain-map-detail h3")).not.toHaveText("—");
     await expect(page.locator(".spain-map-svg .active-outline")).toHaveCount(1);
+    await page.screenshot({ path: testInfo.outputPath("spain-overview.png"), fullPage: true });
 
     await page.getByRole("button", { name: /Ajustes/i }).click();
     await expect(page.locator(".language-option")).toHaveCount(3);
@@ -449,16 +453,46 @@ test.describe("core routes", () => {
     await expect(page.locator(".customize-panel")).not.toContainText(/10 años|10 years|10 Jahre/i);
     await expect(page.locator(".customize-panel")).toContainText(/Desde las elecciones de 2023/i);
     await expect(page.locator(".customize-panel")).toContainText(/Archivo completo.*1996/i);
+    await expect(page.locator(".spain-pulse-section")).toBeVisible();
+    await expect(page.locator(".spain-change-card,.spain-race-card,.spain-agreement-card")).toHaveCount(3);
+    const comparisonSwitchMs = await page.evaluate(async () => {
+      const button = [...document.querySelectorAll(".spain-period-tabs button")].find((node) => node.textContent.includes("Hace 12 meses"));
+      const start = performance.now();
+      button.click();
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+      return performance.now() - start;
+    });
+    expect(comparisonSwitchMs).toBeLessThan(200);
+    await expect(page.getByRole("button", { name: /Hace 12 meses/i })).toHaveAttribute("aria-pressed", "true");
+    await page.locator(".spain-pulse-section").screenshot({ path: testInfo.outputPath("spain-pulse.png") });
 
     if (testInfo.project.name === "chromium-desktop") {
       const pngDownloadPromise = page.waitForEvent("download");
-      await page.getByRole("button", { name: /Exportar PNG/i }).click();
+      await page.locator(".chart-card .png-export-button").click();
       const pngDownload = await pngDownloadPromise;
       await pngDownload.saveAs(testInfo.outputPath("spain-export.png"));
       const png = await readFile(await pngDownload.path());
       expect(png.readUInt32BE(16)).toBeGreaterThanOrEqual(3000);
       expect(png.readUInt32BE(20)).toBeGreaterThan(900);
       await expectPngHasVisibleContent(page, png);
+      const insightDownloadPromise = page.waitForEvent("download");
+      await page.locator(".spain-pulse-heading .png-export-button").click();
+      const insightDownload = await insightDownloadPromise;
+      await insightDownload.saveAs(testInfo.outputPath("spain-pulse-export.png"));
+      const insightPng = await readFile(await insightDownload.path());
+      expect(insightPng.readUInt32BE(16)).toBeGreaterThanOrEqual(3000);
+      await expectPngHasVisibleContent(page, insightPng);
+
+      await page.evaluate(() => localStorage.setItem("pollframe-es-locale", "en-GB"));
+      await page.goto("/?region=spain-congress");
+      await settle(page);
+      await expect(page.locator(".spain-pulse-section")).toContainText("What is changing");
+      await expect(page.locator(".spain-agreement-card")).toContainText("How closely pollsters agree");
+      await page.evaluate(() => localStorage.setItem("pollframe-es-locale", "de"));
+      await page.goto("/?region=spain-congress");
+      await settle(page);
+      await expect(page.locator(".spain-pulse-section")).toContainText("Was sich gerade verändert");
+      await expect(page.locator(".spain-agreement-card")).toContainText("Wie stark die Institute übereinstimmen");
     }
     await expectDocumentFits(page);
     await expectNoBrokenVisibleText(page);

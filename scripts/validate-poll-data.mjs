@@ -184,6 +184,7 @@ for (const [index, poll] of (spain.polls ?? []).entries()) {
   if (total < 65 || total > 105) addError(`${label} result total is implausible: ${total}`);
 }
 if (spainSummary.congress?.latestDate !== spain.polls.at(-1)?.date || spainSummary.congress?.firstDate !== spain.polls[0]?.date) addError("Spain summary date range differs");
+if (spainSummary.congress?.lastElection?.date !== "2023-07-23" || !isRecord(spainSummary.congress?.lastElection?.results) || spainSummary.congress.lastElection.results["401"] !== spain.metadata?.electionResults?.["2023-07-23"]?.["401"]) addError("Spain comparison baseline is missing or inconsistent");
 if (!Array.isArray(spainSummary.issues?.items) || spainSummary.issues.items.length < 3 || !/^https:\/\/www\.cis\.es\//.test(spainSummary.issues?.sourceUrl ?? "")) addError("Spain CIS issue snapshot is incomplete");
 if (spainMap.type !== "FeatureCollection" || !Array.isArray(spainMap.features) || spainMap.features.length < 19) addError("Spain autonomous-community map is incomplete");
 for (const region of stateMap.regions ?? []) {
