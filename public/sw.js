@@ -1,4 +1,4 @@
-const VERSION = "pollframe-app-v6";
+const VERSION = "pollframe-app-v7";
 const SHELL_CACHE = `${VERSION}-shell`;
 const RUNTIME_CACHE = `${VERSION}-runtime`;
 const DATA_CACHE = `${VERSION}-data`;
@@ -13,6 +13,7 @@ const SHELL = [
 const COUNTRY_DATA = {
   de: ["/", "/regions.json", "/state-map-data.json", "/data/bundestag.json"],
   uk: ["/?country=uk", "/uk-summary.json", "/data/uk-westminster.json", "/data/uk-constituencies.json"],
+  es: ["/?country=es", "/spain-summary.json", "/data/spain-congress.json", "/data/spain-autonomies.geojson"],
 };
 
 async function cacheBuiltAssetGraph(cache, initialPaths) {
@@ -92,6 +93,7 @@ function isDataRequest(url) {
     || url.pathname === "/regions.json"
     || url.pathname === "/state-map-data.json"
     || url.pathname === "/uk-summary.json"
+    || url.pathname === "/spain-summary.json"
     || url.pathname.startsWith("/data/");
 }
 
