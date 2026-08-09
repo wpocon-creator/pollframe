@@ -30,7 +30,6 @@
 /* Spain: designed from the small viewport up. */
 .spain-country-overview { --spain-red: #c92332; --spain-gold: #f0b323; }
 .spain-country-hero { position: relative; overflow: hidden; }
-.spain-country-hero::after { content: ""; position: absolute; right: -4rem; bottom: -6rem; width: 15rem; height: 15rem; border-radius: 50%; background: radial-gradient(circle, color-mix(in srgb, var(--spain-gold) 18%, transparent), transparent 68%); pointer-events: none; }
 .spain-overview-grid { display: grid; gap: .9rem; margin: 0 0 1rem; }
 .spain-polling-entry,.spain-issues-card,.spain-investiture-card,.spain-map-card,.spain-system-note { border: 1px solid var(--line); border-radius: 18px; background: var(--surface); color: var(--ink); box-shadow: var(--shadow); }
 .spain-polling-entry { display: grid; grid-template-columns: 1fr auto; gap: 1rem; padding: 1.15rem; text-decoration: none; position: relative; transition: border-color .16s ease, transform .16s ease; }
@@ -66,9 +65,11 @@
 .spain-map-card { margin: 1rem 0 2rem; padding: 1.15rem; }
 .spain-map-layout { display: grid; gap: 1rem; margin-top: 1rem; }
 .spain-map-svg { width: 100%; min-height: 250px; overflow: visible; touch-action: manipulation; }
-.spain-map-svg path { fill: color-mix(in srgb, var(--accent) 16%, var(--surface)); stroke: var(--surface); stroke-width: 2.5; vector-effect: non-scaling-stroke; cursor: pointer; transition: fill .12s ease, stroke .12s ease; outline: none; }
-.spain-map-svg path:hover,.spain-map-svg path:focus-visible,.spain-map-svg path.active { fill: color-mix(in srgb, var(--accent) 48%, var(--surface)); stroke: var(--accent); stroke-width: 3.5; }
+.spain-map-svg path { fill: color-mix(in srgb, var(--ink) 9%, var(--surface)); stroke: var(--surface); stroke-width: 2.5; vector-effect: non-scaling-stroke; cursor: pointer; outline: none; }
+.spain-map-svg path:hover,.spain-map-svg path:focus-visible,.spain-map-svg path.active { fill: color-mix(in srgb, var(--ink) 23%, var(--surface)); }
+.spain-map-svg path.active-outline { fill: none; stroke: var(--accent); stroke-width: 3.5; pointer-events: none; }
 .spain-map-detail { align-self: center; padding: 1rem; border: 1px solid var(--line); border-radius: 15px; background: var(--surface-soft); }
+.spain-map-detail:not(.has-selection) { border-style: dashed; box-shadow: none; }
 .spain-map-detail>span { color: var(--accent); font-size: .7rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
 .spain-map-detail h3 { margin: .35rem 0 .8rem; font-size: 1.35rem; }
 .spain-map-detail dl { margin: 0; }
@@ -87,6 +88,7 @@
 @media (min-width: 720px) {
   .spain-overview-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .spain-polling-entry { grid-column: 1 / -1; padding: 1.35rem 1.5rem; }
+  .spain-issues-card { grid-column: 1 / -1; }
   .spain-polling-entry dl { display: flex; }
   .spain-map-layout { grid-template-columns: minmax(0, 2.3fr) minmax(14rem, 1fr); align-items: center; }
   .spain-system-note { grid-template-columns: minmax(0, 1.3fr) minmax(19rem, 1fr); align-items: center; }
@@ -500,8 +502,8 @@ body {
   color-scheme: light;
   position: relative;
   isolation: isolate;
-  width: 1200px;
-  padding: 34px 40px 28px;
+  width: 1440px;
+  padding: 42px 52px 34px;
   background: var(--surface);
   color: var(--ink);
   font-family: inherit;
@@ -527,11 +529,22 @@ body {
 }
 
 .png-export-header strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
   letter-spacing: 0.12em;
 }
 
-.png-export-header strong span {
-  color: var(--accent);
+.png-export-brand-mark {
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  background: var(--ink);
+  color: white;
+  font-size: 15px;
+  letter-spacing: 0;
 }
 
 .png-export-header small,
@@ -581,6 +594,11 @@ body {
   cursor: progress;
   opacity: 0.72;
 }
+
+.archive-source-list { width: 100%; margin-top: .35rem; }
+.archive-source-list summary { cursor: pointer; color: var(--muted); font-size: .78rem; font-weight: 720; }
+.archive-source-list ol { display: flex; flex-wrap: wrap; gap: .35rem .8rem; margin: .65rem 0 0; padding: 0; list-style: none; }
+.archive-source-list li a { display: inline-flex; align-items: center; gap: .25rem; font-size: .74rem; }
 
 [dir="rtl"] body {
   text-align: right;
@@ -2974,6 +2992,12 @@ footer {
 .event-europe { color: var(--event-europe); }
 .event-global { color: var(--event-global); }
 .event-controversy { color: var(--event-controversy); }
+.event-spain-election { color: var(--event-national); }
+.event-spain-politics { color: var(--event-germany); }
+.event-spain-crisis { color: var(--event-controversy); }
+.event-uk-election { color: var(--event-national); }
+.event-uk-politics { color: var(--event-germany); }
+.event-uk-crisis { color: var(--event-controversy); }
 
 .series-halo,
 .series-line,

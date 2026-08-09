@@ -256,7 +256,7 @@ test.describe("core routes", () => {
     await page.goto("/");
     await settle(page);
     await page.getByRole("button", { name: /Einstellungen|Settings/i }).click();
-    await expect(page.locator(".language-option")).toHaveCount(6);
+    await expect(page.locator(".language-option")).toHaveCount(7);
 
     await page.getByRole("button", { name: /Türkçe.*Türkiye/i }).click();
     await expect(page.locator("html")).toHaveAttribute("lang", "tr");
@@ -422,12 +422,55 @@ test.describe("core routes", () => {
     expect(errors).toEqual([]);
   });
 
+  test("Spain archive, map, languages and PNG export stay coherent", async ({ page }, testInfo) => {
+    const errors = watchRuntime(page);
+    await page.goto("/?country=es&lang=es");
+    await settle(page);
+    await expect(page.getByRole("heading", { level: 1, name: /España de un vistazo/i })).toBeVisible();
+    await expect(page.locator("body")).not.toContainText(/Cómo se forma Gobierno|Cómo una gobierno|How a government is formed|Wie eine Regierung entsteht/i);
+    await expect(page.locator(".spain-map-detail h3")).toHaveText("—");
+    await expect(page.locator(".spain-map-svg .active-outline")).toHaveCount(0);
+    await page.locator(".spain-map-svg path[role=button]").first().hover();
+    await expect(page.locator(".spain-map-detail h3")).not.toHaveText("—");
+    await expect(page.locator(".spain-map-svg .active-outline")).toHaveCount(1);
+
+    await page.getByRole("button", { name: /Ajustes/i }).click();
+    await expect(page.locator(".language-option")).toHaveCount(3);
+    await expect(page.locator(".language-list")).toContainText("Deutsch");
+    await expect(page.locator(".language-list")).toContainText("English");
+    await expect(page.locator(".language-list")).toContainText("Español");
+    await page.getByRole("button", { name: /Cerrar/i }).click();
+
+    await page.locator(".spain-polling-entry").click();
+    await settle(page);
+    await expect(page.getByRole("heading", { level: 1, name: /Encuestas de las elecciones generales/i })).toBeVisible();
+    await page.getByRole("button", { name: /Configurar gráfico/i }).click();
+    await expect(page.locator(".customize-panel")).toBeVisible();
+    await expect(page.locator(".customize-panel")).not.toContainText(/10 años|10 years|10 Jahre/i);
+    await expect(page.locator(".customize-panel")).toContainText(/Desde las elecciones de 2023/i);
+    await expect(page.locator(".customize-panel")).toContainText(/Archivo completo.*1996/i);
+
+    if (testInfo.project.name === "chromium-desktop") {
+      const pngDownloadPromise = page.waitForEvent("download");
+      await page.getByRole("button", { name: /Exportar PNG/i }).click();
+      const pngDownload = await pngDownloadPromise;
+      await pngDownload.saveAs(testInfo.outputPath("spain-export.png"));
+      const png = await readFile(await pngDownload.path());
+      expect(png.readUInt32BE(16)).toBeGreaterThanOrEqual(3000);
+      expect(png.readUInt32BE(20)).toBeGreaterThan(900);
+      await expectPngHasVisibleContent(page, png);
+    }
+    await expectDocumentFits(page);
+    await expectNoBrokenVisibleText(page);
+    expect(errors).toEqual([]);
+  });
+
   test("UK overview and Westminster detail use a distinct, responsive product flow", async ({ page }, testInfo) => {
     const errors = watchRuntime(page);
     await page.goto("/?view=countries");
     await settle(page);
     await expect(page.getByRole("heading", { level: 1, name: /Select a country|Land auswählen/i })).toBeVisible();
-    await expect(page.locator(".country-index-grid .overview-classic-widget")).toHaveCount(2);
+    await expect(page.locator(".country-index-grid .overview-classic-widget")).toHaveCount(3);
     await page.getByRole("link", { name: /United Kingdom/i }).click();
     await settle(page);
     await expect(page.getByRole("heading", { level: 1, name: /United Kingdom at a glance|Vereinigtes Königreich im Überblick/i })).toBeVisible();

@@ -4,7 +4,19 @@ import { load } from "cheerio/slim";
 
 const WIKIPEDIA_PAGE = "Opinion_polling_for_the_next_Spanish_general_election";
 const WIKIPEDIA_URL = `https://en.wikipedia.org/wiki/${WIKIPEDIA_PAGE}`;
-const WIKIPEDIA_API = `https://en.wikipedia.org/w/api.php?action=parse&page=${WIKIPEDIA_PAGE}&prop=text&format=json&formatversion=2`;
+const WIKIPEDIA_ARCHIVE_PAGES = [
+  { page: "Opinion_polling_for_the_2000_Spanish_general_election", electionYear: 2000, tableCount: 1 },
+  { page: "Opinion_polling_for_the_2004_Spanish_general_election", electionYear: 2004, tableCount: 1 },
+  { page: "Opinion_polling_for_the_2008_Spanish_general_election", electionYear: 2008, tableCount: 1 },
+  { page: "Opinion_polling_for_the_2011_Spanish_general_election", electionYear: 2011, tableCount: 1 },
+  { page: "Opinion_polling_for_the_2015_Spanish_general_election", electionYear: 2015, tableCount: 5 },
+  { page: "Opinion_polling_for_the_2016_Spanish_general_election", electionYear: 2016, tableCount: 1 },
+  { page: "Opinion_polling_for_the_April_2019_Spanish_general_election", electionYear: 2019, tableCount: 4 },
+  { page: "Opinion_polling_for_the_November_2019_Spanish_general_election", electionYear: 2019, tableCount: 1 },
+  { page: "Nationwide_opinion_polling_for_the_2023_Spanish_general_election_(2019%E2%80%932021)", electionYear: 2021, tableCount: 3 },
+  { page: "Nationwide_opinion_polling_for_the_2023_Spanish_general_election_(2022)", electionYear: 2022, tableCount: 1 },
+  { page: "Opinion_polling_for_the_2023_Spanish_general_election", electionYear: 2023, tableCount: 3 },
+];
 const MAP_URL = "https://public.opendatasoft.com/api/explore/v2.1/catalog/datasets/georef-spain-comunidad-autonoma/exports/geojson?lang=en&timezone=Europe%2FMadrid";
 const USER_AGENT = "PollframeDataUpdater/1.0 (public polling visualisation)";
 const MAX_RESPONSE_BYTES = 15 * 1024 * 1024;
@@ -41,8 +53,17 @@ const PARTY_IDS = {
   SALF: "414",
   "Alianca.cat": "415",
   Other: "416",
+  Ciudadanos: "417",
+  IU: "418",
+  UPyD: "419",
+  "CiU / CDC": "420",
+  Compromis: "421",
+  CUP: "422",
+  "Mas Pais": "423",
+  PACMA: "424",
 };
 const PARTY_LABELS = Object.fromEntries(Object.entries(PARTY_IDS).map(([name, id]) => [id, name]));
+PARTY_LABELS[PARTY_IDS.Podemos] = "Podemos / UP";
 const MONTHS = {
   jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6,
   jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12,
@@ -110,12 +131,16 @@ function partyFromHeader($, cell) {
   const name = ascii($(cell).find("img").attr("alt") || $(cell).find("a").attr("title") || $(cell).text());
   const aliases = [
     [/^People's Party|^PP$/i, "PP"], [/Spanish Socialist|^PSOE$/i, "PSOE"], [/^Vox$/i, "Vox"],
-    [/^Sumar/i, "Sumar"], [/^Podemos/i, "Podemos"], [/Republican Left|^ERC$/i, "ERC"],
-    [/Together for Catalonia|^Junts$/i, "Junts"], [/EH Bildu/i, "EH Bildu"],
+    [/^Sumar/i, "Sumar"], [/^Podemos|Unidas Podemos|Unidos Podemos/i, "Podemos"], [/Republican Left|^ERC(?:\b|[–-])/i, "ERC"],
+    [/Together for Catalonia|^Junts$|^JxCat$/i, "Junts"], [/EH Bildu/i, "EH Bildu"],
     [/Basque Nationalist|^PNV$/i, "PNV"], [/Galician Nationalist|^BNG$/i, "BNG"],
     [/Canarian Coalition|^CCa$/i, "CCa"], [/Navarrese|^UPN$/i, "UPN"],
     [/Adelante Andalucia/i, "Adelante Andalucia"], [/Se Acabo La Fiesta|^SALF$/i, "SALF"],
     [/Catalan Alliance|Alianca\.cat/i, "Alianca.cat"],
+    [/^Cs$|^C's$|Ciudadanos/i, "Ciudadanos"], [/^IU(?:\b|[–-])|United Left/i, "IU"],
+    [/^UPyD$|Union, Progress and Democracy/i, "UPyD"],
+    [/^CiU$|Convergence and Union|^PDeCAT$|^DiL$|Democracy and Freedom/i, "CiU / CDC"],
+    [/Compromis/i, "Compromis"], [/^CUP$/i, "CUP"], [/Mas Pais/i, "Mas Pais"], [/^PACMA$/i, "PACMA"],
   ];
   return PARTY_IDS[aliases.find(([pattern]) => pattern.test(name))?.[1]] ?? null;
 }
@@ -137,24 +162,19 @@ function pollsterIdentity(value) {
   return aliases[organisation] ?? organisation;
 }
 
-function sourceForRow($, row) {
+function sourceForRow($, row, pageUrl) {
   const reference = $(row).find("sup.reference a").first().attr("href");
-  if (!reference?.startsWith("#")) return WIKIPEDIA_URL;
+  if (!reference?.startsWith("#")) return pageUrl;
   const note = $(reference);
   const external = note.find("a.external").first().attr("href");
-  return safeUrl(external) ?? WIKIPEDIA_URL;
+  return safeUrl(external) ?? pageUrl;
 }
 
-const apiPayload = JSON.parse(await fetchText(WIKIPEDIA_API));
-if (typeof apiPayload?.parse?.text !== "string") throw new Error("Wikipedia response did not contain rendered page HTML");
-const $ = load(apiPayload.parse.text);
 const polls = [];
 const pollsterNames = new Set();
+const archiveSources = [];
 
-$("table.wikitable").slice(0, 4).each((tableIndex, table) => {
-  const previousLabel = clean($(table).prev().text());
-  const year = tableIndex === 0 ? new Date().getUTCFullYear() : Number(previousLabel.match(/20\d{2}/)?.[0]);
-  if (!Number.isInteger(year)) return;
+function parsePollingTable($, table, year, pageUrl) {
   const headerCells = $(table).find("tr").first().children("th,td").toArray();
   const partyColumns = new Map();
   headerCells.forEach((cell, index) => {
@@ -186,10 +206,50 @@ $("table.wikitable").slice(0, 4).each((tableIndex, table) => {
       pollster,
       method: pollsterLabel === pollster ? "Published national voting-intention poll" : `Published national voting-intention poll · ${pollsterLabel}`,
       results,
-      sourceUrl: sourceForRow($, row),
+      sourceUrl: sourceForRow($, row, pageUrl),
     });
   });
+}
+
+function yearForTable($, table, fallbackYear) {
+  const label = $(table).prevAll("div").map((_, node) => clean($(node).text())).get()
+    .find((value) => /^(?:19|20)\d{2}(?:\b|\s|\()/i.test(value));
+  const year = Number(label?.match(/(?:19|20)\d{2}/)?.[0] ?? fallbackYear);
+  return Number.isInteger(year) ? year : fallbackYear;
+}
+
+async function fetchWikipediaPage(page, attempts = 4) {
+  const apiUrl = `https://en.wikipedia.org/w/api.php?action=parse&page=${page}&prop=text&format=json&formatversion=2`;
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    const body = await fetchText(apiUrl);
+    try {
+      const payload = JSON.parse(body);
+      if (typeof payload?.parse?.text !== "string") throw new Error("missing rendered HTML");
+      return load(payload.parse.text);
+    } catch (error) {
+      if (attempt === attempts) throw new Error(`${page}: invalid Wikipedia API response (${error.message})`);
+      await new Promise((resolveWait) => setTimeout(resolveWait, attempt * 2_000));
+    }
+  }
+  throw new Error(`${page}: unavailable`);
+}
+
+const currentPage = await fetchWikipediaPage(WIKIPEDIA_PAGE);
+currentPage("table.wikitable").slice(0, 4).each((tableIndex, table) => {
+  const year = yearForTable(currentPage, table, tableIndex === 0 ? new Date().getUTCFullYear() : NaN);
+  if (Number.isInteger(year)) parsePollingTable(currentPage, table, year, WIKIPEDIA_URL);
 });
+archiveSources.push(WIKIPEDIA_URL);
+
+for (const { page, electionYear, tableCount } of WIKIPEDIA_ARCHIVE_PAGES) {
+  await new Promise((resolveWait) => setTimeout(resolveWait, 800));
+  const pageUrl = `https://en.wikipedia.org/wiki/${page}`;
+  const $ = await fetchWikipediaPage(page);
+  const nationalTables = $("table.wikitable").filter((_, table) => /Polling firm/i.test($(table).find("tr").first().text())).slice(0, tableCount);
+  if (nationalTables.length !== tableCount) throw new Error(`${page}: expected ${tableCount} national polling tables, found ${nationalTables.length}`);
+  nationalTables.each((_, table) => parsePollingTable($, table, yearForTable($, table, electionYear), pageUrl));
+  archiveSources.push(pageUrl);
+}
 
 const sortedNames = [...pollsterNames].sort((a, b) => a.localeCompare(b, "es"));
 const pollsterIds = Object.fromEntries(sortedNames.map((name, index) => [name, String(index + 1)]));
@@ -200,30 +260,38 @@ for (const poll of polls) {
   deduplicated.set(key, poll);
 }
 const cleanPolls = [...deduplicated.values()].sort((a, b) => a.date.localeCompare(b.date) || a.pollster.localeCompare(b.pollster));
-if (cleanPolls.length < 250) throw new Error(`Only ${cleanPolls.length} valid Spain polls parsed`);
+if (cleanPolls.length < 1_500) throw new Error(`Only ${cleanPolls.length} valid Spain polls parsed`);
 
 const now = new Date().toISOString();
 const pollData = {
   metadata: {
     source: "Wikipedia contributors · cited polling organisations",
     sourceUrl: WIKIPEDIA_URL,
+    archiveSourceUrls: archiveSources,
     license: "CC BY-SA 4.0",
     licenseUrl: "https://creativecommons.org/licenses/by-sa/4.0/",
     databaseUpdated: `${cleanPolls.at(-1).date}T00:00:00.000Z`,
     generatedAt: now,
     derivativeDatabaseNotice: "Pollframe extracts and normalises cited Spanish voting-intention tables and links each row to its original publication where available.",
-    changes: "Dates normalised to ISO format; seat ranges removed; party labels consolidated; invalid and future rows rejected.",
-    attribution: "Wikipedia contributors, Opinion polling for the next Spanish general election, CC BY-SA 4.0; individual poll publications remain linked per row.",
+    changes: "Dates normalised to ISO format; seat ranges removed; successor-party series kept separate except Podemos/UP; invalid and future rows rejected.",
+    attribution: "Wikipedia contributors, Spanish general-election polling archive pages, CC BY-SA 4.0; individual poll publications remain linked per row.",
     region: { slug: "spain-congress", name: "España", type: "spain-federal" },
     geographyNote: "National voting intention for elections to the Congreso de los Diputados.",
     defaultPollsters: Object.values(pollsterIds),
     publicationBlackoutDays: 5,
     publicationBlackoutSource: "https://www.boe.es/buscar/act.php?id=BOE-A-1985-11672#a69",
     electionResults: {
-      "2019-11-10": { "401": 20.8, "402": 28.0, "403": 15.1, "404": 12.9, "406": 3.6, "407": 2.2, "408": 1.1, "409": 1.6, "410": 0.5, "411": 0.5, "412": 0.5, "416": 13.2 },
+      "2000-03-12": { "401": 44.5, "402": 34.2, "418": 5.5, "420": 4.2, "409": 1.5, "406": 0.8, "410": 0.8, "416": 8.5 },
+      "2004-03-14": { "401": 37.7, "402": 42.6, "418": 5.0, "420": 3.2, "406": 2.5, "409": 1.6, "410": 0.8, "416": 6.6 },
+      "2008-03-09": { "401": 39.9, "402": 43.9, "418": 3.8, "420": 3.0, "409": 1.2, "406": 1.2, "410": 0.8, "419": 1.2, "416": 5.0 },
+      "2011-11-20": { "401": 44.6, "402": 28.8, "418": 6.9, "420": 4.2, "419": 4.7, "409": 1.3, "406": 1.1, "410": 0.8, "416": 7.6 },
+      "2015-12-20": { "401": 28.7, "402": 22.0, "405": 20.7, "417": 13.9, "418": 3.7, "406": 2.4, "420": 2.3, "409": 1.2, "408": 0.9, "416": 4.2 },
+      "2016-06-26": { "401": 33.0, "402": 22.6, "405": 21.2, "417": 13.1, "406": 2.6, "420": 2.0, "409": 1.2, "408": 0.8, "416": 3.5 },
+      "2019-04-28": { "401": 16.7, "402": 28.7, "403": 10.3, "405": 14.3, "417": 15.9, "406": 3.9, "420": 1.9, "409": 1.5, "408": 1.0, "416": 4.8 },
+      "2019-11-10": { "401": 20.8, "402": 28.0, "403": 15.1, "405": 12.9, "406": 3.6, "407": 2.2, "408": 1.1, "409": 1.6, "410": 0.5, "411": 0.5, "412": 0.5, "416": 13.2 },
       "2023-07-23": { "401": 33.1, "402": 31.7, "403": 12.4, "404": 12.3, "406": 1.9, "407": 1.6, "408": 1.4, "409": 1.1, "410": 0.6, "411": 0.5, "412": 0.2, "416": 3.2 },
     },
-    electionSourceUrl: "https://resultados.generales23j.es/es/resultados/0/0/20",
+    electionSourceUrl: "https://infoelectoral.interior.gob.es/es/elecciones-celebradas/procesos-electorales/",
     electionSourceLabel: "Ministerio del Interior",
   },
   pollsters: Object.fromEntries(Object.entries(pollsterIds).map(([name, id]) => [id, name])),
