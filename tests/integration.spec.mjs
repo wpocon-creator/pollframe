@@ -589,6 +589,26 @@ test.describe("core routes", () => {
     await page.locator(".customize-panel .select-control").nth(1).locator("summary").click();
     await page.getByRole("button", { name: /Custom dates|Eigener Zeitraum/i }).click();
     await expect(page.locator('.custom-date-slider input[type="range"]')).toHaveCount(2);
+    const customStart = page.locator('.custom-date-slider input[type="range"]').first();
+    const startDateCard = page.locator(".custom-date-values strong").first();
+    const chartLine = page.locator(".average-series-line").first();
+    const lineBeforeDrag = await chartLine.getAttribute("d");
+    const dateBeforeDrag = await startDateCard.textContent();
+    const previewMs = await customStart.evaluate(async (input) => {
+      const target = Math.max(Number(input.min), Math.round(Number(input.max) * .25));
+      input.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, pointerId: 1 }));
+      const started = performance.now();
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(input, String(target));
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      return performance.now() - started;
+    });
+    expect(previewMs).toBeLessThan(200);
+    await expect(startDateCard).not.toHaveText(dateBeforeDrag);
+    expect(await chartLine.getAttribute("d")).toBe(lineBeforeDrag);
+    await customStart.dispatchEvent("pointerup", { pointerId: 1, pointerType: "mouse" });
+    await expect.poll(() => chartLine.getAttribute("d")).not.toBe(lineBeforeDrag);
+    await page.locator(".custom-date-slider").screenshot({ path: testInfo.outputPath("custom-date-slider.png") });
     await expectDocumentFits(page);
     await expectNoBrokenVisibleText(page);
     await page.screenshot({ path: testInfo.outputPath("uk-westminster.png"), fullPage: false });

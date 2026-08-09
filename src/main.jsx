@@ -1863,51 +1863,74 @@ function DateRangeSlider({ locale, min, max, start, end, onStart, onEnd }) {
   const inputEnd = Math.max(inputStart + 1, Math.min(totalDays, Math.round((parseDate(end) - minTime) / DAY)));
   const [draftStart, setDraftStart] = useState(inputStart);
   const [draftEnd, setDraftEnd] = useState(inputEnd);
-  const frameRef = useRef(0);
-  const nextCommitRef = useRef(null);
-  useEffect(() => { setDraftStart(inputStart); }, [inputStart]);
-  useEffect(() => { setDraftEnd(inputEnd); }, [inputEnd]);
-  useEffect(() => () => { if (frameRef.current) window.cancelAnimationFrame(frameRef.current); }, []);
-  const commit = (kind, day) => {
-    nextCommitRef.current = { kind, day };
-    if (frameRef.current) return;
-    frameRef.current = window.requestAnimationFrame(() => {
-      frameRef.current = 0;
-      const next = nextCommitRef.current;
-      if (!next) return;
-      const iso = toIso(minTime + (next.day * DAY));
-      if (next.kind === "start") onStart(iso); else onEnd(iso);
-    });
+  const [activeHandle, setActiveHandle] = useState(null);
+  const draftRef = useRef({ start: inputStart, end: inputEnd });
+  const committedRef = useRef({ start: inputStart, end: inputEnd });
+  useEffect(() => {
+    setDraftStart(inputStart);
+    draftRef.current.start = inputStart;
+    committedRef.current.start = inputStart;
+  }, [inputStart]);
+  useEffect(() => {
+    setDraftEnd(inputEnd);
+    draftRef.current.end = inputEnd;
+    committedRef.current.end = inputEnd;
+  }, [inputEnd]);
+  const commit = (kind) => {
+    const day = draftRef.current[kind];
+    const committedDay = committedRef.current[kind];
+    setActiveHandle(null);
+    if (day === committedDay) return;
+    committedRef.current[kind] = day;
+    const iso = toIso(minTime + (day * DAY));
+    if (kind === "start") onStart(iso); else onEnd(iso);
   };
   const updateStart = (value) => {
-    const day = Math.min(Number(value), draftEnd - 1);
+    const day = Math.min(Number(value), draftRef.current.end - 1);
+    draftRef.current.start = day;
     setDraftStart(day);
-    commit("start", day);
   };
   const updateEnd = (value) => {
-    const day = Math.max(Number(value), draftStart + 1);
+    const day = Math.max(Number(value), draftRef.current.start + 1);
+    draftRef.current.end = day;
     setDraftEnd(day);
-    commit("end", day);
   };
   const startPercent = (draftStart / totalDays) * 100;
   const endPercent = (draftEnd / totalDays) * 100;
   const displayedStart = toIso(minTime + (draftStart * DAY));
   const displayedEnd = toIso(minTime + (draftEnd * DAY));
   const ticks = [0, .25, .5, .75, 1].map((portion) => ({ left: portion * 100, label: new Date(minTime + (totalDays * portion * DAY)).getUTCFullYear() }));
+  const selectedDays = Math.max(1, draftEnd - draftStart);
+  const selectedTotalMonths = Math.round(selectedDays / 30.44);
+  const selectedYears = Math.floor(selectedTotalMonths / 12);
+  const selectedMonths = selectedTotalMonths % 12;
+  const duration = selectedYears
+    ? `${selectedYears} ${l(selectedYears === 1 ? "Jahr" : "Jahre", selectedYears === 1 ? "year" : "years", selectedYears === 1 ? "año" : "años")}${selectedMonths ? ` · ${selectedMonths} ${l("Mon.", "mo", "mes")}` : ""}`
+    : selectedMonths
+      ? `${selectedMonths} ${l(selectedMonths === 1 ? "Monat" : "Monate", selectedMonths === 1 ? "month" : "months", selectedMonths === 1 ? "mes" : "meses")}`
+      : `${selectedDays} ${l(selectedDays === 1 ? "Tag" : "Tage", selectedDays === 1 ? "day" : "days", selectedDays === 1 ? "día" : "días")}`;
   return (
-    <div className="custom-date-slider">
-      <div className="custom-date-values" aria-hidden="true">
-        <span><small>{l("Von", "From", "Desde")}</small><strong>{formatDate(displayedStart, locale, { year: true })}</strong></span>
-        <span>—</span>
-        <span><small>{l("Bis", "To", "Hasta")}</small><strong>{formatDate(displayedEnd, locale, { year: true })}</strong></span>
+    <div className={`custom-date-slider ${activeHandle ? "is-dragging" : ""}`}>
+      <div className="custom-date-header">
+        <span>{l("Exakter Zeitraum", "Exact date range", "Periodo exacto")}</span>
+        <strong>{duration}</strong>
       </div>
-      <div className="dual-range" style={{ "--range-start": `${startPercent}%`, "--range-end": `${endPercent}%` }}>
-        <div className="dual-range-track" aria-hidden="true" />
-        <label><span className="sr-only">{l("Beginn des Zeitraums", "Start of date range", "Inicio del periodo")}</span><input type="range" min="0" max={totalDays} value={draftStart} aria-valuetext={formatDate(displayedStart, locale, { year: true })} onChange={(event) => updateStart(event.target.value)} /></label>
-        <label><span className="sr-only">{l("Ende des Zeitraums", "End of date range", "Fin del periodo")}</span><input type="range" min="0" max={totalDays} value={draftEnd} aria-valuetext={formatDate(displayedEnd, locale, { year: true })} onChange={(event) => updateEnd(event.target.value)} /></label>
+      <div className="custom-date-values" aria-live="polite">
+        <span className={activeHandle === "start" ? "active" : ""}><small>{l("Von", "From", "Desde")}</small><strong>{formatDate(displayedStart, locale, { year: true })}</strong></span>
+        <i aria-hidden="true">→</i>
+        <span className={activeHandle === "end" ? "active" : ""}><small>{l("Bis", "To", "Hasta")}</small><strong>{formatDate(displayedEnd, locale, { year: true })}</strong></span>
       </div>
-      <div className="dual-range-ticks" aria-hidden="true">{ticks.map((tick, index) => <span key={`${tick.label}-${index}`} style={{ left: `${tick.left}%` }}>{tick.label}</span>)}</div>
-      <p>{l("Ziehe beide Enden, um den sichtbaren Zeitraum genau festzulegen.", "Drag either end to define the exact visible period.", "Arrastra ambos extremos para definir el periodo visible.")}</p>
+      <div className="dual-range-shell">
+        <div className="dual-range" style={{ "--range-start": `${startPercent}%`, "--range-end": `${endPercent}%` }}>
+          <div className="dual-range-track" aria-hidden="true"><i /></div>
+          <label className={activeHandle === "start" ? "active" : ""}><span className="sr-only">{l("Beginn des Zeitraums", "Start of date range", "Inicio del periodo")}</span><input type="range" min="0" max={totalDays} value={draftStart} aria-label={l("Beginn des Zeitraums", "Start of date range", "Inicio del periodo")} aria-valuetext={formatDate(displayedStart, locale, { year: true })} onPointerDown={() => setActiveHandle("start")} onPointerUp={() => commit("start")} onPointerCancel={() => commit("start")} onKeyDown={() => setActiveHandle("start")} onKeyUp={() => commit("start")} onBlur={() => commit("start")} onChange={(event) => updateStart(event.target.value)} /></label>
+          <label className={activeHandle === "end" ? "active" : ""}><span className="sr-only">{l("Ende des Zeitraums", "End of date range", "Fin del periodo")}</span><input type="range" min="0" max={totalDays} value={draftEnd} aria-label={l("Ende des Zeitraums", "End of date range", "Fin del periodo")} aria-valuetext={formatDate(displayedEnd, locale, { year: true })} onPointerDown={() => setActiveHandle("end")} onPointerUp={() => commit("end")} onPointerCancel={() => commit("end")} onKeyDown={() => setActiveHandle("end")} onKeyUp={() => commit("end")} onBlur={() => commit("end")} onChange={(event) => updateEnd(event.target.value)} /></label>
+        </div>
+        <div className="dual-range-ticks" aria-hidden="true">{ticks.map((tick, index) => <span key={`${tick.label}-${index}`} style={{ left: `${tick.left}%` }}><i />{tick.label}</span>)}</div>
+      </div>
+      <p><span className="custom-date-speed-dot" />{activeHandle
+        ? l("Vorschau – beim Loslassen wird das Diagramm aktualisiert.", "Previewing — the chart updates when you release.", "Vista previa: el gráfico se actualiza al soltar.")
+        : l("Ziehe die beiden Griffe. Das Diagramm wird erst beim Loslassen neu berechnet.", "Drag either handle. The chart recalculates once when you release.", "Arrastra los controles. El gráfico se recalcula una vez al soltar.")}</p>
     </div>
   );
 }
