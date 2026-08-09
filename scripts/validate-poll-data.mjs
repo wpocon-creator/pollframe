@@ -157,6 +157,33 @@ for (const [index, poll] of combinedUkPolls.entries()) {
 }
 if (ukSummary.westminster?.latestDate !== uk.polls.at(-1)?.date || ukSummary.westminster?.firstDate !== uk.polls[0]?.date) addError("UK summary date range differs");
 if (!isRecord(ukSummary.map?.areas) || Object.keys(ukSummary.map.areas).length < 40) addError("UK regional map data is incomplete");
+
+const spain = await readJson("public/data/spain-congress.json");
+const spainSummary = await readJson("public/spain-summary.json");
+const spainMap = await readJson("public/data/spain-autonomies.geojson");
+if (spain.metadata?.source !== "Wikipedia contributors · cited polling organisations") addError("Spain source identity is invalid");
+if (spain.metadata?.license !== "CC BY-SA 4.0" || spain.metadata?.licenseUrl !== "https://creativecommons.org/licenses/by-sa/4.0/") addError("Spain reuse licence is invalid");
+if (spain.metadata?.region?.slug !== "spain-congress") addError("Spain region metadata is invalid");
+if (!Array.isArray(spain.polls) || spain.polls.length < 250 || spain.polls.length > 2_000) addError("Spain polling archive size is implausible");
+if (!isRecord(spain.pollsters) || Object.keys(spain.pollsters).length < 10 || !isRecord(spain.parties)) addError("Spain metadata maps are incomplete");
+let previousSpainDate = "";
+for (const [index, poll] of (spain.polls ?? []).entries()) {
+  const label = `Spain poll ${index + 1}`;
+  if (!realIsoDate(poll.date) || poll.date < previousSpainDate) addError(`${label} date is invalid or unordered`);
+  previousSpainDate = poll.date;
+  if (!spain.pollsters[poll.pollster]) addError(`${label} uses an unknown pollster`);
+  if (!Array.isArray(poll.fieldwork) || poll.fieldwork.length !== 2 || poll.fieldwork.some((date) => !realIsoDate(date)) || poll.fieldwork[0] > poll.fieldwork[1]) addError(`${label} fieldwork is invalid`);
+  if (poll.sample !== null && (!Number.isInteger(poll.sample) || poll.sample < 100 || poll.sample > 10_000_000)) addError(`${label} sample is implausible`);
+  if (!safeText(poll.method, 160)) addError(`${label} method is unsafe`);
+  if (typeof poll.sourceUrl !== "string" || !/^https?:\/\//.test(poll.sourceUrl)) addError(`${label} source URL is missing`);
+  const values = Object.values(poll.results ?? {});
+  if (values.length < 4 || values.some((value) => !Number.isFinite(value) || value < 0 || value > 100)) addError(`${label} results are invalid`);
+  const total = values.reduce((sum, value) => sum + value, 0);
+  if (total < 65 || total > 105) addError(`${label} result total is implausible: ${total}`);
+}
+if (spainSummary.congress?.latestDate !== spain.polls.at(-1)?.date || spainSummary.congress?.firstDate !== spain.polls[0]?.date) addError("Spain summary date range differs");
+if (!Array.isArray(spainSummary.issues?.items) || spainSummary.issues.items.length < 3 || !/^https:\/\/www\.cis\.es\//.test(spainSummary.issues?.sourceUrl ?? "")) addError("Spain CIS issue snapshot is incomplete");
+if (spainMap.type !== "FeatureCollection" || !Array.isArray(spainMap.features) || spainMap.features.length < 19) addError("Spain autonomous-community map is incomplete");
 for (const region of stateMap.regions ?? []) {
   if (
     !/^[a-z]{2}$/.test(region.mapId ?? "")
@@ -186,5 +213,5 @@ if (errors.length) {
 console.log(
   `Validated ${summary.regions.length} regions and ${
     summary.regions.reduce((sum, region) => sum + region.pollCount, 0)
-  } polls`,
+  } German polls, ${combinedUkPolls.length} UK records and ${spain.polls.length} Spanish polls`,
 );

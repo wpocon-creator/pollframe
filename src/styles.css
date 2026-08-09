@@ -27,6 +27,83 @@
   text-rendering: optimizeLegibility;
 }
 
+/* Spain: designed from the small viewport up. */
+.spain-country-overview { --spain-red: #c92332; --spain-gold: #f0b323; }
+.spain-country-hero { position: relative; overflow: hidden; }
+.spain-country-hero::after { content: ""; position: absolute; right: -4rem; bottom: -6rem; width: 15rem; height: 15rem; border-radius: 50%; background: radial-gradient(circle, color-mix(in srgb, var(--spain-gold) 18%, transparent), transparent 68%); pointer-events: none; }
+.spain-overview-grid { display: grid; gap: .9rem; margin: 0 0 1rem; }
+.spain-polling-entry,.spain-issues-card,.spain-investiture-card,.spain-map-card,.spain-system-note { border: 1px solid var(--line); border-radius: 18px; background: var(--surface); color: var(--ink); box-shadow: var(--shadow); }
+.spain-polling-entry { display: grid; grid-template-columns: 1fr auto; gap: 1rem; padding: 1.15rem; text-decoration: none; position: relative; transition: border-color .16s ease, transform .16s ease; }
+.spain-polling-entry:hover { border-color: color-mix(in srgb, var(--spain-red) 55%, var(--line)); transform: translateY(-1px); }
+.spain-polling-entry>div>span,.spain-issues-card header>span,.spain-investiture-card header>span,.spain-system-note>div>span { color: var(--accent); font-size: .72rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.spain-polling-entry h2,.spain-issues-card h2,.spain-investiture-card h2,.spain-map-card h2,.spain-system-note h2 { margin: .35rem 0 .4rem; font-size: clamp(1.35rem, 5vw, 2rem); letter-spacing: -.035em; }
+.spain-polling-entry p,.spain-issues-card p,.spain-investiture-card p,.spain-map-card header p,.spain-system-note p { margin: 0; color: var(--muted); line-height: 1.48; }
+.spain-polling-entry dl { display: none; margin: 0 2rem 0 0; gap: 1.25rem; align-items: center; }
+.spain-polling-entry dl div { min-width: 5.5rem; }
+.spain-polling-entry dt { color: var(--muted); font-size: .7rem; font-weight: 700; text-transform: uppercase; }
+.spain-polling-entry dd { margin: .15rem 0 0; font-weight: 800; }
+.spain-polling-entry>b { position: absolute; right: 1.15rem; top: 50%; translate: 0 -50%; font-size: 1.4rem; color: var(--accent); }
+.spain-issues-card,.spain-investiture-card { padding: 1.15rem; }
+.spain-issue-bars { display: grid; gap: .72rem; margin-top: 1.1rem; }
+.spain-issue-bars>div { display: grid; grid-template-columns: minmax(6.6rem, 1fr) minmax(5.5rem, 2fr) 3.3rem; gap: .55rem; align-items: center; font-size: .86rem; }
+.spain-issue-bars>div>span { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.spain-issue-bars>div>div { height: .62rem; overflow: hidden; border-radius: 99px; background: var(--surface-soft); }
+.spain-issue-bars i { display: block; height: 100%; border-radius: inherit; }
+.spain-issue-bars strong { text-align: right; font-variant-numeric: tabular-nums; }
+.spain-issues-card footer { display: flex; justify-content: space-between; gap: 1rem; margin-top: 1rem; padding-top: .8rem; border-top: 1px solid var(--line); color: var(--muted); font-size: .75rem; }
+.spain-issues-card footer a,.spain-investiture-card>a { color: var(--ink); font-weight: 750; }
+.investiture-rounds { display: grid; grid-template-columns: 1fr auto 1fr; gap: .55rem; align-items: center; margin: 1rem 0; }
+.investiture-rounds>div { display: grid; grid-template-columns: auto 1fr; gap: .1rem .55rem; padding: .75rem; border-radius: 14px; background: var(--surface-soft); }
+.investiture-rounds>div>b { grid-row: 1 / 3; display: grid; place-items: center; width: 1.8rem; height: 1.8rem; border-radius: 50%; color: white; background: var(--accent); }
+.investiture-rounds>div>span { color: var(--muted); font-size: .72rem; }
+.investiture-rounds>div>strong { font-size: .93rem; }
+.investiture-rounds>i { color: var(--muted); font-size: .7rem; font-style: normal; font-weight: 800; }
+.spain-investiture-card>a { font-size: .78rem; }
+.spain-system-details { margin-top: .85rem; padding-top: .75rem; border-top: 1px solid var(--line); }
+.spain-system-details summary { cursor: pointer; font-size: .78rem; font-weight: 780; }
+.spain-system-details p { margin-top: .65rem; font-size: .78rem; }
+.spain-system-details a { display: inline-block; margin-top: .5rem; color: var(--ink); font-size: .75rem; font-weight: 750; }
+.spain-map-card { margin: 1rem 0 2rem; padding: 1.15rem; }
+.spain-map-layout { display: grid; gap: 1rem; margin-top: 1rem; }
+.spain-map-svg { width: 100%; min-height: 250px; overflow: visible; touch-action: manipulation; }
+.spain-map-svg path { fill: color-mix(in srgb, var(--accent) 16%, var(--surface)); stroke: var(--surface); stroke-width: 2.5; vector-effect: non-scaling-stroke; cursor: pointer; transition: fill .12s ease, stroke .12s ease; outline: none; }
+.spain-map-svg path:hover,.spain-map-svg path:focus-visible,.spain-map-svg path.active { fill: color-mix(in srgb, var(--accent) 48%, var(--surface)); stroke: var(--accent); stroke-width: 3.5; }
+.spain-map-detail { align-self: center; padding: 1rem; border: 1px solid var(--line); border-radius: 15px; background: var(--surface-soft); }
+.spain-map-detail>span { color: var(--accent); font-size: .7rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.spain-map-detail h3 { margin: .35rem 0 .8rem; font-size: 1.35rem; }
+.spain-map-detail dl { margin: 0; }
+.spain-map-detail dl div { display: flex; justify-content: space-between; gap: 1rem; padding: .7rem 0; border-top: 1px solid var(--line); font-size: .78rem; }
+.spain-map-detail dd { margin: 0; text-align: right; font-weight: 700; }
+.spain-map-detail small { display: block; margin-top: .75rem; color: var(--muted); line-height: 1.4; }
+.spain-map-source { margin: .8rem 0 0; color: var(--muted); font-size: .72rem; }
+.spain-system-note { display: grid; gap: 1rem; margin-top: 1rem; padding: 1.2rem; }
+.results-more { width: 100%; margin-top: .7rem; padding: .65rem; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-soft); color: var(--ink); font: inherit; font-size: .78rem; font-weight: 750; cursor: pointer; }
+.watch-mini-map-es path { fill: color-mix(in srgb, var(--accent) 28%, var(--surface)); stroke: var(--surface); stroke-width: 3; vector-effect: non-scaling-stroke; }
+.watch-issue-list { display: grid; gap: .48rem; margin-top: .55rem; }
+.watch-issue-list span { position: relative; display: grid; grid-template-columns: 1fr auto; gap: .5rem; overflow: hidden; padding: .42rem .5rem; border-radius: 8px; background: var(--surface-soft); font-size: .72rem; }
+.watch-issue-list span>i { position: absolute; inset: auto auto 0 0; height: 2px; }
+.watch-issue-list b,.watch-issue-list strong { position: relative; z-index: 1; }
+
+@media (min-width: 720px) {
+  .spain-overview-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .spain-polling-entry { grid-column: 1 / -1; padding: 1.35rem 1.5rem; }
+  .spain-polling-entry dl { display: flex; }
+  .spain-map-layout { grid-template-columns: minmax(0, 2.3fr) minmax(14rem, 1fr); align-items: center; }
+  .spain-system-note { grid-template-columns: minmax(0, 1.3fr) minmax(19rem, 1fr); align-items: center; }
+}
+
+@media (max-width: 540px) {
+  .spain-country-overview { padding-inline: .75rem; }
+  .spain-country-hero { padding-block: 1.25rem; }
+  .spain-polling-entry,.spain-issues-card,.spain-investiture-card,.spain-map-card { border-radius: 15px; }
+  .spain-issue-bars>div { grid-template-columns: minmax(5.8rem, 1fr) minmax(4rem, 1.5fr) 3rem; font-size: .8rem; }
+  .spain-map-card header p { display: none; }
+  .spain-map-detail small { display: none; }
+  .spain-map-svg { min-height: 220px; }
+  .spain-country-hero h1 { font-size: 2.15rem; }
+  .spain-intro h1 { font-size: 2.35rem; line-height: 1.03; }
+}
+
 /* Watchlist app workspace */
 .watch-star {
   align-items: center;
@@ -5668,4 +5745,6 @@ footer nav .footer-action:hover {
   .state-map-app-page .map-copy h2 { font-size: 1.75rem; margin: .15rem 0 .35rem; }
   .state-map-app-page .map-legend { display: flex; flex-wrap: wrap; font-size: .55rem; gap: .35rem .6rem; justify-content: center; margin: 0 0 .25rem; order: 1; }
   .state-map-app-page .germany-map { max-height: calc(100dvh - 285px); min-height: 350px; }
+  .spain-country-hero h1 { font-size: 2.15rem; }
+  .spain-intro .intro-copy h1 { font-size: 2.35rem; line-height: 1.03; }
 }

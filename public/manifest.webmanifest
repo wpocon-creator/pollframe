@@ -51,6 +51,12 @@
       "short_name": "Westminster",
       "url": "/?region=uk-westminster&source=shortcut",
       "icons": [{ "src": "/pollframe-app-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Encuestas de España",
+      "short_name": "España",
+      "url": "/?region=spain-congress&source=shortcut",
+      "icons": [{ "src": "/pollframe-app-192.png", "sizes": "192x192" }]
     }
   ]
 }
