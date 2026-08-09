@@ -164,7 +164,9 @@ const spainMap = await readJson("public/data/spain-autonomies.geojson");
 if (spain.metadata?.source !== "Wikipedia contributors · cited polling organisations") addError("Spain source identity is invalid");
 if (spain.metadata?.license !== "CC BY-SA 4.0" || spain.metadata?.licenseUrl !== "https://creativecommons.org/licenses/by-sa/4.0/") addError("Spain reuse licence is invalid");
 if (spain.metadata?.region?.slug !== "spain-congress") addError("Spain region metadata is invalid");
-if (!Array.isArray(spain.polls) || spain.polls.length < 250 || spain.polls.length > 2_000) addError("Spain polling archive size is implausible");
+if (!Array.isArray(spain.polls) || spain.polls.length < 3_000 || spain.polls.length > 5_000) addError("Spain polling archive size is implausible");
+if (spain.polls?.[0]?.date > "1997-01-01") addError("Spain historical archive does not reach the 1996–2000 cycle");
+if (!Array.isArray(spain.metadata?.archiveSourceUrls) || spain.metadata.archiveSourceUrls.length < 10) addError("Spain archive source attribution is incomplete");
 if (!isRecord(spain.pollsters) || Object.keys(spain.pollsters).length < 10 || !isRecord(spain.parties)) addError("Spain metadata maps are incomplete");
 let previousSpainDate = "";
 for (const [index, poll] of (spain.polls ?? []).entries()) {

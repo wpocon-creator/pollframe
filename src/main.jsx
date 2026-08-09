@@ -8,7 +8,6 @@ import {
   SPAIN_POLITICAL_EVENTS,
   SpainCountryOverview,
   SpainMiniMap,
-  SpainSystemNote,
 } from "./spain.jsx";
 import "./styles.css";
 
@@ -1855,6 +1854,7 @@ function SelectControl({ label, value, onChange, options }) {
 
 function DateRangeSlider({ locale, min, max, start, end, onStart, onEnd }) {
   const isGerman = locale === "de";
+  const l = (de, en, es) => locale === "es" ? es : isGerman ? de : en;
   const minTime = parseDate(min);
   const maxTime = parseDate(max);
   const totalDays = Math.max(1, Math.round((maxTime - minTime) / DAY));
@@ -1896,17 +1896,17 @@ function DateRangeSlider({ locale, min, max, start, end, onStart, onEnd }) {
   return (
     <div className="custom-date-slider">
       <div className="custom-date-values" aria-hidden="true">
-        <span><small>{isGerman ? "Von" : "From"}</small><strong>{formatDate(displayedStart, locale, { year: true })}</strong></span>
+        <span><small>{l("Von", "From", "Desde")}</small><strong>{formatDate(displayedStart, locale, { year: true })}</strong></span>
         <span>—</span>
-        <span><small>{isGerman ? "Bis" : "To"}</small><strong>{formatDate(displayedEnd, locale, { year: true })}</strong></span>
+        <span><small>{l("Bis", "To", "Hasta")}</small><strong>{formatDate(displayedEnd, locale, { year: true })}</strong></span>
       </div>
       <div className="dual-range" style={{ "--range-start": `${startPercent}%`, "--range-end": `${endPercent}%` }}>
         <div className="dual-range-track" aria-hidden="true" />
-        <label><span className="sr-only">{isGerman ? "Beginn des Zeitraums" : "Start of date range"}</span><input type="range" min="0" max={totalDays} value={draftStart} aria-valuetext={formatDate(displayedStart, locale, { year: true })} onChange={(event) => updateStart(event.target.value)} /></label>
-        <label><span className="sr-only">{isGerman ? "Ende des Zeitraums" : "End of date range"}</span><input type="range" min="0" max={totalDays} value={draftEnd} aria-valuetext={formatDate(displayedEnd, locale, { year: true })} onChange={(event) => updateEnd(event.target.value)} /></label>
+        <label><span className="sr-only">{l("Beginn des Zeitraums", "Start of date range", "Inicio del periodo")}</span><input type="range" min="0" max={totalDays} value={draftStart} aria-valuetext={formatDate(displayedStart, locale, { year: true })} onChange={(event) => updateStart(event.target.value)} /></label>
+        <label><span className="sr-only">{l("Ende des Zeitraums", "End of date range", "Fin del periodo")}</span><input type="range" min="0" max={totalDays} value={draftEnd} aria-valuetext={formatDate(displayedEnd, locale, { year: true })} onChange={(event) => updateEnd(event.target.value)} /></label>
       </div>
       <div className="dual-range-ticks" aria-hidden="true">{ticks.map((tick, index) => <span key={`${tick.label}-${index}`} style={{ left: `${tick.left}%` }}>{tick.label}</span>)}</div>
-      <p>{isGerman ? "Ziehe beide Enden, um den sichtbaren Zeitraum genau festzulegen." : "Drag either end to define the exact visible period."}</p>
+      <p>{l("Ziehe beide Enden, um den sichtbaren Zeitraum genau festzulegen.", "Drag either end to define the exact visible period.", "Arrastra ambos extremos para definir el periodo visible.")}</p>
     </div>
   );
 }
@@ -2046,15 +2046,37 @@ function PollChart({
   ].filter(Number.isFinite)), [trend, activeParties, averageSeriesVisible, averagePoints, trendVisible, visibleElections]);
   const x = (date) => left + ((parseDate(date) - startTime) / Math.max(endTime - startTime, 1)) * innerW;
   const maxEventLabels = spanDays > 3650 ? 8 : spanDays > 1825 ? 10 : 12;
-  const labeledEventIds = useMemo(() => new Set(
-    [...visibleEvents]
-      .sort((a, b) => (
-        (a.priority ?? EVENT_LABEL_PRIORITY.get(a.id) ?? 2) - (b.priority ?? EVENT_LABEL_PRIORITY.get(b.id) ?? 2)
-        || parseDate(b.date) - parseDate(a.date)
-      ))
-      .slice(0, maxEventLabels)
-      .map((event) => event.id),
-  ), [visibleEvents, maxEventLabels]);
+  const labeledEventIds = useMemo(() => {
+    if (visibleEvents.length <= maxEventLabels) return new Set(visibleEvents.map((event) => event.id));
+    const selected = new Set();
+    const bucketWidth = Math.max(1, (endTime - startTime) / maxEventLabels);
+    for (let bucket = 0; bucket < maxEventLabels; bucket += 1) {
+      const bucketStart = startTime + (bucket * bucketWidth);
+      const bucketEnd = bucket === maxEventLabels - 1 ? endTime + 1 : bucketStart + bucketWidth;
+      const centre = (bucketStart + bucketEnd) / 2;
+      const candidate = visibleEvents
+        .filter((event) => {
+          const time = parseDate(event.date);
+          return time >= bucketStart && time < bucketEnd;
+        })
+        .sort((a, b) => (
+          (a.priority ?? EVENT_LABEL_PRIORITY.get(a.id) ?? 2) - (b.priority ?? EVENT_LABEL_PRIORITY.get(b.id) ?? 2)
+          || Math.abs(parseDate(a.date) - centre) - Math.abs(parseDate(b.date) - centre)
+        ))[0];
+      if (candidate) selected.add(candidate.id);
+    }
+    if (selected.size < maxEventLabels) {
+      [...visibleEvents]
+        .filter((event) => !selected.has(event.id))
+        .sort((a, b) => (
+          (a.priority ?? EVENT_LABEL_PRIORITY.get(a.id) ?? 2) - (b.priority ?? EVENT_LABEL_PRIORITY.get(b.id) ?? 2)
+          || parseDate(b.date) - parseDate(a.date)
+        ))
+        .slice(0, maxEventLabels - selected.size)
+        .forEach((event) => selected.add(event.id));
+    }
+    return selected;
+  }, [visibleEvents, maxEventLabels, startTime, endTime]);
   const { eventMarkers, eventLaneCount } = useMemo(() => {
     const laneEnds = [];
     const markers = [...visibleEvents].sort((a, b) => parseDate(a.date) - parseDate(b.date)).map((event) => {
@@ -2308,7 +2330,7 @@ function PollChart({
               {trendVisible && visibleElections.map((election) => {
                 const value = election.results[party.id];
                 if (!Number.isFinite(value)) return null;
-                const sourceLabel = locale === "de" ? "Amtliches Wahlergebnis" : "Official election result";
+                const sourceLabel = locale === "es" ? "Resultado electoral oficial" : locale === "de" ? "Amtliches Wahlergebnis" : "Official election result";
                 return (
                   <rect
                     key={`election-${party.id}-${election.date}`}
@@ -2356,9 +2378,9 @@ function PollChart({
           ))}
           {tickDates.map((date, index) => (
             <text key={date} x={x(date)} y={height - 20} textAnchor={index === 0 ? "start" : index === 4 ? "end" : "middle"} className="axis-label">
-              {range === "all"
+              {range === "all" || spanDays > 2_500
                 ? new Date(parseDate(date)).getUTCFullYear()
-                : formatDate(date, locale, { year: index === 0 || index === 4 })}
+                : formatDate(date, locale, { year: spanDays > 450 || index === 0 || index === 4 })}
             </text>
           ))}
           {inspection && (
@@ -3275,6 +3297,7 @@ function SettingsPanel({
   motion,
   setMotion,
   pwa,
+  allowedLocales = SUPPORTED_LOCALES,
 }) {
   if (!open) return null;
   const languages = [
@@ -3298,7 +3321,7 @@ function SettingsPanel({
           <h3>{t.language}</h3>
           <p>{t.languageHelp}</p>
           <div className="language-list">
-            {languages.map((language) => (
+            {languages.filter((language) => allowedLocales.includes(language.id)).map((language) => (
               <button key={language.id} className={`language-option ${locale === language.id ? "selected" : ""}`} onClick={() => setLocale(language.id)}>
                 <span><strong>{language.label}</strong><small>{language.region}</small></span>
                 {locale === language.id && <Icon name="check" />}
@@ -3373,9 +3396,15 @@ function MethodModal({
             <a href={metadata.sourceUrl ?? DATA_SOURCE_URL} target="_blank" rel="noreferrer">{metadata.source ?? "dawum.de"} <Icon name="external" size={14} /></a>
             <a href={metadata.licenseUrl ?? DATA_LICENSE_URL} target="_blank" rel="noreferrer">{metadata.license ?? "ODbL 1.0"} <Icon name="external" size={14} /></a>
             {electionSourceUrl && (
-              <a href={electionSourceUrl} target="_blank" rel="noreferrer">{t.electionSource}: {metadata.electionSourceLabel ?? (locale === "de" ? "Die Bundeswahlleiterin, Wiesbaden" : "Federal Returning Officer, Wiesbaden")} <Icon name="external" size={14} /></a>
+              <a href={electionSourceUrl} target="_blank" rel="noreferrer">{t.electionSource}: {metadata.electionSourceLabel ?? (locale === "es" ? "Administración electoral" : locale === "de" ? "Die Bundeswahlleiterin, Wiesbaden" : "Federal Returning Officer, Wiesbaden")} <Icon name="external" size={14} /></a>
             )}
           </div>
+          {metadata.archiveSourceUrls?.length > 1 && (
+            <details className="archive-source-list">
+              <summary>{locale === "es" ? `${metadata.archiveSourceUrls.length} páginas del archivo utilizadas` : locale === "de" ? `${metadata.archiveSourceUrls.length} verwendete Archivseiten` : `${metadata.archiveSourceUrls.length} archive pages used`}</summary>
+              <ol>{metadata.archiveSourceUrls.map((url, index) => <li key={url}><a href={url} target="_blank" rel="noreferrer">{locale === "es" ? `Fuente ${index + 1}` : locale === "de" ? `Quelle ${index + 1}` : `Source ${index + 1}`} <Icon name="external" size={13} /></a></li>)}</ol>
+            </details>
+          )}
         </div>
       </section>
     </div>
@@ -3391,20 +3420,21 @@ function DataAttribution({
   electionSourceLabel = null,
 }) {
   const isGerman = locale === "de";
+  const l = (de, en, es) => locale === "es" ? es : isGerman ? de : en;
   const sourceUrl = metadata?.sourceUrl ?? DATA_SOURCE_URL;
   const source = metadata?.source ?? "dawum.de";
   const licenseUrl = metadata?.licenseUrl ?? DATA_LICENSE_URL;
   const license = metadata?.license ?? "ODbL 1.0";
   return (
     <span className="data-attribution">
-      {isGerman ? "Daten von" : "Data from"}{" "}
+      {l("Daten von", "Data from", "Datos de")}{" "}
       <a href={sourceUrl} target="_blank" rel="noreferrer">{source}</a>{" "}
       (<a href={licenseUrl} target="_blank" rel="noreferrer">{license}</a>)
-      {metadata?.databaseUpdated && <> · {isGerman ? "Stand" : "updated"} {formatDate(metadata.databaseUpdated.slice(0, 10), locale, { year: true })}</>}
+      {metadata?.databaseUpdated && <> · {l("Stand", "updated", "actualizado")} {formatDate(metadata.databaseUpdated.slice(0, 10), locale, { year: true })}</>}
       {includeElection && (
-        <> · {isGerman ? "Wahlergebnisse" : "Election results"}:{" "}
-          <a href={electionSourceUrl} target="_blank" rel="noreferrer">{electionSourceLabel ?? (isGerman ? "Die Bundeswahlleiterin, Wiesbaden" : "Federal Returning Officer, Wiesbaden")}</a>
-          {" "}({isGerman ? "gekürzt und neu dargestellt" : "shortened and newly presented"})
+        <> · {l("Wahlergebnisse", "Election results", "Resultados electorales")}:{" "}
+          <a href={electionSourceUrl} target="_blank" rel="noreferrer">{electionSourceLabel ?? l("Die Bundeswahlleiterin, Wiesbaden", "Federal Returning Officer, Wiesbaden", "Administración electoral")}</a>
+          {" "}({l("gekürzt und neu dargestellt", "shortened and newly presented", "abreviados y representados de nuevo")})
         </>
       )}
       {includeMap && (
@@ -3574,7 +3604,10 @@ async function downloadElementPng({ element, filename, title, subtitle, locale, 
   header.className = "png-export-header";
   const identity = document.createElement("div");
   const brand = document.createElement("strong");
-  brand.textContent = "▰ POLLFRAME";
+  const brandMark = document.createElement("span");
+  brandMark.className = "png-export-brand-mark";
+  brandMark.textContent = "↗";
+  brand.append(brandMark, document.createTextNode("POLLFRAME"));
   const context = document.createElement("small");
   context.textContent = subtitle;
   identity.append(brand, context);
@@ -3593,25 +3626,37 @@ async function downloadElementPng({ element, filename, title, subtitle, locale, 
   surface.append(header, content, footer);
   const clone = element.cloneNode(true);
   clone.querySelectorAll("[data-export-ignore], .chart-hover-card, .event-hover-card, .chart-scroll-hint, .event-key, .chart-footer").forEach((node) => node.remove());
+  clone.classList.add("png-export-clone");
   content.append(clone);
   host.append(surface);
   document.body.append(host);
   try {
     await new Promise((resolve) => window.requestAnimationFrame(() => window.requestAnimationFrame(resolve)));
     freezeExportStyles(surface);
-    const { toPng } = await import("html-to-image");
-    const dataUrl = await toPng(surface, {
-      width: 1200,
-      pixelRatio: 2,
+    surface.style.setProperty("width", "1440px");
+    clone.style.setProperty("width", "100%");
+    clone.style.setProperty("max-width", "none");
+    clone.querySelectorAll(".chart-wrap, .party-selector").forEach((node) => node.style.setProperty("overflow", "visible"));
+    clone.querySelectorAll(".poll-chart").forEach((node) => {
+      node.style.setProperty("width", "100%");
+      node.style.setProperty("min-width", "0");
+    });
+    const { toBlob } = await import("html-to-image");
+    const blob = await toBlob(surface, {
+      width: 1440,
+      pixelRatio: 2.25,
       cacheBust: true,
       backgroundColor: "#ffffff",
     });
+    if (!blob) throw new Error("PNG renderer returned no image");
+    const objectUrl = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.download = `${safeFilenamePart(filename)}-${new Date().toISOString().slice(0, 10)}.png`;
-    link.href = dataUrl;
+    link.href = objectUrl;
     document.body.append(link);
     link.click();
     link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 30_000);
   } finally {
     host.remove();
   }
@@ -4712,7 +4757,7 @@ function CountryIndexPage({ locale, summary }) {
       <section className="overview-entry-stack country-index-grid" aria-label={isGerman ? "Länderauswahl" : "Country selection"}>
         <OverviewInfoWidget accent="parliament" href="/" eyebrow={l("Bundestag und Länder", "Federal and state elections", "Bundestag y estados federados")} title={`🇩🇪 ${l("Deutschland", "Germany", "Alemania")}`} text={l("Bundestagsumfragen und die 16 Länder in einer gemeinsamen Übersicht.", "Federal polling and all 16 states in one overview.", "Encuestas federales y los 16 estados en una sola vista.")} stats={[[l("Umfragen", "Polls", "Encuestas"), germanFederal?.pollCount?.toLocaleString(getNumberLocale(locale)) ?? "–"], [l("Seit", "Since", "Desde"), germanFederal?.firstDate?.slice(0, 4) ?? "2017"], [l("Ebenen", "Levels", "Niveles"), "17"]]} />
         <OverviewInfoWidget accent="opinion" href="/?country=uk" eyebrow={l("Westminster und Regionen", "Westminster and regions", "Westminster y regiones")} title="🇬🇧 United Kingdom" text={l("Unterhausumfragen seit 1943 und regionale Ergebnisse der Wahl 2024.", "Westminster polling since 1943 and regional results from the 2024 election.", "Encuestas de Westminster desde 1943 y resultados regionales de 2024.")} stats={[[l("Umfragen", "Polls", "Encuestas"), uk?.pollCount?.toLocaleString(getNumberLocale(locale)) ?? "–"], [l("Seit", "Since", "Desde"), uk?.firstDate?.slice(0, 4) ?? "1943"], [l("Aktualisiert", "Updated", "Actualizado"), uk?.latestDate ? formatDate(uk.latestDate, locale) : "–"]]} />
-        <OverviewInfoWidget accent="parliament" href="/?country=es" eyebrow={locale === "es" ? "Congreso y autonomías" : isGerman ? "Kongress und Autonomien" : "Congress and autonomies"} title="🇪🇸 España" text={locale === "es" ? "Intención de voto, preocupaciones públicas y sistema de investidura." : isGerman ? "Wahlabsicht, öffentliche Sorgen und das spanische Investiturverfahren." : "Voting intention, public concerns and Spain's investiture system."} stats={[[locale === "es" ? "Encuestas" : isGerman ? "Umfragen" : "Polls", spain?.pollCount?.toLocaleString(getNumberLocale(locale)) ?? "–"], [locale === "es" ? "Desde" : isGerman ? "Seit" : "Since", spain?.firstDate?.slice(0, 4) ?? "2023"], [locale === "es" ? "Actualizado" : isGerman ? "Aktualisiert" : "Updated", spain?.latestDate ? formatDate(spain.latestDate, locale) : "–"]]} />
+        <OverviewInfoWidget accent="parliament" href="/?country=es" eyebrow={locale === "es" ? "Congreso y autonomías" : isGerman ? "Kongress und Autonomien" : "Congress and autonomies"} title="🇪🇸 España" text={locale === "es" ? "Intención de voto, evolución desde 1996, preocupaciones públicas y territorios." : isGerman ? "Wahlabsicht seit 1996, öffentliche Sorgen und Regionen." : "Voting intention since 1996, public concerns and territories."} stats={[[locale === "es" ? "Encuestas" : isGerman ? "Umfragen" : "Polls", spain?.pollCount?.toLocaleString(getNumberLocale(locale)) ?? "–"], [locale === "es" ? "Desde" : isGerman ? "Seit" : "Since", spain?.firstDate?.slice(0, 4) ?? "1996"], [locale === "es" ? "Actualizado" : isGerman ? "Aktualisiert" : "Updated", spain?.latestDate ? formatDate(spain.latestDate, locale) : "–"]]} />
       </section>
     </main>
   );
@@ -5967,7 +6012,7 @@ function LicencesPage({ locale }) {
       <section className="licence-card">
         <span className="licence-kind">{locale === "es" ? "Datos · España" : isGerman ? "Daten · Spanien" : "Data · Spain"}</span>
         <h2>{locale === "es" ? "Encuestas españolas y barómetro del CIS" : isGerman ? "Spanische Umfragen und CIS-Barometer" : "Spanish polling and CIS barometer"}</h2>
-        <p>{locale === "es" ? "Las tablas nacionales se extraen de " : isGerman ? "Die nationalen Tabellen werden aus " : "National tables are extracted from "}<a href="https://en.wikipedia.org/wiki/Opinion_polling_for_the_next_Spanish_general_election" target="_blank" rel="noreferrer">Wikipedia contributors</a>{locale === "es" ? " con licencia CC BY-SA 4.0. Pollframe normaliza fechas y partidos, elimina estimaciones de escaños y conserva el enlace original cuando está disponible." : isGerman ? " unter CC BY-SA 4.0 übernommen. Pollframe vereinheitlicht Daten und Parteien, entfernt Sitzschätzungen und bewahrt nach Möglichkeit den Originalbeleg." : " under CC BY-SA 4.0. Pollframe normalises dates and parties, removes seat estimates and preserves original citations where available."} <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noreferrer">CC BY-SA 4.0</a>.</p>
+        <p>{locale === "es" ? "Las tablas nacionales actuales e históricas desde 1996 se extraen de " : isGerman ? "Die aktuellen und historischen nationalen Tabellen seit 1996 werden aus " : "Current and historical national tables since 1996 are extracted from "}<a href="https://en.wikipedia.org/wiki/Opinion_polling_for_the_next_Spanish_general_election" target="_blank" rel="noreferrer">Wikipedia contributors</a>{locale === "es" ? " con licencia CC BY-SA 4.0. Pollframe normaliza fechas y partidos, elimina estimaciones de escaños y conserva el enlace original cuando está disponible. La lista completa de páginas de archivo figura en los metadatos del conjunto de datos." : isGerman ? " unter CC BY-SA 4.0 übernommen. Pollframe vereinheitlicht Daten und Parteien, entfernt Sitzschätzungen und bewahrt nach Möglichkeit den Originalbeleg. Die vollständige Liste der Archivseiten steht in den Metadaten des Datensatzes." : " under CC BY-SA 4.0. Pollframe normalises dates and parties, removes seat estimates and preserves original citations where available. The dataset metadata lists every archive page used."} <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noreferrer">CC BY-SA 4.0</a>. <a href="/data/spain-congress.json">JSON ↗</a></p>
         <p>{locale === "es" ? "El módulo de preocupaciones usa porcentajes publicados por el " : isGerman ? "Das Themenmodul nutzt veröffentlichte Prozentwerte des " : "The issues module uses published percentages from "}<a href="https://www.cis.es/es/w/vivienda-preocupacion-barometro-abril-2026" target="_blank" rel="noreferrer">Centro de Investigaciones Sociológicas (CIS)</a>.</p>
       </section>
 
@@ -6067,6 +6112,9 @@ function App() {
       ? query.get("lang")
       : storedPreference("opinion-poll-locale", "de", SUPPORTED_LOCALES)
   ));
+  useEffect(() => {
+    if (isSpainContext && !["es", "de", "en-GB"].includes(locale)) setLocale("es");
+  }, [isSpainContext, locale]);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [embedOpen, setEmbedOpen] = useState(false);
   const [methodOpen, setMethodOpen] = useState(false);
@@ -6459,9 +6507,9 @@ function RegionalApp() {
     (embedMode || sharedView) && ["trend", "linear", "polls", "both"].includes(query.get("mode")) ? query.get("mode") : "trend"
   ));
   const [range, setRange] = useState(() => (
-    (embedMode || sharedView) && ["month", "three", "six", "ytd", "year", "two", "election", "five", "ten", "all", "custom"].includes(query.get("range"))
+    (embedMode || sharedView) && ["month", "three", "six", "ytd", "year", "two", "election", "five", "ten", "all", "custom"].includes(query.get("range")) && !(isSpainContext && query.get("range") === "ten")
       ? query.get("range")
-      : isUKContext || isSpainContext ? "ten" : "all"
+      : isUKContext ? "ten" : isSpainContext ? "election" : "all"
   ));
   const [customStartDate, setCustomStartDate] = useState(() => validIsoDate(query.get("from")) ? query.get("from") : "");
   const [customEndDate, setCustomEndDate] = useState(() => validIsoDate(query.get("to")) ? query.get("to") : "");
@@ -6481,6 +6529,7 @@ function RegionalApp() {
   const [selectedParties, setSelectedParties] = useState([]);
   const [selectedPollsters, setSelectedPollsters] = useState([]);
   const [selectedPartyDetail, setSelectedPartyDetail] = useState(null);
+  const [showAllPartyChoices, setShowAllPartyChoices] = useState(false);
   const chartExportRef = useRef(null);
 
   useEffect(() => {
@@ -6559,11 +6608,11 @@ function RegionalApp() {
       ...baseT,
       overview: locale === "es" ? "Congreso de los Diputados · intención de voto" : isGerman ? "Abgeordnetenkongress · Wahlabsicht" : "Congress of Deputies · voting intention",
       title: locale === "es" ? "Encuestas de las elecciones generales" : isGerman ? "Umfragen zur spanischen Parlamentswahl" : "Spanish general-election polling",
-      intro: locale === "es" ? "La evolución nacional desde 2023, con una media trazable, comparación de institutos y acontecimientos documentados." : isGerman ? "Der nationale Verlauf seit 2023 – mit nachvollziehbarem Durchschnitt, Institutsvergleich und belegten Ereignissen." : "The national picture since 2023, with a traceable average, pollster comparison and sourced events.",
+      intro: locale === "es" ? "La evolución nacional desde 1996, con una media trazable, comparación de institutos y acontecimientos documentados." : isGerman ? "Der nationale Verlauf seit 1996 – mit nachvollziehbarem Durchschnitt, Institutsvergleich und belegten Ereignissen." : "The national picture since 1996, with a traceable average, pollster comparison and sourced events.",
       current: locale === "es" ? "Media actual" : isGerman ? "Aktueller Durchschnitt" : "Current average",
       chartTitle: locale === "es" ? "Evolución de la intención de voto" : isGerman ? "Entwicklung der Wahlabsicht in Spanien" : "Spanish voting-intention trend",
       sinceElection: locale === "es" ? "Desde las elecciones de 2023" : isGerman ? "Seit der Parlamentswahl 2023" : "Since the 2023 general election",
-      fullArchive: locale === "es" ? "Archivo completo · desde 2023" : isGerman ? "Gesamtes Archiv · seit 2023" : "Full archive · since 2023",
+      fullArchive: locale === "es" ? "Archivo completo · desde 1996" : isGerman ? "Gesamtes Archiv · seit 1996" : "Full archive · since 1996",
       sourceTitle: locale === "es" ? "Fuente y licencia" : isGerman ? "Quelle und Lizenz" : "Source and licence",
     };
     if (region?.type !== "state") return baseT;
@@ -6788,7 +6837,7 @@ function RegionalApp() {
       canonicalPath = "/?country=uk";
     } else if (spainCountryPage) {
       title = locale === "es" ? "España de un vistazo · Pollframe" : isGerman ? "Spanien im Überblick · Pollframe" : "Spain at a glance · Pollframe";
-      description = locale === "es" ? "Encuestas nacionales, preocupaciones públicas, sistema de investidura y comunidades autónomas." : isGerman ? "Nationale Umfragen, öffentliche Sorgen, Investiturverfahren und autonome Gemeinschaften." : "National polling, public concerns, investiture rules and autonomous communities.";
+      description = locale === "es" ? "Encuestas nacionales desde 1996, preocupaciones públicas y comunidades autónomas." : isGerman ? "Nationale Umfragen seit 1996, öffentliche Sorgen und autonome Gemeinschaften." : "National polling since 1996, public concerns and autonomous communities.";
       canonicalPath = "/?country=es";
     } else if (germanyCountryPage) {
       title = isGerman ? "Deutschland im Überblick · Pollframe" : "Germany at a glance · Pollframe";
@@ -6891,6 +6940,12 @@ function RegionalApp() {
   const tendencyBaseline = useMemo(() => pollData && selectedPollsters.length
     ? averageAtDate(pollData.polls, selectedPollsters, toIso(parseDate(latestDate) - (90 * DAY)), partyIds)
     : { results: {}, pollsterCount: 0 }, [pollData, selectedPollsters, latestDate, partyIds]);
+  const compactPartyDefinitions = useMemo(() => {
+    if (region?.type !== "spain-federal") return activePartyDefinitions;
+    return activePartyDefinitions.filter((party) => selectedParties.includes(party.id) || (current.results?.[party.id] ?? 0) >= 1);
+  }, [activePartyDefinitions, current.results, region, selectedParties]);
+  const hiddenPartyChoiceCount = activePartyDefinitions.length - compactPartyDefinitions.length;
+  const partyChoiceDefinitions = region?.type === "spain-federal" && !showAllPartyChoices ? compactPartyDefinitions : activePartyDefinitions;
   const stateElectionDates = region?.type === "state"
     ? STATE_ELECTION_DATES[region.slug] ?? []
     : region?.type === "uk-federal" ? UK_ELECTION_DATES : region?.type === "spain-federal" ? ["2023-07-23"] : [];
@@ -6989,6 +7044,7 @@ function RegionalApp() {
       motion={motion}
       setMotion={setMotion}
       pwa={pwa}
+      allowedLocales={isSpainContext ? ["es", "de", "en-GB"] : SUPPORTED_LOCALES}
     />
   );
   const homeHref = isUKContext ? "/?country=uk" : isSpainContext ? "/?country=es" : "/";
@@ -7204,9 +7260,9 @@ function RegionalApp() {
                     { value: "two", label: t.twoYears },
                     { value: "election", label: t.sinceElection },
                     { value: "five", label: t.fiveYearsLong },
-                    { value: "ten", label: isGerman ? "10 Jahre" : "10 years" },
+                    ...(region.type === "spain-federal" ? [] : [{ value: "ten", label: isGerman ? "10 Jahre" : "10 years" }]),
                     { value: "all", label: t.fullArchive },
-                    { value: "custom", label: isGerman ? "Eigener Zeitraum" : "Custom dates" },
+                    { value: "custom", label: locale === "es" ? "Periodo personalizado" : isGerman ? "Eigener Zeitraum" : "Custom dates" },
                   ]} />
                   {range === "custom" && (
                     <DateRangeSlider
@@ -7240,7 +7296,7 @@ function RegionalApp() {
                 </div>
               )}
               <div className="party-selector" aria-label={t.parties} data-export-ignore="true">
-                {activePartyDefinitions.map((party) => {
+                {partyChoiceDefinitions.map((party) => {
                   const active = selectedParties.includes(party.id);
                   return (
                     <button key={party.id} className={active ? "active" : ""} onClick={() => toggleRequired(setSelectedParties)(party.id)} aria-pressed={active}>
@@ -7248,6 +7304,14 @@ function RegionalApp() {
                     </button>
                   );
                 })}
+                {region.type === "spain-federal" && hiddenPartyChoiceCount > 0 && (
+                  <button className="party-selector-more" type="button" onClick={() => setShowAllPartyChoices((value) => !value)} aria-expanded={showAllPartyChoices}>
+                    {showAllPartyChoices
+                      ? (locale === "es" ? "Ocultar partidos menores" : isGerman ? "Kleinere Parteien ausblenden" : "Hide smaller parties")
+                      : (locale === "es" ? `${hiddenPartyChoiceCount} partidos más` : isGerman ? `${hiddenPartyChoiceCount} weitere Parteien` : `${hiddenPartyChoiceCount} more parties`)}
+                    <Icon name="chevron" size={14} />
+                  </button>
+                )}
               </div>
               <PollChart
                 t={t}
@@ -7305,7 +7369,7 @@ function RegionalApp() {
             {region.type === "uk-federal"
               ? <UKVotesVsSeats locale={locale} pollData={pollData} />
               : region.type === "spain-federal"
-                ? <SpainSystemNote locale={locale} />
+                ? null
                 : <ParliamentProjection t={t} locale={locale} current={current} region={region} partyDefinitions={activePartyDefinitions} />}
           </>
         )}
