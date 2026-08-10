@@ -40,6 +40,7 @@ export default defineConfig({
     { name: "iphone-13", use: { ...devices["iPhone 13"] } },
     { name: "iphone-13-chromium", use: { ...devices["iPhone 13"], browserName: "chromium", ...localChromium } },
     { name: "ipad-mini", use: { ...devices["iPad Mini"] } },
+    { name: "ipad-mini-chromium", use: { ...devices["iPad Mini"], browserName: "chromium", ...localChromium } },
     {
       name: "phone-landscape",
       use: {
