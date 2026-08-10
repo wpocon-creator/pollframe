@@ -428,8 +428,8 @@ test.describe("core routes", () => {
     await settle(page);
     await expect(page.getByRole("heading", { level: 1, name: /España de un vistazo/i })).toBeVisible();
     await expect(page.locator("body")).not.toContainText(/Cómo se forma Gobierno|Cómo una gobierno|How a government is formed|Wie eine Regierung entsteht/i);
-    await expect(page.locator(".spain-shift-card")).toContainText(/PP/);
-    await expect(page.locator(".spain-shift-card")).toContainText(/Sumar \+ Podemos/);
+    await expect(page.locator(".spain-shift-card")).toHaveCount(0);
+    await expect(page.locator(".spain-issues-card")).toContainText(/Qué preocupa a España/i);
     await expect(page.locator(".spain-map-detail h3")).toHaveText("—");
     await expect(page.locator(".spain-map-svg .active-outline")).toHaveCount(0);
     if (testInfo.project.use.hasTouch) await page.locator(".spain-map-svg path[role=button]").first().click();
@@ -437,6 +437,20 @@ test.describe("core routes", () => {
     await expect(page.locator(".spain-map-detail h3")).not.toHaveText("—");
     await expect(page.locator(".spain-map-svg .active-outline")).toHaveCount(1);
     await page.screenshot({ path: testInfo.outputPath("spain-overview.png"), fullPage: true });
+
+    await page.locator(".spain-issues-card").click();
+    await settle(page);
+    await expect(page.getByRole("heading", { level: 1, name: /Qué preocupa a España/i })).toBeVisible();
+    await expect(page.locator(".spain-concern-panel")).toHaveCount(2);
+    await expect(page.locator(".spain-concern-ranking").first()).toContainText(/41[,.]3%/);
+    await expect(page.locator(".spain-economy-panel")).toContainText(/64[,.]7%/);
+    await expect(page.locator(".spain-issues-method")).toContainText(/4020/);
+    await page.locator(".spain-concern-panel .graph-info-popover summary").first().click();
+    await expect(page.locator(".spain-concern-panel .graph-info-card").first()).toBeVisible();
+    await expectDocumentFits(page);
+    await page.screenshot({ path: testInfo.outputPath("spain-issues.png"), fullPage: true });
+    await page.getByRole("link", { name: /Volver a España/i }).click();
+    await settle(page);
 
     await page.getByRole("button", { name: /Ajustes/i }).click();
     await expect(page.locator(".language-option")).toHaveCount(3);
@@ -686,25 +700,61 @@ test.describe("core routes", () => {
     await page.screenshot({ path: testInfo.outputPath("watchlist.png"), fullPage: false });
   });
 
-  test("dropdowns close outside, event clicks open their source and the timeline stays controlled", async ({ page, context }) => {
+  test("dropdowns close outside, event links adapt to the device and the timeline stays controlled", async ({ page, context }, testInfo) => {
     await page.goto("/?region=bundestag");
     await settle(page);
     await page.getByRole("button", { name: /Diagramm anpassen|Customise chart/i }).click();
     const display = page.locator(".customize-panel .select-control").first();
     await display.locator("summary").click();
     await expect(display).toHaveAttribute("open", "");
-    await page.locator(".chart-heading h2").click();
+    if (testInfo.project.use.hasTouch) await page.touchscreen.tap(8, 200);
+    else await page.locator(".chart-heading h2").click();
     await expect(display).not.toHaveAttribute("open", "");
+    const pollsterMenu = page.locator(".customize-panel .multi-select").first();
+    await pollsterMenu.locator("summary").click();
+    const menu = pollsterMenu.locator(".multi-menu");
+    await expect(menu).toBeVisible();
+    await expect(menu).toHaveCSS("overscroll-behavior-y", "contain");
+    if (!testInfo.project.use.hasTouch) {
+      await menu.hover();
+      const pageScrollBefore = await page.evaluate(() => scrollY);
+      await page.mouse.wheel(0, 500);
+      await expect.poll(() => menu.evaluate((node) => node.scrollTop)).toBeGreaterThan(0);
+      expect(await page.evaluate(() => scrollY)).toBe(pageScrollBefore);
+    }
+    if (testInfo.project.use.hasTouch) await page.touchscreen.tap(8, 200);
+    else await page.locator(".chart-heading h2").click();
+    await expect(pollsterMenu).not.toHaveAttribute("open", "");
     await page.locator(".customize-panel .select-control").nth(1).locator("summary").click();
     await page.getByRole("button", { name: /Eigener Zeitraum|Custom dates/i }).click();
     await expect(page.locator(".custom-date-slider input[type=range]")).toHaveCount(2);
     await expect(page.locator(".dual-range-ticks span")).toHaveCount(5);
     await expect(page.locator(".event-marker title")).toHaveCount(0);
-    const popupPromise = page.waitForEvent("popup");
-    await page.locator(".event-marker").last().click({ force: true });
-    const popup = await popupPromise;
-    expect(new URL(popup.url()).protocol).toMatch(/^https?:$/);
-    await popup.close();
+    const chartInfo = page.locator(".chart-title-row .graph-info-popover");
+    await chartInfo.locator("summary").click();
+    await expect(chartInfo.locator(".graph-info-card")).toContainText(/keine Wahlprognose|not an election forecast/i);
+    if (testInfo.project.use.hasTouch) await page.touchscreen.tap(8, 200);
+    else await page.locator(".chart-heading h2").click();
+    await expect(chartInfo).not.toHaveAttribute("open", "");
+    if (testInfo.project.use.hasTouch) {
+      await expect(page.locator(".event-marker.inspect-only")).not.toHaveCount(0);
+      await page.locator(".event-marker .event-anchor").last().click({ force: true });
+      await expect(page.locator(".event-hover-card")).toBeVisible();
+      expect(context.pages()).toHaveLength(1);
+      await page.locator(".event-key summary").click();
+      const popupPromise = page.waitForEvent("popup");
+      await page.locator(".event-key-item").last().click();
+      const popup = await popupPromise;
+      expect(new URL(popup.url()).protocol).toMatch(/^https?:$/);
+      await popup.close();
+    } else {
+      await expect(page.locator(".event-marker .event-hit-target").first()).toHaveCSS("pointer-events", "none");
+      const popupPromise = page.waitForEvent("popup");
+      await page.locator(".event-marker .event-anchor").last().click({ force: true });
+      const popup = await popupPromise;
+      expect(new URL(popup.url()).protocol).toMatch(/^https?:$/);
+      await popup.close();
+    }
     expect(context.pages()).toHaveLength(1);
   });
 

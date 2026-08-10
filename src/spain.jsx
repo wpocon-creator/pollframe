@@ -67,18 +67,28 @@ export const SPAIN_POLITICAL_EVENTS = [
 
 const UI = {
   es: {
-    label: "Congreso, temas y territorios", title: "España de un vistazo", intro: "Intención de voto, preocupaciones públicas y territorios, con encuestas y resultados claramente separados.", pollingEyebrow: "Congreso de los Diputados", pollingTitle: "Intención de voto", pollingText: "Media transparente, encuestas individuales, evolución histórica y acontecimientos.", polls: "Encuestas", since: "Desde", updated: "Actualizado", issuesEyebrow: "Barómetro del CIS", issuesTitle: "Qué preocupa a España", issuesText: "Las respuestas espontáneas más citadas en el último barómetro disponible.", mentions: "Menciones", answers: "Hasta 3", source: "Fuente", mapLabel: "17 comunidades + Ceuta y Melilla", mapTitle: "Explorar el territorio", mapText: "Pasa el cursor o toca una comunidad para identificarla. Las series autonómicas solo se publican tras comprobar su cobertura y licencia.", selected: "Seleccionada", choose: "Selecciona una comunidad", coverage: "Estado de datos", preparing: "Serie autonómica en revisión", mapDisclaimer: "Esta vista solo identifica el territorio; no estima intención de voto sin una serie válida.", mapSource: "Geometría", noSum: "No suman 100: cada persona podía citar hasta tres problemas.",
+    label: "Congreso, temas y territorios", title: "España de un vistazo", intro: "Intención de voto, preocupaciones públicas y territorios, con encuestas y resultados claramente separados.", pollingEyebrow: "Congreso de los Diputados", pollingTitle: "Intención de voto", pollingText: "Media transparente, encuestas individuales, evolución histórica y acontecimientos.", polls: "Encuestas", since: "Desde", updated: "Actualizado", issuesEyebrow: "Barómetro del CIS", issuesTitle: "Qué preocupa a España", issuesText: "Las respuestas espontáneas más citadas en el último barómetro disponible.", mentions: "Menciones", answers: "Hasta 3", source: "Fuente", exploreIssues: "Explorar los datos", mapLabel: "17 comunidades + Ceuta y Melilla", mapTitle: "Explorar el territorio", mapText: "Pasa el cursor o toca una comunidad para identificarla. Las series autonómicas solo se publican tras comprobar su cobertura y licencia.", selected: "Seleccionada", choose: "Selecciona una comunidad", coverage: "Estado de datos", preparing: "Serie autonómica en revisión", mapDisclaimer: "Esta vista solo identifica el territorio; no estima intención de voto sin una serie válida.", mapSource: "Geometría", noSum: "No suman 100: cada persona podía citar hasta tres problemas.",
   },
   de: {
-    label: "Kongress, Themen und Regionen", title: "Spanien im Überblick", intro: "Wahlabsicht, öffentliche Sorgen und Regionen – Umfragen und Wahlergebnisse bleiben klar getrennt.", pollingEyebrow: "Abgeordnetenkongress", pollingTitle: "Nationale Wahlabsicht", pollingText: "Transparenter Durchschnitt, Einzelumfragen, historischer Verlauf und Ereignisse.", polls: "Umfragen", since: "Seit", updated: "Aktualisiert", issuesEyebrow: "CIS-Barometer", issuesTitle: "Was Spanien beschäftigt", issuesText: "Die häufigsten spontanen Antworten im jüngsten verfügbaren Barometer.", mentions: "Nennungen", answers: "Bis zu 3", source: "Quelle", mapLabel: "17 Gemeinschaften + Ceuta und Melilla", mapTitle: "Regionen erkunden", mapText: "Bewege den Mauszeiger über eine Region oder tippe sie an. Autonome Reihen erscheinen erst nach Prüfung von Abdeckung und Lizenz.", selected: "Ausgewählt", choose: "Region auswählen", coverage: "Datenstatus", preparing: "Autonome Reihe in Prüfung", mapDisclaimer: "Diese Ansicht identifiziert nur die Region; ohne belastbare Reihe wird keine Wahlabsicht geschätzt.", mapSource: "Kartengeometrie", noSum: "Die Werte summieren sich nicht auf 100: Jede Person konnte bis zu drei Probleme nennen.",
+    label: "Kongress, Themen und Regionen", title: "Spanien im Überblick", intro: "Wahlabsicht, öffentliche Sorgen und Regionen – Umfragen und Wahlergebnisse bleiben klar getrennt.", pollingEyebrow: "Abgeordnetenkongress", pollingTitle: "Nationale Wahlabsicht", pollingText: "Transparenter Durchschnitt, Einzelumfragen, historischer Verlauf und Ereignisse.", polls: "Umfragen", since: "Seit", updated: "Aktualisiert", issuesEyebrow: "CIS-Barometer", issuesTitle: "Was Spanien beschäftigt", issuesText: "Die häufigsten spontanen Antworten im jüngsten verfügbaren Barometer.", mentions: "Nennungen", answers: "Bis zu 3", source: "Quelle", exploreIssues: "Daten genauer ansehen", mapLabel: "17 Gemeinschaften + Ceuta und Melilla", mapTitle: "Regionen erkunden", mapText: "Bewege den Mauszeiger über eine Region oder tippe sie an. Autonome Reihen erscheinen erst nach Prüfung von Abdeckung und Lizenz.", selected: "Ausgewählt", choose: "Region auswählen", coverage: "Datenstatus", preparing: "Autonome Reihe in Prüfung", mapDisclaimer: "Diese Ansicht identifiziert nur die Region; ohne belastbare Reihe wird keine Wahlabsicht geschätzt.", mapSource: "Kartengeometrie", noSum: "Die Werte summieren sich nicht auf 100: Jede Person konnte bis zu drei Probleme nennen.",
   },
   en: {
-    label: "Congress, issues and territories", title: "Spain at a glance", intro: "Voting intention, public concerns and territories, with polls and election results kept clearly separate.", pollingEyebrow: "Congress of Deputies", pollingTitle: "National voting intention", pollingText: "A transparent average, individual polls, historical movement and events.", polls: "Polls", since: "Since", updated: "Updated", issuesEyebrow: "CIS barometer", issuesTitle: "What concerns Spain", issuesText: "The most-cited spontaneous answers in the latest available barometer.", mentions: "Mentions", answers: "Up to 3", source: "Source", mapLabel: "17 communities + Ceuta and Melilla", mapTitle: "Explore the territory", mapText: "Hover over or tap a community to identify it. Regional series appear only after coverage and licensing checks.", selected: "Selected", choose: "Select a community", coverage: "Data status", preparing: "Regional series under review", mapDisclaimer: "This view only identifies the territory; it does not estimate voting intention without a valid series.", mapSource: "Map geometry", noSum: "The values do not add to 100: each person could name up to three issues.",
+    label: "Congress, issues and territories", title: "Spain at a glance", intro: "Voting intention, public concerns and territories, with polls and election results kept clearly separate.", pollingEyebrow: "Congress of Deputies", pollingTitle: "National voting intention", pollingText: "A transparent average, individual polls, historical movement and events.", polls: "Polls", since: "Since", updated: "Updated", issuesEyebrow: "CIS barometer", issuesTitle: "What concerns Spain", issuesText: "The most-cited spontaneous answers in the latest available barometer.", mentions: "Mentions", answers: "Up to 3", source: "Source", exploreIssues: "Explore the data", mapLabel: "17 communities + Ceuta and Melilla", mapTitle: "Explore the territory", mapText: "Hover over or tap a community to identify it. Regional series appear only after coverage and licensing checks.", selected: "Selected", choose: "Select a community", coverage: "Data status", preparing: "Regional series under review", mapDisclaimer: "This view only identifies the territory; it does not estimate voting intention without a valid series.", mapSource: "Map geometry", noSum: "The values do not add to 100: each person could name up to three issues.",
   },
 };
 
 function language(locale) {
   return locale === "es" ? UI.es : locale === "de" ? UI.de : UI.en;
+}
+
+function MiniGraphInfo({ locale, title, text }) {
+  const label = locale === "es" ? "Cómo leer este gráfico" : locale === "de" ? "So wird diese Grafik gelesen" : "How to read this chart";
+  return (
+    <details className="graph-info-popover graph-info-compact" data-export-ignore="true">
+      <summary aria-label={label} title={label}><span aria-hidden="true">i</span></summary>
+      <div className="graph-info-card" role="note"><strong>{title}</strong><p>{text}</p></div>
+    </details>
+  );
 }
 
 const DAY = 86_400_000;
@@ -95,6 +105,7 @@ const INSIGHT_UI = {
     compare: "Cambio desde", election: "23-J de 2023", year: "Hace 12 meses", yearStart: "Inicio de año", now: "ahora", electionResult: "resultado oficial", pollingAverage: "media comparable", currentAverage: "Media actual", points: "pp",
     raceEyebrow: "La carrera por el primer puesto", raceTitle: "Distancia PP–PSOE", ahead: "por delante", tied: "Empate técnico en la media", sinceElection: "Evolución de la diferencia desde el 23-J", ppLead: "PP por delante", psoeLead: "PSOE por delante",
     agreementEyebrow: "Transparencia", agreementTitle: "Cuánto coinciden los institutos", agreementIntro: "Última encuesta de cada instituto seleccionado dentro de 45 días. La línea muestra el mínimo y el máximo; el punto, la media.", polls: "institutos", range: "rango", spreadNote: "El rango refleja desacuerdo entre encuestas, no un intervalo de confianza.",
+    changeInfo: "Compara la media actual con el punto de referencia elegido. El valor de la derecha es la diferencia en puntos porcentuales, no el cambio relativo.", raceInfo: "Para cada mes se calcula una media comparable de PP y PSOE; la línea muestra PP menos PSOE. Por encima de cero lidera PP y por debajo lidera PSOE.", agreementInfo: "Se toma la última encuesta de cada instituto seleccionado dentro de 45 días. La línea une el valor mínimo y máximo; el círculo es la media. No es un intervalo de confianza.",
     combinedNote: "Sumar + Podemos se agrupan para mantener una comparación coherente con la candidatura Sumar de 2023.", exportTitle: "Qué está cambiando en España",
   },
   de: {
@@ -102,6 +113,7 @@ const INSIGHT_UI = {
     compare: "Veränderung seit", election: "Wahl am 23. Juli 2023", year: "Vor 12 Monaten", yearStart: "Jahresbeginn", now: "jetzt", electionResult: "amtliches Ergebnis", pollingAverage: "vergleichbarer Durchschnitt", currentAverage: "Aktueller Durchschnitt", points: "Pkt.",
     raceEyebrow: "Rennen um Platz eins", raceTitle: "Abstand PP–PSOE", ahead: "vorn", tied: "Im Durchschnitt praktisch gleichauf", sinceElection: "Entwicklung des Abstands seit der Wahl 2023", ppLead: "PP vorn", psoeLead: "PSOE vorn",
     agreementEyebrow: "Transparenz", agreementTitle: "Wie stark die Institute übereinstimmen", agreementIntro: "Je ausgewähltem Institut die jüngste Umfrage innerhalb von 45 Tagen. Die Linie zeigt Minimum und Maximum, der Punkt den Mittelwert.", polls: "Institute", range: "Spanne", spreadNote: "Die Spanne zeigt Unterschiede zwischen Umfragen und ist kein Konfidenzintervall.",
+    changeInfo: "Verglichen wird der aktuelle Mittelwert mit dem gewählten Ausgangspunkt. Rechts steht die Differenz in Prozentpunkten, nicht die relative Veränderung.", raceInfo: "Für jeden Monat wird ein vergleichbarer Mittelwert für PP und PSOE berechnet; die Linie zeigt PP minus PSOE. Oberhalb von null liegt PP vorn, unterhalb PSOE.", agreementInfo: "Je ausgewähltem Institut zählt die jüngste Umfrage innerhalb von 45 Tagen. Die Linie verbindet Minimum und Maximum, der Kreis ist der Mittelwert. Das ist kein Konfidenzintervall.",
     combinedNote: "Sumar und Podemos werden zusammengefasst, damit der Vergleich mit der gemeinsamen Sumar-Kandidatur von 2023 sinnvoll bleibt.", exportTitle: "Was sich in Spanien verändert",
   },
   en: {
@@ -109,6 +121,7 @@ const INSIGHT_UI = {
     compare: "Change since", election: "23 July 2023 election", year: "12 months ago", yearStart: "Start of year", now: "now", electionResult: "official result", pollingAverage: "comparable average", currentAverage: "Current average", points: "pts",
     raceEyebrow: "The race for first place", raceTitle: "PP–PSOE gap", ahead: "ahead", tied: "Effectively level in the average", sinceElection: "How the gap has moved since the 2023 election", ppLead: "PP ahead", psoeLead: "PSOE ahead",
     agreementEyebrow: "Transparency", agreementTitle: "How closely pollsters agree", agreementIntro: "Each selected pollster’s latest poll within 45 days. The line is the minimum-to-maximum range; the dot is the mean.", polls: "pollsters", range: "range", spreadNote: "This range shows disagreement between polls; it is not a confidence interval.",
+    changeInfo: "The current average is compared with the selected baseline. The figure on the right is a percentage-point difference, not a relative change.", raceInfo: "A comparable PP and PSOE average is calculated for each month; the line is PP minus PSOE. Above zero PP leads, and below zero PSOE leads.", agreementInfo: "Each selected pollster contributes its latest poll within 45 days. The line joins the minimum and maximum, while the circle is the mean. This is not a confidence interval.",
     combinedNote: "Sumar and Podemos are grouped to keep the comparison consistent with the joint Sumar candidacy in 2023.", exportTitle: "What is changing in Spain",
   },
 };
@@ -154,25 +167,6 @@ function formatNumber(value, locale, digits = 1) {
 
 function comparisonGroups(results) {
   return SPAIN_COMPARISON_GROUPS.map((group) => ({ ...group, value: groupValue(results, group.partyIds) })).filter((group) => Number.isFinite(group.value));
-}
-
-function SpainCurrentShift({ locale, congress }) {
-  const text = insightLanguage(locale);
-  const election = congress.lastElection?.results ?? {};
-  const currentGroups = comparisonGroups(congress.current.results);
-  return (
-    <a className="spain-shift-card" href="/?region=spain-congress#spain-pulse">
-      <header><span>{text.compare}</span><h2>{text.election}</h2></header>
-      <div className="spain-shift-preview">
-        {currentGroups.map((group) => {
-          const previous = groupValue(election, group.partyIds);
-          const delta = Number.isFinite(previous) ? group.value - previous : null;
-          return <div key={group.id}><span style={{ background: group.color }} /><strong>{group.name}</strong><b>{formatNumber(group.value, locale)}%</b><em className={delta > 0 ? "up" : delta < 0 ? "down" : "flat"}>{Number.isFinite(delta) ? `${delta > 0 ? "+" : ""}${formatNumber(delta, locale)} ${text.points}` : "—"}</em></div>;
-        })}
-      </div>
-      <footer><small>{text.combinedNote}</small><b aria-hidden="true">→</b></footer>
-    </a>
-  );
 }
 
 function RaceSparkline({ series, locale, text }) {
@@ -245,7 +239,7 @@ export function SpainPollingInsights({ locale, pollData, current, latestDate, se
       <header className="spain-pulse-heading"><div><p className="section-label">{text.eyebrow}</p><h2 id="spain-pulse-title">{text.title}</h2><p>{text.intro}</p></div>{exportControl}</header>
       <div className="spain-pulse-grid">
         <article className="spain-change-card">
-          <header><div><span>{text.compare}</span><h3>{tabs.find(([id]) => id === comparison)?.[1]}</h3></div><div className="spain-period-tabs" data-export-ignore="true">{tabs.map(([id, label]) => <button key={id} type="button" className={comparison === id ? "active" : ""} aria-pressed={comparison === id} onClick={() => setComparison(id)}>{label}</button>)}</div></header>
+          <header><div><span>{text.compare}</span><div className="spain-card-title-row"><h3>{tabs.find(([id]) => id === comparison)?.[1]}</h3><MiniGraphInfo locale={locale} title={text.compare} text={text.changeInfo} /></div></div><div className="spain-period-tabs" data-export-ignore="true">{tabs.map(([id, label]) => <button key={id} type="button" className={comparison === id ? "active" : ""} aria-pressed={comparison === id} onClick={() => setComparison(id)}>{label}</button>)}</div></header>
           <div className="spain-change-list">{groups.map((group) => {
             const baseline = activeSnapshot.results[group.id];
             const delta = Number.isFinite(baseline) ? group.current - baseline : null;
@@ -255,11 +249,11 @@ export function SpainPollingInsights({ locale, pollData, current, latestDate, se
           <footer><span>{activeSnapshot.kind === "election" ? text.electionResult : `${activeSnapshot.pollsterCount} ${text.polls} · ${text.pollingAverage}`}</span><small>{text.combinedNote}</small></footer>
         </article>
         <article className="spain-race-card">
-          <span>{text.raceEyebrow}</span><div className="spain-race-summary"><div><h3>{text.raceTitle}</h3><p>{text.sinceElection}</p></div><strong className={Math.abs(gap) < .15 ? "tied" : gap > 0 ? "pp" : "psoe"}>{Math.abs(gap) < .15 ? "≈ 0" : `${formatNumber(Math.abs(gap), locale)} ${text.points}`}<small>{Math.abs(gap) < .15 ? text.tied : `${gap > 0 ? "PP" : "PSOE"} ${text.ahead}`}</small></strong></div>
+          <span>{text.raceEyebrow}</span><div className="spain-race-summary"><div><div className="spain-card-title-row"><h3>{text.raceTitle}</h3><MiniGraphInfo locale={locale} title={text.raceTitle} text={text.raceInfo} /></div><p>{text.sinceElection}</p></div><strong className={Math.abs(gap) < .15 ? "tied" : gap > 0 ? "pp" : "psoe"}>{Math.abs(gap) < .15 ? "≈ 0" : `${formatNumber(Math.abs(gap), locale)} ${text.points}`}<small>{Math.abs(gap) < .15 ? text.tied : `${gap > 0 ? "PP" : "PSOE"} ${text.ahead}`}</small></strong></div>
           <RaceSparkline series={raceSeries} locale={locale} text={text} />
         </article>
         <article className="spain-agreement-card">
-          <header><span>{text.agreementEyebrow}</span><h3>{text.agreementTitle}</h3><p>{text.agreementIntro}</p></header>
+          <header><span>{text.agreementEyebrow}</span><div className="spain-card-title-row"><h3>{text.agreementTitle}</h3><MiniGraphInfo locale={locale} title={text.agreementTitle} text={text.agreementInfo} /></div><p>{text.agreementIntro}</p></header>
           <div className="spain-range-list">{spread.map((item) => <div key={item.id}><div className="range-label"><span className="party-dot" style={{ background: item.color }} /><strong>{item.name}</strong><small>{item.count} {text.polls}</small><b>{formatNumber(item.min, locale)}–{formatNumber(item.max, locale)}%</b></div><div className="range-track"><i style={{ left: `${(item.min / axisMax) * 100}%`, width: `${((item.max - item.min) / axisMax) * 100}%`, background: item.color }} /><span style={{ left: `${(item.mean / axisMax) * 100}%`, borderColor: item.color }} title={`${text.currentAverage}: ${formatNumber(item.mean, locale)}%`} /></div></div>)}</div>
           <footer><span>0%</span><small>{text.spreadNote}</small><span>{axisMax}%</span></footer>
         </article>
@@ -320,6 +314,103 @@ function SpainMap({ locale }) {
   );
 }
 
+const SPAIN_ISSUE_DETAIL = {
+  sourceUrl: "https://www.cis.es/es/w/vivienda-preocupacion-barometro-abril-2026",
+  studyUrl: "https://www.cis.es/documents/20117/13932083/es3557mar.pdf/ce0bfd41-b61a-1c1c-d930-b1b55b8790b5?t=1778162215842&version=1.0",
+  personal: [
+    { id: "economy", value: 38.8, color: "#dd6b20" },
+    { id: "housing", value: 25.6, color: "#805ad5" },
+    { id: "health", value: 19.5, color: "#278a78" },
+  ],
+  economy: {
+    personal: { good: 64.7, regular: 9.9, bad: 24.8 },
+    country: { good: 37.1, regular: 7, bad: 52.8 },
+  },
+  interviews: 4020,
+  fieldworkStart: "2026-04-06",
+  fieldworkEnd: "2026-04-10",
+};
+
+function issuePageLanguage(locale) {
+  const labels = locale === "es"
+    ? { housing: "Vivienda", economy: "Problemas económicos", jobs: "Calidad del empleo", health: "Sanidad" }
+    : locale === "de"
+      ? { housing: "Wohnen", economy: "Wirtschaftliche Probleme", jobs: "Qualität der Arbeit", health: "Gesundheitswesen" }
+      : { housing: "Housing", economy: "Economic problems", jobs: "Job quality", health: "Healthcare" };
+  if (locale === "es") return {
+    labels, back: "Volver a España", eyebrow: "Barómetro del CIS · abril de 2026", title: "Qué preocupa a España", intro: "Una lectura compacta de lo que la población menciona como problema del país, lo que le afecta personalmente y cómo valora la economía.",
+    national: "Problemas de España", nationalIntro: "Respuestas espontáneas más citadas cuando se pregunta por los principales problemas del país.", personal: "Preocupaciones personales", personalIntro: "Respuestas más citadas cuando se pregunta qué problemas afectan personalmente.",
+    chartInfoTitle: "Cómo se obtienen estos porcentajes", chartInfo: "Cada persona podía dar hasta tres respuestas espontáneas. Por eso los porcentajes son menciones y no suman 100. Pollframe muestra las tres respuestas más citadas publicadas por el CIS.",
+    gapTitle: "El país y la vida diaria no se perciben igual", gapText: "La vivienda aparece más como problema nacional (41,3 %) que como preocupación personal (25,6 %). Los problemas económicos muestran el patrón inverso: 24,9 % a escala nacional y 38,8 % en lo personal. Son dos preguntas distintas; la diferencia no mide intensidad.",
+    economyEyebrow: "Percepción económica", economyTitle: "La economía personal se valora mejor que la del país", personalEconomy: "Situación económica personal", countryEconomy: "Situación económica de España", good: "Buena o muy buena", regular: "Regular", bad: "Mala o muy mala", remainder: "Las categorías mostradas no alcanzan siempre el 100 % por no sabe/no contesta y redondeo.",
+    methodTitle: "Qué conviene saber", method: "Barómetro mensual del CIS, estudio 3557. Entrevistas telefónicas a población adulta en España. Los datos describen respuestas en el momento del trabajo de campo y no demuestran por qué cambian las opiniones.", interviews: "entrevistas", fieldwork: "Trabajo de campo", source: "Resultados del CIS", study: "Tabulación completa del estudio",
+  };
+  if (locale === "de") return {
+    labels, back: "Zurück zu Spanien", eyebrow: "CIS-Barometer · April 2026", title: "Was Spanien beschäftigt", intro: "Ein kompakter Blick darauf, was die Bevölkerung als Problem des Landes nennt, was sie persönlich betrifft und wie sie die Wirtschaft einschätzt.",
+    national: "Probleme Spaniens", nationalIntro: "Die häufigsten spontanen Antworten auf die Frage nach den wichtigsten Problemen des Landes.", personal: "Persönliche Sorgen", personalIntro: "Die häufigsten Antworten auf die Frage, welche Probleme die Befragten persönlich betreffen.",
+    chartInfoTitle: "So entstehen die Prozentwerte", chartInfo: "Jede Person konnte bis zu drei spontane Antworten geben. Die Werte sind daher Nennungen und summieren sich nicht auf 100. Pollframe zeigt die drei vom CIS veröffentlichten häufigsten Antworten.",
+    gapTitle: "Land und Alltag werden unterschiedlich wahrgenommen", gapText: "Wohnen wird häufiger als nationales Problem genannt (41,3 %) als als persönliche Sorge (25,6 %). Bei wirtschaftlichen Problemen ist es umgekehrt: 24,9 % national und 38,8 % persönlich. Es sind zwei unterschiedliche Fragen; die Differenz misst keine Stärke.",
+    economyEyebrow: "Wirtschaftliche Wahrnehmung", economyTitle: "Die eigene Wirtschaftslage wird besser bewertet als die des Landes", personalEconomy: "Eigene wirtschaftliche Lage", countryEconomy: "Wirtschaftslage Spaniens", good: "Gut oder sehr gut", regular: "Mittelmäßig", bad: "Schlecht oder sehr schlecht", remainder: "Die gezeigten Kategorien erreichen wegen Weiß nicht/keine Angabe und Rundung nicht immer 100 %.",
+    methodTitle: "Was man wissen sollte", method: "Monatliches CIS-Barometer, Studie 3557. Telefoninterviews mit Erwachsenen in Spanien. Die Daten beschreiben Antworten zum Befragungszeitpunkt und erklären nicht, warum sich Meinungen verändern.", interviews: "Interviews", fieldwork: "Feldzeit", source: "CIS-Ergebnisse", study: "Vollständige Auswertung der Studie",
+  };
+  return {
+    labels, back: "Back to Spain", eyebrow: "CIS barometer · April 2026", title: "What concerns Spain", intro: "A compact view of what people name as a national problem, what affects them personally and how they judge the economy.",
+    national: "Problems facing Spain", nationalIntro: "The most-cited spontaneous answers when people were asked about the country’s main problems.", personal: "Personal concerns", personalIntro: "The most-cited answers when people were asked which problems affect them personally.",
+    chartInfoTitle: "How these percentages are produced", chartInfo: "Each person could give up to three spontaneous answers. The figures are therefore mentions and do not add to 100. Pollframe shows the three leading responses published by CIS.",
+    gapTitle: "The country and daily life look different", gapText: "Housing is cited more often as a national problem (41.3%) than a personal concern (25.6%). Economic problems show the reverse pattern: 24.9% nationally and 38.8% personally. These are separate questions; the gap is not a measure of intensity.",
+    economyEyebrow: "Economic perceptions", economyTitle: "People rate their own finances more positively than the country’s", personalEconomy: "Personal economic situation", countryEconomy: "Spain’s economic situation", good: "Good or very good", regular: "Fair", bad: "Bad or very bad", remainder: "The displayed categories may not reach 100% because of don’t know/no answer responses and rounding.",
+    methodTitle: "What to know", method: "Monthly CIS barometer, study 3557. Telephone interviews with adults in Spain. The figures describe answers during the fieldwork period and do not establish why opinions change.", interviews: "interviews", fieldwork: "Fieldwork", source: "CIS results", study: "Full study tables",
+  };
+}
+
+function ConcernBars({ locale, title, intro, items, labels, info }) {
+  const maximum = Math.max(...items.map((item) => item.value));
+  return (
+    <article className="spain-concern-panel">
+      <header><div><h2>{title}</h2><p>{intro}</p></div><MiniGraphInfo locale={locale} title={info.title} text={info.text} /></header>
+      <div className="spain-concern-ranking">{items.map((item, index) => <div key={item.id}><b>{index + 1}</b><span>{labels[item.id] ?? item.label}</span><div><i style={{ width: `${(item.value / maximum) * 100}%`, background: item.color }} /></div><strong>{formatNumber(item.value, locale)}%</strong></div>)}</div>
+    </article>
+  );
+}
+
+function EconomicPerception({ label, values, text, locale }) {
+  const total = values.good + values.regular + values.bad;
+  return (
+    <div className="economic-perception-row">
+      <div><strong>{label}</strong><span>{formatNumber(values.good, locale)}% {text.good}</span></div>
+      <div className="economic-perception-bar" aria-label={`${label}: ${formatNumber(values.good, locale)}% ${text.good}, ${formatNumber(values.regular, locale)}% ${text.regular}, ${formatNumber(values.bad, locale)}% ${text.bad}`}>
+        <i className="good" style={{ width: `${(values.good / total) * 100}%` }} /><i className="regular" style={{ width: `${(values.regular / total) * 100}%` }} /><i className="bad" style={{ width: `${(values.bad / total) * 100}%` }} />
+      </div>
+      <div className="economic-perception-legend"><span><i className="good" />{text.good} <b>{formatNumber(values.good, locale)}%</b></span><span><i className="regular" />{text.regular} <b>{formatNumber(values.regular, locale)}%</b></span><span><i className="bad" />{text.bad} <b>{formatNumber(values.bad, locale)}%</b></span></div>
+    </div>
+  );
+}
+
+export function SpainIssuesPage({ locale, summary, formatDate, numberLocale }) {
+  const text = issuePageLanguage(locale);
+  const national = summary.issues.items;
+  const info = { title: text.chartInfoTitle, text: text.chartInfo };
+  const fieldwork = `${formatDate(SPAIN_ISSUE_DETAIL.fieldworkStart, locale, { year: true })} – ${formatDate(SPAIN_ISSUE_DETAIL.fieldworkEnd, locale, { year: true })}`;
+  return (
+    <main id="top" className="germany-country-overview spain-country-overview spain-issues-page">
+      <nav className="region-breadcrumb country-breadcrumb" aria-label="Navigation"><a href="/?country=es">← {text.back}</a></nav>
+      <section className="spain-issues-hero"><div><p className="section-label">{text.eyebrow}</p><h1>{text.title}</h1><p>{text.intro}</p></div><aside><span>{formatDate(summary.issues.date, locale, { year: true })}</span><strong>{SPAIN_ISSUE_DETAIL.interviews.toLocaleString(numberLocale)}</strong><small>{text.interviews}</small></aside></section>
+      <section className="spain-concern-grid" aria-label={text.title}>
+        <ConcernBars locale={locale} title={text.national} intro={text.nationalIntro} items={national} labels={text.labels} info={info} />
+        <ConcernBars locale={locale} title={text.personal} intro={text.personalIntro} items={SPAIN_ISSUE_DETAIL.personal} labels={text.labels} info={info} />
+      </section>
+      <aside className="spain-concern-insight"><span>01</span><div><h2>{text.gapTitle}</h2><p>{text.gapText}</p></div></aside>
+      <section className="spain-economy-panel">
+        <header><div><p className="section-label">{text.economyEyebrow}</p><h2>{text.economyTitle}</h2></div><MiniGraphInfo locale={locale} title={text.economyTitle} text={text.remainder} /></header>
+        <EconomicPerception label={text.personalEconomy} values={SPAIN_ISSUE_DETAIL.economy.personal} text={text} locale={locale} />
+        <EconomicPerception label={text.countryEconomy} values={SPAIN_ISSUE_DETAIL.economy.country} text={text} locale={locale} />
+        <small>{text.remainder}</small>
+      </section>
+      <section className="spain-issues-method"><div><p className="section-label">CIS · 3557</p><h2>{text.methodTitle}</h2><p>{text.method}</p></div><dl><div><dt>{text.fieldwork}</dt><dd>{fieldwork}</dd></div><div><dt>{text.interviews}</dt><dd>{SPAIN_ISSUE_DETAIL.interviews.toLocaleString(numberLocale)}</dd></div></dl><nav><a href={SPAIN_ISSUE_DETAIL.sourceUrl} target="_blank" rel="noreferrer">{text.source} ↗</a><a href={SPAIN_ISSUE_DETAIL.studyUrl} target="_blank" rel="noreferrer">{text.study} ↗</a></nav></section>
+    </main>
+  );
+}
+
 export function SpainCountryOverview({ locale, summary, formatDate, numberLocale }) {
   const text = language(locale);
   const congress = summary.congress;
@@ -335,8 +426,7 @@ export function SpainCountryOverview({ locale, summary, formatDate, numberLocale
       <section className="germany-country-hero spain-country-hero"><div><div className="eyebrow"><span />{text.label}</div><h1>🇪🇸 {text.title}</h1><p>{text.intro}</p></div></section>
       <section className="spain-overview-grid" aria-label={text.title}>
         <a className="spain-polling-entry" href="/?region=spain-congress"><div><span>{text.pollingEyebrow}</span><h2>{text.pollingTitle}</h2><p>{text.pollingText}</p></div><dl><div><dt>{text.polls}</dt><dd>{congress.pollCount.toLocaleString(numberLocale)}</dd></div><div><dt>{text.since}</dt><dd>{congress.firstDate.slice(0, 4)}</dd></div><div><dt>{text.updated}</dt><dd>{formatDate(congress.latestDate, locale)}</dd></div></dl><b aria-hidden="true">→</b></a>
-        <SpainCurrentShift locale={locale} congress={congress} />
-        <article className="spain-issues-card"><header><span>{text.issuesEyebrow}</span><h2>{text.issuesTitle}</h2><p>{text.issuesText}</p></header><div className="spain-issue-bars">{summary.issues.items.map((item) => <div key={item.id}><span>{issueLabels[item.id] ?? item.label}</span><div><i style={{ width: `${(item.value / issueMax) * 100}%`, background: item.color }} /></div><strong>{item.value.toLocaleString(numberLocale)}%</strong></div>)}</div><footer><span>{text.answers}</span><a href={summary.issues.sourceUrl} target="_blank" rel="noreferrer">CIS ↗</a></footer></article>
+        <a className="spain-issues-card" href="/?country=es&view=spain-issues"><header><span>{text.issuesEyebrow}</span><h2>{text.issuesTitle}</h2><p>{text.issuesText}</p></header><div className="spain-issue-bars">{summary.issues.items.map((item) => <div key={item.id}><span>{issueLabels[item.id] ?? item.label}</span><div><i style={{ width: `${(item.value / issueMax) * 100}%`, background: item.color }} /></div><strong>{item.value.toLocaleString(numberLocale)}%</strong></div>)}</div><footer><span>{text.answers}</span><b>{text.exploreIssues} →</b></footer></a>
       </section>
       <SpainMap locale={locale} />
     </main>

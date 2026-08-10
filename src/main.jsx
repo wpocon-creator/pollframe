@@ -7,6 +7,7 @@ import {
   SPAIN_PARTY_DEFINITIONS,
   SPAIN_POLITICAL_EVENTS,
   SpainCountryOverview,
+  SpainIssuesPage,
   SpainMiniMap,
   SpainPollingInsights,
 } from "./spain.jsx";
@@ -1853,6 +1854,89 @@ function SelectControl({ label, value, onChange, options }) {
   );
 }
 
+function useFinePointer() {
+  const query = "(hover: hover) and (pointer: fine)";
+  const getMatches = () => window.matchMedia(query).matches && (navigator.maxTouchPoints ?? 0) === 0;
+  const [matches, setMatches] = useState(getMatches);
+  useEffect(() => {
+    const media = window.matchMedia(query);
+    const update = () => setMatches(media.matches && (navigator.maxTouchPoints ?? 0) === 0);
+    media.addEventListener?.("change", update);
+    return () => media.removeEventListener?.("change", update);
+  }, []);
+  return matches;
+}
+
+function GraphInfoPopover({ locale, title, paragraphs, source = null, className = "" }) {
+  const label = locale === "es" ? "Cómo leer este gráfico" : locale === "de" ? "So wird diese Grafik gelesen" : "How to read this chart";
+  return (
+    <details className={`graph-info-popover ${className}`.trim()} data-export-ignore="true">
+      <summary aria-label={label} title={label}><Icon name="info" size={15} /></summary>
+      <div className="graph-info-card" role="note">
+        <strong>{title || label}</strong>
+        {paragraphs.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
+        {source && <a href={source.href} target="_blank" rel="noreferrer">{source.label}<Icon name="external" size={12} /></a>}
+      </div>
+    </details>
+  );
+}
+
+function mainChartInfo(locale, regionType, mode, weightedUk = false) {
+  const language = locale === "es" ? "es" : locale === "de" ? "de" : "en";
+  const copy = {
+    de: {
+      title: "Was zeigt der Verlauf?",
+      purpose: "Die Linien zeigen die geschätzte Wahlabsicht der ausgewählten Parteien im gewählten Zeitraum. Sie sind keine Wahlprognose.",
+      average: "Für jeden Zeitpunkt zählt je ausgewähltem Institut nur die jüngste Umfrage der vorherigen 45 Tage. Diese Werte werden gleich gewichtet gemittelt.",
+      trend: "Im Trendmodus werden die zweiwöchigen Mittelwerte geglättet. Je länger der sichtbare Zeitraum, desto breiter ist das Glättungsfenster. Dadurch wird die Richtung klarer, kurzfristige Ausschläge werden aber gedämpft.",
+      linear: "Diese Ansicht verbindet die berechneten Durchschnittspunkte ohne zusätzliche Glättung.",
+      points: "Jeder Punkt ist der Durchschnitt der zu diesem Zeitpunkt verfügbaren Institute – nicht eine einzelne Umfrage.",
+      both: "Die geglättete Trendlinie und die ungeschönten Durchschnittspunkte werden gemeinsam gezeigt.",
+      uk: "Der britische Standard verwendet den qualitätsgewichteten 14-Tage-Durchschnitt des UK Election Data Vault. Pollframe stellt diese Quellwerte dar und glättet sie im Trendmodus passend zum sichtbaren Zeitraum.",
+    },
+    en: {
+      title: "What does this trend show?",
+      purpose: "The lines show estimated voting intention for the selected parties over the chosen period. They are not an election forecast.",
+      average: "At each date, only each selected pollster’s latest poll from the preceding 45 days is used. Those values receive equal weight in the mean.",
+      trend: "Trend mode smooths the fortnightly averages. The longer the visible period, the wider the smoothing window, clarifying direction while muting short-lived changes.",
+      linear: "This view connects the calculated average points without additional smoothing.",
+      points: "Each point is the mean of the pollsters available at that date, not an individual poll.",
+      both: "The smoothed trend and the unsmoothed average points are shown together.",
+      uk: "The UK default uses UK Election Data Vault’s quality-weighted 14-day average. Pollframe plots those source values and, in trend mode, smooths them for the visible time span.",
+    },
+    es: {
+      title: "¿Qué muestra la evolución?",
+      purpose: "Las líneas muestran la intención de voto estimada para los partidos seleccionados durante el periodo elegido. No son una predicción electoral.",
+      average: "En cada fecha solo cuenta la encuesta más reciente de cada instituto seleccionado dentro de los 45 días anteriores. Esos valores tienen el mismo peso en la media.",
+      trend: "El modo tendencia suaviza las medias quincenales. Cuanto más largo sea el periodo visible, más amplio será el suavizado: aclara la dirección, pero reduce los movimientos breves.",
+      linear: "Esta vista conecta los puntos medios calculados sin suavizado adicional.",
+      points: "Cada punto es la media de los institutos disponibles en esa fecha, no una encuesta individual.",
+      both: "Se muestran a la vez la tendencia suavizada y los puntos medios sin suavizar.",
+      uk: "La vista británica predeterminada usa la media de 14 días ponderada por calidad de UK Election Data Vault. Pollframe representa esos valores y los suaviza según el periodo visible en el modo tendencia.",
+    },
+  }[language];
+  const modeText = mode === "trend" ? copy.trend : mode === "linear" ? copy.linear : mode === "polls" ? copy.points : copy.both;
+  return {
+    title: copy.title,
+    paragraphs: [copy.purpose, weightedUk && regionType === "uk-federal" ? copy.uk : copy.average, modeText],
+  };
+}
+
+function snapshotInfo(locale, weightedUk = false) {
+  if (locale === "es") return {
+    title: "Cómo se calcula la media actual",
+    paragraphs: ["Cada barra muestra la media más reciente, no el resultado de una sola encuesta.", weightedUk ? "Para Reino Unido se usa la media de 14 días ponderada por calidad de UK Election Data Vault." : "Se usa la encuesta más reciente de cada instituto seleccionado dentro de los últimos 45 días; todos los institutos reciben el mismo peso."],
+  };
+  if (locale === "de") return {
+    title: "So entsteht der aktuelle Mittelwert",
+    paragraphs: ["Jeder Balken zeigt den jüngsten Mittelwert – nicht das Ergebnis einer einzelnen Umfrage.", weightedUk ? "Für das Vereinigte Königreich wird der qualitätsgewichtete 14-Tage-Durchschnitt des UK Election Data Vault verwendet." : "Je ausgewähltem Institut zählt die jüngste Umfrage der letzten 45 Tage; alle Institute erhalten dasselbe Gewicht."],
+  };
+  return {
+    title: "How the current average is calculated",
+    paragraphs: ["Each bar shows the latest average, not the result of one individual poll.", weightedUk ? "For the UK, Pollframe uses UK Election Data Vault’s quality-weighted 14-day average." : "Each selected pollster contributes its latest poll from the preceding 45 days, with equal weight for every pollster."],
+  };
+}
+
 function DateRangeSlider({ locale, min, max, start, end, onStart, onEnd }) {
   const isGerman = locale === "de";
   const l = (de, en, es) => locale === "es" ? es : isGerman ? de : en;
@@ -1990,6 +2074,7 @@ function PollChart({
   const [hoverEvent, setHoverEvent] = useState(null);
   const [cursor, setCursor] = useState(null);
   const chartBoundsRef = useRef(null);
+  const directEventLinks = useFinePointer();
 
   useEffect(() => {
     const resetBounds = () => { chartBoundsRef.current = null; };
@@ -2260,7 +2345,10 @@ function PollChart({
             aria-labelledby="chart-title chart-desc"
             onPointerEnter={(event) => { chartBoundsRef.current = event.currentTarget.getBoundingClientRect(); }}
             onPointerMove={inspectChart}
-            onPointerDown={inspectChart}
+            onPointerDown={(event) => {
+              inspectChart(event);
+              if (!event.target.closest?.(".event-marker")) setHoverEvent(null);
+            }}
             onPointerLeave={(event) => {
               if (event.pointerType === "touch") return;
               chartBoundsRef.current = null;
@@ -2286,17 +2374,20 @@ function PollChart({
             return (
               <g
                 key={event.id}
-                className={`event-marker event-${event.category}`}
-                tabIndex="0"
-                role="link"
+                className={`event-marker event-${event.category} ${directEventLinks ? "direct-link" : "inspect-only"}`}
+                tabIndex={directEventLinks ? "0" : undefined}
+                role={directEventLinks ? "link" : undefined}
                 aria-label={`${formatDate(event.date, locale, { year: true })} · ${eventText(event, locale)}`}
                 onMouseEnter={() => setHoverEvent(event)}
                 onMouseLeave={() => setHoverEvent(null)}
-                onFocus={() => setHoverEvent(event)}
-                onBlur={() => setHoverEvent(null)}
-                onClick={() => window.open(event.source, "_blank", "noopener,noreferrer")}
+                onFocus={() => { if (directEventLinks) setHoverEvent(event); }}
+                onBlur={() => { if (directEventLinks) setHoverEvent(null); }}
+                onClick={() => {
+                  if (directEventLinks) window.open(event.source, "_blank", "noopener,noreferrer");
+                  else setHoverEvent(event);
+                }}
                 onKeyDown={(keyEvent) => {
-                  if (keyEvent.key !== "Enter" && keyEvent.key !== " ") return;
+                  if (!directEventLinks || (keyEvent.key !== "Enter" && keyEvent.key !== " ")) return;
                   keyEvent.preventDefault();
                   window.open(event.source, "_blank", "noopener,noreferrer");
                 }}
@@ -2467,6 +2558,7 @@ function PollChart({
 function ResultsCard({ t, locale, current, previous, date, partyDefinitions = PARTY_DEFINITIONS, statusLabel = null, region = REGION_META[0] }) {
   const [showAll, setShowAll] = useState(false);
   const numberLocale = getNumberLocale(locale);
+  const info = snapshotInfo(locale, region.type === "uk-federal" && Boolean(statusLabel));
   const rows = partyDefinitions
     .map((party) => ({
       ...party,
@@ -2483,7 +2575,7 @@ function ResultsCard({ t, locale, current, previous, date, partyDefinitions = PA
           <p className="section-label">{t.current}</p>
           <h2 id="snapshot-title">{formatDate(date, locale, { year: true })}</h2>
         </div>
-        <div className="card-heading-actions"><span className="status-dot"><i /> {statusLabel ?? t.basedOn(current.pollsterCount)}</span><WatchlistStar country={region.type === "uk-federal" ? "uk" : region.type === "spain-federal" ? "es" : "de"} regionSlug={region.slug} regionName={region.name} type="snapshot" partyIds={[]} label={`${region.name} · ${t.current}`} /></div>
+        <div className="card-heading-actions"><span className="status-dot"><i /> {statusLabel ?? t.basedOn(current.pollsterCount)}</span><GraphInfoPopover locale={locale} title={info.title} paragraphs={info.paragraphs} className="graph-info-compact" /><WatchlistStar country={region.type === "uk-federal" ? "uk" : region.type === "spain-federal" ? "es" : "de"} regionSlug={region.slug} regionName={region.name} type="snapshot" partyIds={[]} label={`${region.name} · ${t.current}`} /></div>
       </div>
       <div className="result-list">
         {(region.type === "spain-federal" && !showAll ? rows.slice(0, 8) : rows).map((party) => (
@@ -3153,6 +3245,7 @@ function PartyDetailModal({
     [startDate, endTime, tickCount],
   );
   if (!party) return null;
+  const graphInfo = mainChartInfo(locale, "party", "trend");
 
   const inspectedPoint = Number.isInteger(hoveredIndex) ? series[hoveredIndex] : last;
   const updateInspection = ({ node, clientX }) => {
@@ -3180,7 +3273,7 @@ function PartyDetailModal({
         <div className="party-modal-header">
           <div>
             <p className="section-label">{t.partyDetail}</p>
-            <h2 id="party-detail-title"><span style={{ background: party.color }} />{t.partyDetailTitle(party.name)}</h2>
+            <div className="party-modal-title-row"><h2 id="party-detail-title"><span style={{ background: party.color }} />{t.partyDetailTitle(party.name)}</h2><GraphInfoPopover locale={locale} title={graphInfo.title} paragraphs={graphInfo.paragraphs} /></div>
             <p>{t.partyDetailIntro}</p>
           </div>
           <button className="icon-button" onClick={onClose} aria-label={t.close}><Icon name="close" /></button>
@@ -6228,8 +6321,8 @@ function App() {
   useEffect(() => {
     const closeMenusOutside = (event) => {
       const activeDetails = event.target.closest?.("details");
-      document.querySelectorAll(".select-control[open], .multi-select[open], .event-key[open], .header-country-menu[open], .licence-disclosure[open]").forEach((details) => {
-        if (details !== activeDetails) details.removeAttribute("open");
+      document.querySelectorAll(".select-control[open], .multi-select[open], .event-key[open], .graph-info-popover[open], .header-country-menu[open], .licence-disclosure[open]").forEach((details) => {
+        if (details !== activeDetails || event.target === activeDetails) details.removeAttribute("open");
       });
     };
     document.addEventListener("pointerdown", closeMenusOutside);
@@ -6493,6 +6586,7 @@ function RegionalApp() {
   const ukConstituencyPage = isContentRoute && !embedMode && !countryIndexPage && !requestedWatchlistPage && query.get("view") === "uk-constituencies";
   const requestedUkCountryPage = isContentRoute && !embedMode && !countryIndexPage && !ukConstituencyPage && requestedCountry === "uk";
   const requestedSpainCountryPage = isContentRoute && !embedMode && !countryIndexPage && !ukConstituencyPage && requestedCountry === "es";
+  const spainIssuesPage = requestedSpainCountryPage && query.get("view") === "spain-issues";
   const isUKContext = (requestedWatchlistPage && requestedCountry === "uk") || ukConstituencyPage || requestedUkCountryPage || region?.type === "uk-federal";
   const isSpainContext = (requestedWatchlistPage && requestedCountry === "es") || requestedSpainCountryPage || region?.type === "spain-federal";
   const activeCountry = isUKContext ? "uk" : isSpainContext ? "es" : "de";
@@ -6861,9 +6955,13 @@ function RegionalApp() {
         : "UK Westminster polling since 1943, votes versus seats and regional election results.";
       canonicalPath = "/?country=uk";
     } else if (spainCountryPage) {
-      title = locale === "es" ? "España de un vistazo · Pollframe" : isGerman ? "Spanien im Überblick · Pollframe" : "Spain at a glance · Pollframe";
-      description = locale === "es" ? "Encuestas nacionales desde 1996, preocupaciones públicas y comunidades autónomas." : isGerman ? "Nationale Umfragen seit 1996, öffentliche Sorgen und autonome Gemeinschaften." : "National polling since 1996, public concerns and autonomous communities.";
-      canonicalPath = "/?country=es";
+      title = spainIssuesPage
+        ? (locale === "es" ? "Qué preocupa a España · Pollframe" : isGerman ? "Was Spanien beschäftigt · Pollframe" : "What concerns Spain · Pollframe")
+        : (locale === "es" ? "España de un vistazo · Pollframe" : isGerman ? "Spanien im Überblick · Pollframe" : "Spain at a glance · Pollframe");
+      description = spainIssuesPage
+        ? (locale === "es" ? "Los principales problemas de España, las preocupaciones personales y la percepción económica según el barómetro del CIS." : isGerman ? "Spaniens wichtigste Probleme, persönliche Sorgen und wirtschaftliche Wahrnehmung im CIS-Barometer." : "Spain’s main national concerns, personal worries and economic perceptions in the CIS barometer.")
+        : (locale === "es" ? "Encuestas nacionales desde 1996, preocupaciones públicas y comunidades autónomas." : isGerman ? "Nationale Umfragen seit 1996, öffentliche Sorgen und autonome Gemeinschaften." : "National polling since 1996, public concerns and autonomous communities.");
+      canonicalPath = spainIssuesPage ? "/?country=es&view=spain-issues" : "/?country=es";
     } else if (germanyCountryPage) {
       title = isGerman ? "Deutschland im Überblick · Pollframe" : "Germany at a glance · Pollframe";
       description = isGerman
@@ -6935,7 +7033,7 @@ function RegionalApp() {
     } catch {
       // Preferences remain active for this visit.
     }
-  }, [locale, theme, textSize, motion, embedMode, isGerman, isOverview, legalPage, privacyPage, licencesPage, contactPage, watchlistPage, germanyCountryPage, germanyStateMapPage, countryIndexPage, ukConstituencyPage, ukCountryPage, spainCountryPage, mapPage, region, isUKContext, isSpainContext, summary]);
+  }, [locale, theme, textSize, motion, embedMode, isGerman, isOverview, legalPage, privacyPage, licencesPage, contactPage, watchlistPage, germanyCountryPage, germanyStateMapPage, countryIndexPage, ukConstituencyPage, ukCountryPage, spainCountryPage, spainIssuesPage, mapPage, region, isUKContext, isSpainContext, summary]);
 
   const latestDate = pollData?.polls.at(-1)?.date;
   const activePartyDefinitions = useMemo(
@@ -6978,6 +7076,12 @@ function RegionalApp() {
     ?? pollData?.polls[0]?.date
     ?? ARCHIVE_START;
   const archiveStart = pollData?.polls[0]?.date ?? ARCHIVE_START;
+  const chartInfo = mainChartInfo(
+    locale,
+    region?.type,
+    mode,
+    region?.type === "uk-federal" && selectedPollsters.includes(pollData?.metadata?.weightedAveragePollsterId),
+  );
 
   const toggleRequired = (setter) => (id) => setter((selection) => (
     selection.includes(id)
@@ -7021,8 +7125,8 @@ function RegionalApp() {
   useEffect(() => {
     const closeMenusOutside = (event) => {
       const activeDetails = event.target.closest?.("details");
-      document.querySelectorAll(".select-control[open], .multi-select[open], .event-key[open], .header-country-menu[open], .licence-disclosure[open]").forEach((details) => {
-        if (details !== activeDetails) details.removeAttribute("open");
+      document.querySelectorAll(".select-control[open], .multi-select[open], .event-key[open], .graph-info-popover[open], .header-country-menu[open], .licence-disclosure[open]").forEach((details) => {
+        if (details !== activeDetails || event.target === activeDetails) details.removeAttribute("open");
       });
     };
     document.addEventListener("pointerdown", closeMenusOutside);
@@ -7169,7 +7273,9 @@ function RegionalApp() {
     return (
       <>
         <SiteHeader t={t} locale={locale} pwa={pwa} onSettings={() => setSettingsOpen(true)} homeHref={homeHref} homeLabel={homeLabel} countryCode="es" />
-        {summary ? <SpainCountryOverview locale={locale} summary={summary} formatDate={formatDate} numberLocale={getNumberLocale(locale)} /> : <div className="embed-loading">{loadError ? t.error : t.loading}</div>}
+        {summary ? (spainIssuesPage
+          ? <SpainIssuesPage locale={locale} summary={summary} formatDate={formatDate} numberLocale={getNumberLocale(locale)} />
+          : <SpainCountryOverview locale={locale} summary={summary} formatDate={formatDate} numberLocale={getNumberLocale(locale)} />) : <div className="embed-loading">{loadError ? t.error : t.loading}</div>}
         <SiteFooter t={t} pwa={pwa} onSettings={() => setSettingsOpen(true)} homeHref={homeHref} homeLabel={homeLabel} sourceUrl={summary?.metadata?.sourceUrl} />
         {settings}
       </>
@@ -7247,7 +7353,7 @@ function RegionalApp() {
               <div className="chart-heading">
                 <div>
                   <p className="section-label">{region.type === "uk-federal" && selectedPollsters.includes(pollData.metadata?.weightedAveragePollsterId) ? (isGerman ? "Qualitätsgewichteter 14-Tage-Trend" : "Quality-weighted 14-day trend") : current.pollsterCount === 1 ? t.onePollster : t.basedOn(current.pollsterCount)}</p>
-                  <h2 id="main-chart-heading">{t.chartTitle}</h2>
+                  <div className="chart-title-row"><h2 id="main-chart-heading">{t.chartTitle}</h2><GraphInfoPopover locale={locale} title={chartInfo.title} paragraphs={chartInfo.paragraphs} source={region.type === "uk-federal" ? { href: "https://electiondatavault.co.uk/polling/polling-average/", label: locale === "de" ? "Methode der britischen Ausgangsreihe" : "UK source-series method" } : null} /></div>
                   <p>{t.chartSubtitle}</p>
                 </div>
                 <div className="chart-actions" data-export-ignore="true">
@@ -7261,7 +7367,7 @@ function RegionalApp() {
                     elementRef={chartExportRef}
                     filename={`pollframe-${region.slug}-${range}-${mode}`}
                     title={t.chartTitle}
-                    subtitle={region.type === "federal" ? "Bundestag" : region.type === "uk-federal" ? "Westminster · Great Britain" : region.name}
+                    subtitle={region.type === "federal" ? "Bundestag" : region.type === "uk-federal" ? "Westminster · United Kingdom" : region.name}
                     locale={locale}
                     t={t}
                     credit={region.type === "uk-federal" ? "UK Election Data Vault · free commercial reuse · Pollframe" : region.type === "spain-federal" ? "Wikipedia contributors · CC BY-SA 4.0 · Pollframe" : undefined}

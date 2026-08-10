@@ -43,6 +43,8 @@
 .spain-polling-entry dd { margin: .15rem 0 0; font-weight: 800; }
 .spain-polling-entry>b { position: absolute; right: 1.15rem; top: 50%; translate: 0 -50%; font-size: 1.4rem; color: var(--accent); }
 .spain-issues-card,.spain-investiture-card { padding: 1.15rem; }
+.spain-issues-card { display: block; text-decoration: none; transition: border-color .16s ease, transform .16s ease; }
+.spain-issues-card:hover { border-color: color-mix(in srgb, var(--spain-red) 42%, var(--line)); transform: translateY(-1px); }
 .spain-issue-bars { display: grid; gap: .72rem; margin-top: 1.1rem; }
 .spain-issue-bars>div { display: grid; grid-template-columns: minmax(6.6rem, 1fr) minmax(5.5rem, 2fr) 3.3rem; gap: .55rem; align-items: center; font-size: .86rem; }
 .spain-issue-bars>div>span { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -50,7 +52,7 @@
 .spain-issue-bars i { display: block; height: 100%; border-radius: inherit; }
 .spain-issue-bars strong { text-align: right; font-variant-numeric: tabular-nums; }
 .spain-issues-card footer { display: flex; justify-content: space-between; gap: 1rem; margin-top: 1rem; padding-top: .8rem; border-top: 1px solid var(--line); color: var(--muted); font-size: .75rem; }
-.spain-issues-card footer a,.spain-investiture-card>a { color: var(--ink); font-weight: 750; }
+.spain-issues-card footer b,.spain-investiture-card>a { color: var(--ink); font-weight: 750; }
 .spain-shift-card { display: flex; flex-direction: column; min-width: 0; padding: 1.15rem; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); color: var(--ink); box-shadow: var(--shadow); text-decoration: none; transition: border-color .16s ease, transform .16s ease; }
 .spain-shift-card:hover { border-color: color-mix(in srgb, var(--spain-red) 45%, var(--line)); transform: translateY(-1px); }
 .spain-shift-card header>span { color: var(--accent); font-size: .7rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
@@ -142,6 +144,57 @@
 .range-track span { position: absolute; top: 50%; width: 12px; height: 12px; border: 3px solid; border-radius: 50%; background: var(--surface); box-shadow: 0 1px 5px rgb(15 23 42 / .18); transform: translate(-50%, -50%); }
 .spain-agreement-card>footer { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: .6rem; align-items: center; margin-top: .75rem; color: var(--muted); font-size: .62rem; }
 .spain-agreement-card>footer small { text-align: center; line-height: 1.3; }
+.spain-card-title-row { align-items: flex-start; }
+.spain-card-title-row .graph-info-popover { margin-top: -.08rem; }
+.spain-issues-page { padding-bottom: 2rem; }
+.spain-issues-page .country-breadcrumb a { color: var(--muted); font-weight: 700; text-decoration: none; }
+.spain-issues-page .country-breadcrumb a:hover { color: var(--accent); }
+.spain-issues-hero { display: grid; gap: 1rem; margin: .75rem 0 1rem; padding: clamp(1.3rem, 4vw, 2.4rem); overflow: hidden; border: 1px solid var(--line); border-radius: 20px; background: linear-gradient(135deg, color-mix(in srgb, var(--spain-red) 7%, var(--surface)), var(--surface) 55%, color-mix(in srgb, var(--spain-gold) 9%, var(--surface))); box-shadow: var(--shadow); }
+.spain-issues-hero h1 { margin: .3rem 0 .55rem; font-size: clamp(2.1rem, 7vw, 4.4rem); line-height: .98; letter-spacing: -.055em; }
+.spain-issues-hero>div>p:last-child { max-width: 48rem; margin: 0; color: var(--muted); line-height: 1.55; }
+.spain-issues-hero aside { align-self: end; justify-self: start; display: grid; grid-template-columns: auto auto; gap: .1rem .6rem; padding: .75rem .9rem; border: 1px solid color-mix(in srgb, var(--spain-red) 22%, var(--line)); border-radius: 14px; background: color-mix(in srgb, var(--surface) 90%, transparent); }
+.spain-issues-hero aside>span { grid-column: 1 / -1; color: var(--muted); font-size: .7rem; font-weight: 750; }
+.spain-issues-hero aside>strong { font-size: 1.35rem; font-variant-numeric: tabular-nums; }
+.spain-issues-hero aside>small { align-self: end; padding-bottom: .12rem; color: var(--muted); font-size: .68rem; }
+.spain-concern-grid { display: grid; gap: 1rem; }
+.spain-concern-panel,.spain-economy-panel,.spain-issues-method { min-width: 0; padding: 1.15rem; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); box-shadow: var(--shadow); }
+.spain-concern-panel>header,.spain-economy-panel>header { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
+.spain-concern-panel h2,.spain-economy-panel h2,.spain-issues-method h2,.spain-concern-insight h2 { margin: 0; font-size: clamp(1.2rem, 4vw, 1.65rem); letter-spacing: -.035em; }
+.spain-concern-panel header p { margin: .38rem 0 0; color: var(--muted); font-size: .76rem; line-height: 1.45; }
+.spain-concern-ranking { display: grid; gap: .1rem; margin-top: 1rem; }
+.spain-concern-ranking>div { display: grid; grid-template-columns: 1.45rem minmax(6.8rem, 1fr) minmax(4rem, 1.3fr) 3.5rem; gap: .55rem; align-items: center; min-height: 2.8rem; border-bottom: 1px solid color-mix(in srgb, var(--line) 72%, transparent); }
+.spain-concern-ranking>div:last-child { border-bottom: 0; }
+.spain-concern-ranking>div>b { display: grid; place-items: center; width: 1.35rem; height: 1.35rem; border-radius: 50%; background: var(--surface-soft); color: var(--muted); font-size: .65rem; }
+.spain-concern-ranking>div>span { min-width: 0; overflow: hidden; font-size: .8rem; font-weight: 730; text-overflow: ellipsis; white-space: nowrap; }
+.spain-concern-ranking>div>div { height: .58rem; overflow: hidden; border-radius: 99px; background: var(--surface-soft); }
+.spain-concern-ranking>div>div>i { display: block; height: 100%; border-radius: inherit; }
+.spain-concern-ranking>div>strong { text-align: right; font-size: .8rem; font-variant-numeric: tabular-nums; }
+.spain-concern-insight { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 1rem; align-items: start; margin: 1rem 0; padding: 1.1rem 1.2rem; border-left: 3px solid var(--spain-red); border-radius: 0 15px 15px 0; background: color-mix(in srgb, var(--spain-red) 5%, var(--surface)); }
+.spain-concern-insight>span { color: var(--spain-red); font-size: .7rem; font-weight: 850; letter-spacing: .08em; }
+.spain-concern-insight p { margin: .42rem 0 0; color: var(--muted); font-size: .82rem; line-height: 1.55; }
+.spain-economy-panel { display: grid; gap: 1rem; }
+.economic-perception-row { display: grid; gap: .55rem; padding-top: 1rem; border-top: 1px solid var(--line); }
+.economic-perception-row>div:first-child { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .4rem 1rem; }
+.economic-perception-row>div:first-child strong { font-size: .85rem; }
+.economic-perception-row>div:first-child span { color: var(--muted); font-size: .7rem; }
+.economic-perception-bar { display: flex; height: 1rem; overflow: hidden; border-radius: 99px; background: var(--surface-soft); }
+.economic-perception-bar>i { height: 100%; }
+.economic-perception-bar .good,.economic-perception-legend .good { background: #2c9a69; }
+.economic-perception-bar .regular,.economic-perception-legend .regular { background: #d2a63e; }
+.economic-perception-bar .bad,.economic-perception-legend .bad { background: #cc5360; }
+.economic-perception-legend { display: grid; gap: .35rem; }
+.economic-perception-legend>span { display: grid; grid-template-columns: .55rem minmax(0, 1fr) auto; gap: .42rem; align-items: center; color: var(--muted); font-size: .68rem; }
+.economic-perception-legend>span>i { width: .5rem; height: .5rem; border-radius: 50%; }
+.economic-perception-legend b { color: var(--ink); font-variant-numeric: tabular-nums; }
+.spain-economy-panel>small { color: var(--muted); font-size: .65rem; line-height: 1.45; }
+.spain-issues-method { display: grid; gap: 1rem; margin-top: 1rem; background: var(--surface-soft); box-shadow: none; }
+.spain-issues-method p:not(.section-label) { margin: .5rem 0 0; color: var(--muted); font-size: .78rem; line-height: 1.55; }
+.spain-issues-method dl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .55rem; margin: 0; }
+.spain-issues-method dl>div { padding: .7rem; border: 1px solid var(--line); border-radius: 11px; background: var(--surface); }
+.spain-issues-method dt { color: var(--muted); font-size: .65rem; }
+.spain-issues-method dd { margin: .25rem 0 0; font-size: .78rem; font-weight: 780; }
+.spain-issues-method nav { display: flex; flex-wrap: wrap; gap: .55rem; }
+.spain-issues-method nav a { padding: .55rem .7rem; border: 1px solid var(--line); border-radius: 9px; background: var(--surface); color: var(--ink); font-size: .7rem; font-weight: 750; text-decoration: none; }
 .results-more { width: 100%; margin-top: .7rem; padding: .65rem; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-soft); color: var(--ink); font: inherit; font-size: .78rem; font-weight: 750; cursor: pointer; }
 .watch-mini-map-es path { fill: color-mix(in srgb, var(--accent) 28%, var(--surface)); stroke: var(--surface); stroke-width: 3; vector-effect: non-scaling-stroke; }
 .watch-issue-list { display: grid; gap: .48rem; margin-top: .55rem; }
@@ -153,10 +206,19 @@
   .spain-overview-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .spain-polling-entry { grid-column: 1 / -1; padding: 1.35rem 1.5rem; }
   .spain-polling-entry dl { display: flex; }
+  .spain-overview-grid>.spain-issues-card { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0, 1fr) minmax(18rem, .9fr); gap: 1.2rem 2rem; align-items: center; padding: 1.35rem 1.5rem; }
+  .spain-overview-grid>.spain-issues-card .spain-issue-bars { margin-top: 0; }
+  .spain-overview-grid>.spain-issues-card footer { grid-column: 1 / -1; }
   .spain-map-layout { grid-template-columns: minmax(0, 2.3fr) minmax(14rem, 1fr); align-items: center; }
   .spain-system-note { grid-template-columns: minmax(0, 1.3fr) minmax(19rem, 1fr); align-items: center; }
   .spain-change-card>header { grid-template-columns: minmax(9rem, .65fr) minmax(18rem, 1.35fr); align-items: end; }
   .spain-change-row { grid-template-areas: "dot name track value delta"; grid-template-columns: 9px minmax(7rem, .75fr) minmax(7rem, 1.4fr) auto auto; }
+  .spain-issues-hero { grid-template-columns: minmax(0, 1fr) auto; align-items: end; }
+  .spain-issues-hero aside { justify-self: end; }
+  .spain-concern-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .economic-perception-legend { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .spain-issues-method { grid-template-columns: minmax(0, 1.5fr) minmax(15rem, .8fr); align-items: start; }
+  .spain-issues-method nav { grid-column: 1 / -1; }
 }
 
 @media (min-width: 960px) {
@@ -180,6 +242,13 @@
   .spain-pulse-heading { align-items: flex-start; }
   .spain-pulse-heading .png-export-button { width: 2.55rem; min-width: 2.55rem; padding-inline: 0; overflow: hidden; color: var(--ink); font-size: 0; gap: 0; }
   .spain-pulse-heading .png-export-button svg { flex: 0 0 auto; }
+  .spain-issues-page { padding-inline: .75rem; }
+  .spain-issues-hero { padding: 1.2rem; border-radius: 16px; }
+  .spain-issues-hero h1 { font-size: 2.45rem; }
+  .spain-concern-panel,.spain-economy-panel,.spain-issues-method { padding: .95rem; border-radius: 15px; }
+  .spain-concern-ranking>div { grid-template-columns: 1.35rem minmax(5.8rem, 1fr) minmax(2.8rem, .8fr) 3.25rem; gap: .42rem; }
+  .spain-concern-insight { margin-inline: .1rem; padding: 1rem; }
+  .spain-issues-method dl { grid-template-columns: 1fr; }
 }
 
 /* Watchlist app workspace */
@@ -2545,6 +2614,70 @@ footer {
   letter-spacing: -0.035em;
 }
 
+.chart-title-row,
+.party-modal-title-row,
+.spain-card-title-row {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  min-width: 0;
+}
+
+.chart-title-row h2,
+.party-modal-title-row h2,
+.spain-card-title-row h3 { min-width: 0; }
+
+.graph-info-popover {
+  position: relative;
+  z-index: 22;
+  flex: 0 0 auto;
+}
+
+.graph-info-popover > summary {
+  width: 1.65rem;
+  height: 1.65rem;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid color-mix(in srgb, var(--ink) 18%, var(--line));
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--muted);
+  cursor: pointer;
+  list-style: none;
+  transition: border-color .14s ease, background .14s ease, color .14s ease, transform .14s ease;
+}
+
+.graph-info-popover > summary::-webkit-details-marker { display: none; }
+.graph-info-popover:not([open]) > .graph-info-card { display: none; }
+.graph-info-popover > summary:hover,
+.graph-info-popover[open] > summary { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+.graph-info-popover > summary:active { transform: scale(.94); }
+.graph-info-popover > summary > span { font-size: .75rem; font-weight: 850; font-style: normal; line-height: 1; }
+
+.graph-info-card {
+  position: absolute;
+  z-index: 90;
+  top: calc(100% + .55rem);
+  right: 0;
+  width: min(22rem, calc(100vw - 2rem));
+  padding: .9rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 18px 48px rgb(16 24 40 / .18);
+  animation: reveal .12s ease-out;
+}
+
+.graph-info-card > strong { display: block; padding-right: 1rem; font-size: .82rem; line-height: 1.3; }
+.graph-info-card > p { margin: .5rem 0 0; color: var(--muted); font-size: .72rem; line-height: 1.5; }
+.graph-info-card > a { display: inline-flex; align-items: center; gap: .3rem; margin-top: .65rem; color: var(--accent); font-size: .69rem; font-weight: 750; }
+.graph-info-compact > summary { width: 1.5rem; height: 1.5rem; }
+.card-heading-actions .graph-info-card { right: -.4rem; }
+.party-modal-title-row { align-items: flex-start; }
+.party-modal-title-row .graph-info-popover { margin-top: .12rem; }
+
 .chart-heading > div:first-child > p:last-child {
   margin: 8px 0 0;
   color: var(--muted);
@@ -2814,6 +2947,12 @@ footer {
   max-height: 290px;
   padding: 7px;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scroll-behavior: auto;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
   border: 1px solid var(--line);
   border-radius: 11px;
   background: var(--surface);
@@ -3048,6 +3187,15 @@ footer {
   stroke-dasharray: none;
   stroke-width: 14;
   opacity: 1;
+  pointer-events: stroke;
+}
+
+.event-marker > line:not(.event-hit-target) { pointer-events: none; }
+.event-marker .event-label-bg,
+.event-marker .event-anchor { pointer-events: visiblePainted; }
+
+@media (hover: hover) and (pointer: fine) {
+  .event-marker line.event-hit-target { pointer-events: none; }
 }
 
 .event-marker line.event-line-minimal {
@@ -3074,7 +3222,9 @@ footer {
   pointer-events: none;
 }
 
-.event-marker { cursor: pointer; }
+.event-marker { cursor: default; }
+.event-marker.direct-link .event-label-bg,
+.event-marker.direct-link .event-anchor { cursor: pointer; }
 
 .event-national { color: var(--event-national); }
 .event-germany { color: var(--event-germany); }
@@ -5117,6 +5267,15 @@ footer nav .footer-action:hover {
     grid-template-columns: 1fr;
   }
 
+  .select-control[open]::before,
+  .multi-select[open]::before {
+    content: "";
+    position: fixed;
+    z-index: 119;
+    inset: 0;
+    background: transparent;
+  }
+
   .select-menu,
   .multi-menu {
     bottom: max(12px, env(safe-area-inset-bottom));
@@ -5128,6 +5287,18 @@ footer nav .footer-action:hover {
     top: auto;
     width: auto;
     z-index: 120;
+  }
+
+  .graph-info-popover { z-index: 135; }
+  .graph-info-card {
+    position: fixed;
+    inset: auto max(10px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
+    width: auto;
+    max-height: min(62dvh, 28rem);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 1rem;
+    border-radius: 16px;
   }
 
   .result-row {

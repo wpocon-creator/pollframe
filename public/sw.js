@@ -13,7 +13,7 @@ const SHELL = [
 const COUNTRY_DATA = {
   de: ["/", "/regions.json", "/state-map-data.json", "/data/bundestag.json"],
   uk: ["/?country=uk", "/uk-summary.json", "/data/uk-westminster.json", "/data/uk-constituencies.json"],
-  es: ["/?country=es", "/spain-summary.json", "/data/spain-congress.json", "/data/spain-autonomies.geojson"],
+  es: ["/?country=es", "/?country=es&view=spain-issues", "/spain-summary.json", "/data/spain-congress.json", "/data/spain-autonomies.geojson"],
 };
 
 async function cacheBuiltAssetGraph(cache, initialPaths) {
