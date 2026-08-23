@@ -6,6 +6,8 @@ export async function fetchTextWithRetry(url, {
   fetchImpl = fetch,
   headers = {},
   fallbackHeaders = headers,
+  fetchOptions = {},
+  maxBytes = Number.POSITIVE_INFINITY,
   sleep = defaultSleep,
   timeoutMs = 20_000,
 } = {}) {
@@ -13,10 +15,17 @@ export async function fetchTextWithRetry(url, {
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
     try {
       const response = await fetchImpl(url, {
+        ...fetchOptions,
         headers,
         signal: AbortSignal.timeout(timeoutMs),
       });
-      if (response.ok) return response.text();
+      if (response.ok) {
+        const length = Number(response.headers.get("content-length"));
+        if (Number.isFinite(length) && length > maxBytes) throw new Error(`${url}: response is too large`);
+        const text = await response.text();
+        if (Buffer.byteLength(text) > maxBytes) throw new Error(`${url}: response is too large`);
+        return text;
+      }
       const error = new Error(`HTTP ${response.status}`);
       if (response.status !== 429 && response.status < 500) throw error;
       lastError = error;
@@ -29,10 +38,15 @@ export async function fetchTextWithRetry(url, {
   if (fallbackUrl) {
     try {
       const fallback = await fetchImpl(fallbackUrl, {
+        ...fetchOptions,
         headers: fallbackHeaders,
         signal: AbortSignal.timeout(timeoutMs),
       });
-      if (fallback.ok) return fallback.text();
+      if (fallback.ok) {
+        const text = await fallback.text();
+        if (Buffer.byteLength(text) > maxBytes) throw new Error(`${fallbackUrl}: response is too large`);
+        return text;
+      }
       lastError = new Error(`Fallback HTTP ${fallback.status}`);
     } catch (error) {
       lastError = error;
