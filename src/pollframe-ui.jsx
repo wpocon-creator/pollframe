@@ -110,11 +110,23 @@ export function SelectControl({ label, value, onChange, options }) {
 
 export function MultiSelect({ label, summary, items, selected, onToggle }) {
   const detailsRef = useRef(null);
+  const menuRef = useRef(null);
   useDismissOnlyDetails(detailsRef);
+  useEffect(() => {
+    const menu = menuRef.current;
+    if (!menu) return undefined;
+    const containWheel = (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      menu.scrollTop += event.deltaY;
+    };
+    menu.addEventListener("wheel", containWheel, { passive: false });
+    return () => menu.removeEventListener("wheel", containWheel);
+  }, []);
   return (
     <details className="multi-select" name="pollframe-customize-control" ref={detailsRef}>
       <summary><span><small>{label}</small><strong>{summary}</strong></span><Icon name="chevron" size={16} /></summary>
-      <div className="multi-menu">{items.map((item) => <label key={item.id}><input type="checkbox" checked={selected.includes(item.id)} onChange={() => onToggle(item.id)} /><span className="check-box"><Icon name="check" size={14} /></span><span className="multi-label"><strong>{item.label}</strong>{item.description && <small>{item.description}</small>}</span></label>)}</div>
+      <div className="multi-menu" ref={menuRef}>{items.map((item) => <label key={item.id}><input type="checkbox" checked={selected.includes(item.id)} onChange={() => onToggle(item.id)} /><span className="check-box"><Icon name="check" size={14} /></span><span className="multi-label"><strong>{item.label}</strong>{item.description && <small>{item.description}</small>}</span></label>)}</div>
     </details>
   );
 }

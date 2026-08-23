@@ -1,4 +1,4 @@
-const VERSION = "pollframe-app-v17";
+const VERSION = "pollframe-app-v18";
 const SHELL_CACHE = `${VERSION}-shell`;
 const RUNTIME_CACHE = `${VERSION}-runtime`;
 const DATA_CACHE = `${VERSION}-data`;
@@ -173,7 +173,9 @@ async function networkFirst(request, cacheName, { data = false } = {}) {
   const timeout = setTimeout(() => controller.abort(), data ? 4500 : 10000);
   try {
     const response = await fetch(request, { signal: controller.signal });
-    if (response.ok) await cache.put(request, response.clone());
+    if (response.ok) {
+      try { await cache.put(request, response.clone()); } catch { /* Never discard a valid network response because cache storage raced or filled up. */ }
+    }
     return response;
   } catch (error) {
     const cached = await cache.match(request, { ignoreSearch: request.mode === "navigate", ignoreVary: true });
@@ -190,7 +192,7 @@ async function navigationResponse(event) {
   if (preloaded) {
     if (preloaded.ok) {
       const cache = await caches.open(SHELL_CACHE);
-      await cache.put(event.request, preloaded.clone());
+      try { await cache.put(event.request, preloaded.clone()); } catch { /* Return the preloaded page even if cache storage is unavailable. */ }
     }
     return preloaded;
   }
@@ -202,7 +204,9 @@ async function cacheFirst(request) {
   const cached = await caches.match(request, { ignoreVary: true });
   if (cached) return cached;
   const response = await fetch(request);
-  if (response.ok) await cache.put(request, response.clone());
+  if (response.ok) {
+    try { await cache.put(request, response.clone()); } catch { /* The network response remains usable without a runtime-cache write. */ }
+  }
   return response;
 }
 

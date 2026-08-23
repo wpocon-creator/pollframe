@@ -88,13 +88,14 @@ export function usePwaLifecycle({ disabled = false, country = "de" } = {}) {
     let updateTimer;
 
     const activateWaitingUpdate = (registration) => {
-      if (!registration.waiting || !window.navigator.serviceWorker.controller) return;
+      if (!registration?.waiting || !window.navigator.serviceWorker.controller) return;
       setUpdateAvailable(true);
       reloadForUpdateRef.current = true;
       registration.waiting.postMessage({ type: "SKIP_WAITING" });
     };
 
     const inspectRegistration = (registration) => {
+      if (!registration) return;
       activateWaitingUpdate(registration);
       registration.addEventListener("updatefound", () => {
         const worker = registration.installing;
@@ -106,7 +107,9 @@ export function usePwaLifecycle({ disabled = false, country = "de" } = {}) {
 
     window.navigator.serviceWorker.register(trustedServiceWorkerUrl("/sw.js"), { scope: "/", updateViaCache: "none" })
       .then((registration) => {
-        if (disposed) return;
+        // Browsers or managed environments may expose the API while blocking
+        // registration. Treat that as an unavailable optional feature.
+        if (disposed || !registration) return;
         registrationRef.current = registration;
         inspectRegistration(registration);
         registration.update().catch(() => {});
