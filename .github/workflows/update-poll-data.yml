@@ -16,7 +16,7 @@ concurrency:
 jobs:
   update:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     permissions:
       contents: read
 
@@ -42,16 +42,19 @@ jobs:
       - name: Update Germany
         id: germany
         continue-on-error: true
+        timeout-minutes: 3
         run: npm run data:update
 
       - name: Update the United Kingdom
         id: uk
         continue-on-error: true
+        timeout-minutes: 3
         run: npm run data:update:uk
 
       - name: Update Spain
         id: spain
         continue-on-error: true
+        timeout-minutes: 5
         env:
           SPAIN_ELECTION_DATE: ${{ vars.SPAIN_ELECTION_DATE }}
         run: npm run data:update:spain
@@ -59,11 +62,13 @@ jobs:
       - name: Update Spanish regions
         id: spain_regions
         continue-on-error: true
+        timeout-minutes: 8
         run: npm run data:update:spain-regions
 
       - name: Update government and leader approval
         id: approval
         continue-on-error: true
+        timeout-minutes: 4
         run: npm run data:update:approval
 
       - name: Validate the complete publishable snapshot
