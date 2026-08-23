@@ -1,10 +1,10 @@
 # Pollframe
 
-A responsive, static-first polling dashboard for Germany and all 16 federal
-states. The overview links to one shared dashboard per region; no state site is
-copied or maintained separately. The default view shows the full archive as a
-smoothed equal-pollster trend: at each date, the latest poll from each selected
-institute within the previous 45 days receives one equal share.
+A responsive, static-first polling dashboard for Germany, the United Kingdom
+and Spain, including German states, UK constituencies and Spanish autonomous
+communities. The default polling view shows a smoothed equal-pollster trend: at
+each date, the latest poll from each selected institute within the previous 45
+days receives one equal share.
 
 ## Data
 
@@ -12,7 +12,7 @@ Individual polls come from [dawum.de](https://dawum.de/API/) under the
 [ODC Open Database License](https://opendatacommons.org/licenses/odbl/1-0/).
 The included subset covers 3,154 federal and state polls from January 2017
 onwards from Allensbach, Forsa, Forschungsgruppe Wahlen, INSA, Infratest
-dimap, Ipsos, Verian and YouGov. Official federal election results are shown
+dimap, Verian and YouGov. Official federal election results are shown
 for 2017, 2021 and 2025.
 
 Every chart can be shared as an exact, restorable view or embedded without
@@ -49,13 +49,12 @@ npm run data:update
 
 ## Automatic data updates
 
-`.github/workflows/update-poll-data.yml` checks DAWUM every Tuesday and Friday
-at 06:17 UTC. A read-only job validates Germany and all 16 state archives and
-builds the site. A separate minimal publishing job receives write access and
-only commits the validated public JSON files. It creates no commit when the
-selected data did not change. When Cloudflare Workers Builds is connected to the
-repository, a successful data commit triggers the normal production
-deployment.
+`.github/workflows/update-poll-data.yml` checks all configured sources daily at
+06:17 UTC. A read-only job validates the German, UK, Spanish and approval
+archives, pauses on unapproved large single-source movements and builds the
+site. A separate minimal publishing job receives write access and only commits
+the validated public JSON files. It creates no commit when the selected data did
+not change. A successful data commit triggers the normal production deployment.
 
 The workflow can also be run manually from GitHub's **Actions** tab. It needs
 the repository setting **Workflow permissions → Read and write permissions**;
@@ -82,11 +81,16 @@ from the home screen, the single app identity is simply “Pollframe”. It uses
 compact app header and a fixed, country-aware bottom navigation, opens on the
 Watchlist and restores the country used most recently.
 
-The service worker caches the app shell and the core Germany/UK polling views.
-Pages opened later are cached as they are used. If a live request fails, the UI
-clearly labels the saved-data fallback; the embedded journalist views are not
-cached by the app worker. A newly deployed worker waits until the reader accepts
-the in-app update prompt, avoiding a mid-session reload.
+The service worker caches the complete interface and compact core
+Germany/UK/Spain summaries. When Pollframe runs as an installed app, it prepares
+the national archives, German state series, Spanish regions, UK constituencies
+and approval data in the background; the tested offline package remains below
+10 MB. Ordinary browser use stays lighter and caches detailed pages as they are
+opened. If a live request fails, the UI clearly labels the saved-data fallback;
+the embedded journalist views are not cached by the app worker. Once a new app
+shell has been cached successfully, the new worker activates and an already-open
+controlled page reloads once. This prevents installed phone apps from remaining
+on an old release.
 
 When the cache strategy or pre-cached files change, bump `VERSION` in
 `public/sw.js`. Validate installability, installed navigation and offline
@@ -95,11 +99,24 @@ fallbacks with `tests/pwa.spec.mjs` before deployment.
 ## Cloudflare Workers with Static Assets
 
 - Build command: `npm run build`
-- Deploy command: `npx wrangler deploy`
+- Deploy command: `npm run deploy`
 - Node version: 22
 
-`wrangler.jsonc` publishes the generated `dist` directory as static assets. No
-server runtime or environment variables are required.
+`npm run deploy` deliberately rebuilds and runs the release validations before
+Wrangler uploads `dist`. Do not deploy the directory directly: an old `dist`
+folder can otherwise replace a newer public release.
+
+`wrangler.jsonc` publishes the generated `dist` directory as static assets and
+runs the small Worker API only for `/api/*`. Bug reports are kept in the private
+`BugReportStore` Durable Object. Before the first production deployment, create
+the dashboard password as a Worker secret:
+
+```sh
+npx wrangler secret put BUG_REPORT_ADMIN_KEY
+```
+
+The internal report dashboard is available at `/?page=bug-reports`; its key is
+kept only in the current browser tab through `sessionStorage`.
 
 The production Worker is connected to the GitHub repository through Cloudflare
 Workers Builds. A merge or direct push to `main` automatically runs the build
@@ -117,7 +134,10 @@ changes, not ordinary Pollframe versions.
 
 ## Security
 
-Run `npm run check` before every deployment. It now includes data validation, a
-production build and security-policy/output checks. The full threat model,
-implemented controls and required GitHub/Cloudflare account settings are in
-[`SECURITY.md`](SECURITY.md).
+Run `npm run check` before every deployment. It includes data validation, a
+production build, security-policy/output checks and compressed-asset budgets.
+Normal PRs and main pushes additionally run full core regressions in Chromium,
+Firefox and WebKit plus dedicated phone/tablet geometry, PWA and visual checks
+in `.github/workflows/quality.yml`. The threat model is in
+[`SECURITY.md`](SECURITY.md); reuse status is tracked in
+[`DATA_SOURCE_REGISTER.md`](DATA_SOURCE_REGISTER.md).

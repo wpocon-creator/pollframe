@@ -6,7 +6,7 @@ const TRUSTED_REMOTE_SOURCE = "https://api.dawum.de/";
 const TRUSTED_SOURCE_URL = "https://dawum.de/API/";
 const TRUSTED_LICENSE_URL = "https://opendatacommons.org/licenses/odbl/1-0/";
 const DERIVATIVE_NOTICE = "Derived from the dawum.de election polling database. This derivative Pollframe database is made available under the Open Database License (ODbL) 1.0.";
-const DERIVATIVE_CHANGES = "Filtered to eight selected institutes and records from 2017; fields normalised and renamed; records split by parliament; Pollframe averages and state movements calculated separately.";
+const DERIVATIVE_CHANGES = "Filtered to seven selected institutes and records from 2017; fields normalised and renamed; records split by parliament; Pollframe averages and state movements calculated separately. Polls from a rights-pending source are temporarily excluded.";
 const MAX_SOURCE_BYTES = 25 * 1024 * 1024;
 const MAX_SURVEYS = 100_000;
 const MAX_RESULTS_PER_SURVEY = 50;
@@ -96,7 +96,7 @@ async function loadSource() {
 
 const source = await loadSource();
 
-const includedInstituteIds = new Set(["1", "2", "3", "5", "6", "9", "13", "17"]);
+const includedInstituteIds = new Set(["1", "2", "3", "5", "6", "9", "13"]);
 const REGION_CONFIG = [
   { id: "0", slug: "bundestag", mapId: null, type: "federal", name: "Deutschland", parliament: "Bundestag" },
   { id: "1", slug: "baden-wuerttemberg", mapId: "bw", type: "state", name: "Baden-Württemberg", parliament: "Landtag" },
@@ -213,7 +213,7 @@ function makeRegionData(region) {
       generatedAt,
       derivativeDatabaseNotice: DERIVATIVE_NOTICE,
       changes: DERIVATIVE_CHANGES,
-      inclusionRule: "Eight established institutes with published fieldwork and sample metadata. The reusable DAWUM archive begins in 2017.",
+      inclusionRule: "Seven established institutes with published fieldwork and sample metadata. The reusable DAWUM archive begins in 2017.",
       region,
     },
     pollsters: Object.fromEntries([...pollsterIds].map((id) => [

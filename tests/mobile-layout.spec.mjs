@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-const phoneProjects = new Set(["pixel-5", "galaxy-s9", "iphone-se", "iphone-13", "iphone-13-chromium"]);
+const phoneProjects = new Set(["pixel-5", "galaxy-s9", "iphone-se", "iphone-13", "iphone-13-chromium", "phone-landscape"]);
 
 async function settle(page) {
   await page.waitForLoadState("domcontentloaded");
@@ -79,7 +79,7 @@ test.describe("mobile layout geometry", () => {
     await page.goto("/");
     await settle(page);
 
-    await expectMobileHeaderIconsCentred(page);
+    if (page.viewportSize().width <= 680) await expectMobileHeaderIconsCentred(page);
     const buttons = page.locator(".site-header .header-button:visible");
     for (let index = 0; index < await buttons.count(); index += 1) {
       await expectInsideViewport(buttons.nth(index), page, `header button ${index}`);
@@ -109,19 +109,46 @@ test.describe("mobile layout geometry", () => {
       "/?region=uk-westminster",
       "/?country=uk&view=uk-map",
       "/?view=uk-constituencies&country=uk",
+      "/?country=es",
+      "/?country=es&view=spain-issues",
+      "/?country=es&view=spain-region&area=asturias",
+      "/?region=spain-congress",
     ];
     for (const route of routes) {
       await page.goto(route);
       await settle(page);
       await expect(page.locator(".site-header")).toBeVisible();
-      await expectMobileHeaderIconsCentred(page);
+      if (page.viewportSize().width <= 680) await expectMobileHeaderIconsCentred(page);
       await expectNoPageOverflow(page, route);
     }
+    await expect(page.locator(".poll-chart")).toHaveAttribute("viewBox", page.viewportSize().width <= 680 ? "0 0 420 390" : "0 0 1320 660");
+    await expect(page.locator(".event-key")).toBeVisible();
   });
 
   test("chart dropdowns and dialogs remain usable on a phone", async ({ page }, testInfo) => {
     await page.goto("/?region=bundestag");
     await settle(page);
+    const info = page.locator(".chart-heading .graph-info-popover").first();
+    await info.scrollIntoViewIfNeeded();
+    await info.locator("summary").click();
+    const infoGeometry = await page.locator(".graph-info-card:visible").evaluate((card) => {
+      const cardRect = card.getBoundingClientRect();
+      const backdropRect = document.querySelector(".graph-info-popover[open] .graph-info-backdrop").getBoundingClientRect();
+      return {
+        centreOffset: Math.abs(((cardRect.top + cardRect.bottom) / 2) - (innerHeight / 2)),
+        inside: cardRect.top >= 8 && cardRect.bottom <= innerHeight - 8 && cardRect.left >= 8 && cardRect.right <= innerWidth - 8,
+        backdrop: { top: backdropRect.top, bottom: backdropRect.bottom, left: backdropRect.left, right: backdropRect.right },
+        blur: getComputedStyle(document.querySelector(".graph-info-popover[open] .graph-info-backdrop")).backdropFilter,
+      };
+    });
+    expect(infoGeometry.centreOffset).toBeLessThanOrEqual(3);
+    expect(infoGeometry.inside).toBe(true);
+    expect(infoGeometry.backdrop.top).toBeLessThanOrEqual(0);
+    expect(infoGeometry.backdrop.bottom).toBeGreaterThanOrEqual(page.viewportSize().height);
+    expect(infoGeometry.backdrop.left).toBeLessThanOrEqual(0);
+    expect(infoGeometry.backdrop.right).toBeGreaterThanOrEqual(page.viewportSize().width);
+    expect(infoGeometry.blur).not.toBe("none");
+    await page.locator(".graph-info-popover[open] .graph-info-card header button").click();
     await page.getByRole("button", { name: /Diagramm anpassen|Customise chart|Customize chart/i }).click();
     const controls = page.locator(".customize-panel details:visible");
     expect(await controls.count()).toBeGreaterThanOrEqual(3);
@@ -131,8 +158,25 @@ test.describe("mobile layout geometry", () => {
       await control.locator("summary").click();
       const menu = control.locator(".select-menu,.multi-menu");
       await expectInsideViewport(menu, page, `chart menu ${index}`, 8);
+      if (index === 0) {
+        const layers = await page.evaluate(() => ({
+          info: Number.parseInt(getComputedStyle(document.querySelector(".chart-heading .graph-info-popover:not([open])")).zIndex, 10),
+          control: Number.parseInt(getComputedStyle(document.querySelector(".customize-panel details[open]")).zIndex, 10),
+          menu: Number.parseInt(getComputedStyle(document.querySelector(".customize-panel details[open] .select-menu,.customize-panel details[open] .multi-menu")).zIndex, 10),
+        }));
+        expect(layers.info).toBeLessThan(layers.control);
+        expect(layers.info).toBeLessThan(layers.menu);
+      }
       if (index === 0) await page.screenshot({ path: testInfo.outputPath("chart-dropdown.png"), fullPage: false });
-      await page.mouse.click(4, Math.round(page.viewportSize().height / 2));
+      if (index === 0) {
+        const outside = page.locator("main").first();
+        await outside.dispatchEvent("pointerdown", { pointerId: 41, pointerType: "touch", isPrimary: true });
+        await expect(menu).toBeVisible();
+        await outside.dispatchEvent("pointerup", { pointerId: 41, pointerType: "touch", isPrimary: true });
+        await outside.dispatchEvent("click", { button: 0 });
+      } else {
+        await page.mouse.click(4, Math.round(page.viewportSize().height / 2));
+      }
       await expect(menu).toBeHidden();
     }
 
@@ -150,6 +194,19 @@ test.describe("mobile layout geometry", () => {
     await page.waitForTimeout(200);
     await expectInsideViewport(page.locator(".embed-modal"), page, "share dialog");
     await expect(page.locator(".embed-live-preview iframe")).toBeVisible();
+    await expect(page.locator(".embed-live-preview iframe")).toHaveAttribute("scrolling", "no");
+    expect(await page.locator(".embed-live-preview iframe").evaluate((element) => getComputedStyle(element).pointerEvents)).toBe("none");
+    const verticalScrollAreas = await page.locator(".embed-modal").evaluate((modal) => [...modal.querySelectorAll("*")]
+      .filter((element) => {
+        const style = getComputedStyle(element);
+        return element.scrollHeight > element.clientHeight + 2 && ["auto", "scroll"].includes(style.overflowY);
+      })
+      .map((element) => element.className));
+    // The document preview is the only element allowed to scroll. On taller
+    // phones the complete preview may fit, in which case no scrollbar appears.
+    expect(verticalScrollAreas.length).toBeLessThanOrEqual(1);
+    if (verticalScrollAreas.length) expect(verticalScrollAreas[0]).toContain("static-embed-preview");
+    expect(await page.locator(".embed-modal").evaluate((modal) => modal.scrollHeight <= modal.clientHeight + 2)).toBe(true);
     const previewDimensions = await page.frameLocator(".embed-live-preview iframe").locator("html").evaluate((element) => ({
       clientWidth: element.clientWidth,
       scrollWidth: element.scrollWidth,
@@ -181,7 +238,7 @@ test.describe("mobile layout geometry", () => {
       await page.screenshot({ path: testInfo.outputPath("notification-intro.png"), fullPage: false });
       await page.getByRole("button", { name: /Nicht jetzt|Not now/i }).click();
     }
-    await page.getByRole("button", { name: /Watchlist-Eintrag hinzufügen|Add Watchlist item/i }).click();
+    await page.locator(".watchlist-add-button").click();
     await page.waitForTimeout(200);
     await expectInsideViewport(page.locator(".watch-gallery"), page, "watchlist gallery");
     await page.screenshot({ path: testInfo.outputPath("watchlist-gallery.png"), fullPage: false });
@@ -196,5 +253,57 @@ test.describe("mobile layout geometry", () => {
     await page.screenshot({ path: testInfo.outputPath("constituency-suggestions.png"), fullPage: false });
     await page.mouse.click(4, Math.round(page.viewportSize().height / 2));
     await expect(suggestions).toBeHidden();
+  });
+
+  test("approval comparison uses the fitted Pollframe historical-chart canvas on a phone", async ({ page }, testInfo) => {
+    await page.goto("/?view=approval&mode=compare&lang=de");
+    await settle(page);
+    await expectNoPageOverflow(page, "approval comparison");
+    const geometry = await page.locator(".approval-chart-region .chart-wrap").evaluate((element) => ({ client: element.clientWidth, scroll: element.scrollWidth }));
+    expect(geometry.scroll).toBeLessThanOrEqual(geometry.client + 2);
+    await expect(page.locator(".approval-chart-region .long-range-chart-wrap")).toHaveCount(0);
+    const markers = await page.locator(".approval-chart-region .approval-event-marker-original").count();
+    expect(markers).toBeLessThanOrEqual(6);
+    const dots = await page.locator(".approval-chart-region .interactive-event-layer .event-dot").count();
+    const elections = await page.locator(".approval-chart-region .historical-election-marker").count();
+    await expect(page.locator(".approval-chart-region .event-key-item")).toHaveCount(markers + dots + elections);
+    await expect(page.locator(".approval-event-marker-original .event-label-text")).toHaveCount(markers);
+    await expect(page.locator(".approval-event-marker-original .event-label-date")).toHaveCount(0);
+    expect((await page.locator(".approval-event-marker-original .event-label-text").allTextContents()).some((label) => label.includes("…"))).toBe(false);
+    await expect(page.locator(".approval-insight-grid")).toHaveCount(0);
+    await page.locator(".approval-main-chart").screenshot({ path: testInfo.outputPath("approval-phone-chart.png") });
+    await page.locator(".approval-event-marker-original").first().dispatchEvent("click");
+    await expectInsideViewport(page.locator(".approval-event-card"), page, "approval event card", 8);
+    await page.screenshot({ path: testInfo.outputPath("approval-phone-event-card.png"), fullPage: false });
+    await page.locator(".approval-poll-chart .grid-line").last().click({ force: true });
+    await page.getByRole("button", { name: "Teilen & einbetten", exact: true }).click();
+    await expectInsideViewport(page.locator(".approval-share-card"), page, "approval share dialog");
+    await expect(page.locator(".approval-embed-preview iframe")).toBeVisible();
+    await page.screenshot({ path: testInfo.outputPath("approval-phone.png"), fullPage: false });
+  });
+
+  test("historical charts stay fitted after display and custom-date changes", async ({ page }) => {
+    await page.goto("/?region=bundestag&lang=de");
+    await settle(page);
+    await page.getByRole("button", { name: /Diagramm anpassen|Customize chart/i }).click();
+
+    const assertFitted = async (label) => {
+      const wrap = page.locator(".chart-card .chart-wrap");
+      await expect(page.locator(".chart-card .long-range-chart-wrap"), `${label}: old long-range layout`).toHaveCount(0);
+      const size = await wrap.evaluate((element) => ({ clientWidth: element.clientWidth, scrollWidth: element.scrollWidth }));
+      expect(size.scrollWidth, `${label}: chart should not become horizontally scrollable`).toBeLessThanOrEqual(size.clientWidth + 2);
+    };
+
+    await assertFitted("default archive");
+    const displayControl = page.locator(".customize-panel .select-control").first();
+    await displayControl.locator("summary").click();
+    await displayControl.getByRole("button", { name: "Durchschnittspunkte", exact: true }).click();
+    await assertFitted("published-polls mode");
+
+    const rangeControl = page.locator(".customize-panel .select-control").nth(1);
+    await rangeControl.locator("summary").click();
+    await rangeControl.getByRole("button", { name: /Eigener Zeitraum|Custom dates/i }).click();
+    await expect(page.locator('.custom-date-slider input[type="range"]')).toHaveCount(2);
+    await assertFitted("custom full archive");
   });
 });

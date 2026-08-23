@@ -19,6 +19,10 @@ test.describe("installable Pollframe app", () => {
     for (const path of ["/manifest-context.js", "/sw.js", "/apple-touch-icon.png", "/pollframe-app-192.png", "/pollframe-app-512.png", "/pollframe-maskable-512.png"]) {
       expect((await request.get(path)).ok(), `${path} should be available`).toBe(true);
     }
+    const serviceWorker = await (await request.get("/sw.js")).text();
+    expect(serviceWorker).toMatch(/addEventListener\("install"[\s\S]*?installAppShell\(\)\.then\(\(\) => self\.skipWaiting\(\)\)/);
+    expect(serviceWorker).toContain("navigationPreload");
+    expect(serviceWorker).toContain("PREFETCH_OFFLINE_APP");
   });
 
   test("the unified app reopens the last country", async ({ page }, testInfo) => {
@@ -138,5 +142,95 @@ test.describe("installable Pollframe app", () => {
     await expect(page.getByRole("heading", { level: 1, name: /Deutschland im Überblick|Germany at a glance/i })).toBeVisible();
     await expect(page.getByRole("status")).toContainText(/Offline|Gespeicherter Datenstand|Saved data shown/);
     await context.setOffline(false);
+  });
+
+  test("keeps an installed Watchlist and its session change visible offline", async ({ page, context }, testInfo) => {
+    test.skip(testInfo.project.name !== "pixel-5", "representative installed phone app");
+    await page.addInitScript(() => {
+      const original = window.matchMedia.bind(window);
+      window.matchMedia = (query) => query === "(display-mode: standalone)"
+        ? { matches: true, media: query, onchange: null, addListener() {}, removeListener() {}, addEventListener() {}, removeEventListener() {}, dispatchEvent() { return true; } }
+        : original(query);
+      if (!window.localStorage.getItem("pollframe-watchlist-de-v2")) window.localStorage.setItem("pollframe-watchlist-de-v2", JSON.stringify([{ id: "session-green", country: "de", regionSlug: "bundestag", type: "party", partyIds: ["4"], label: "Grüne · Bundestag", layout: "wide", createdAt: "2026-08-01T10:00:00.000Z", lastSnapshot: { date: "2026-07-01", value: 10 } }]));
+      window.localStorage.setItem("pollframe-notification-intro-de", "seen");
+    });
+    await page.goto("/?view=watchlist&country=de");
+    await expect(page.locator(".watch-card-party")).toBeVisible();
+    await expect(page.locator(".watch-card-value span")).toBeVisible();
+    await page.evaluate(() => navigator.serviceWorker.ready);
+    if (!await page.evaluate(() => Boolean(navigator.serviceWorker.controller))) await page.reload();
+    await page.waitForFunction(() => Boolean(navigator.serviceWorker.controller));
+    await page.reload();
+    await expect(page.locator(".watch-card-value span")).toBeVisible();
+    await context.setOffline(true);
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await expect(page.locator(".watch-card-party")).toContainText("Grüne");
+    await expect(page.locator(".watch-card-value span")).toBeVisible();
+    await expect(page.getByRole("status")).toContainText(/Offline|Sin conexión|Gespeicherter Datenstand|Saved data shown/);
+    await context.setOffline(false);
+  });
+
+  test("prepares every national app section for a cold offline phone launch", async ({ page, context }, testInfo) => {
+    test.skip(testInfo.project.name !== "pixel-5", "representative installed phone app");
+    await page.addInitScript(() => {
+      const original = window.matchMedia.bind(window);
+      window.matchMedia = (query) => query === "(display-mode: standalone)"
+        ? { matches: true, media: query, onchange: null, addListener() {}, removeListener() {}, addEventListener() {}, removeEventListener() {}, dispatchEvent() { return true; } }
+        : original(query);
+      window.localStorage.setItem("pollframe-notification-intro-de", "seen");
+    });
+    await page.goto("/?view=watchlist&country=de");
+    await page.evaluate(() => navigator.serviceWorker.ready);
+    if (!await page.evaluate(() => Boolean(navigator.serviceWorker.controller))) await page.reload();
+    await page.waitForFunction(() => Boolean(navigator.serviceWorker.controller));
+    await page.waitForFunction(async () => {
+      const cached = await caches.match("/__pollframe-offline-ready__");
+      return Boolean(cached);
+    }, null, { timeout: 30_000 });
+    const offlineBytes = await page.evaluate(async () => {
+      const names = (await caches.keys()).filter((name) => /^pollframe-app-v\d+-/.test(name));
+      const responses = (await Promise.all(names.map(async (name) => (await caches.open(name)).matchAll()))).flat();
+      return (await Promise.all(responses.map(async (response) => (await response.clone().arrayBuffer()).byteLength)))
+        .reduce((sum, size) => sum + size, 0);
+    });
+    expect(offlineBytes).toBeLessThan(10 * 1024 * 1024);
+
+    await context.setOffline(true);
+    await page.goto("/?country=es", { waitUntil: "domcontentloaded" });
+    await expect(page.getByRole("heading", { level: 1, name: /España de un vistazo|Spain at a glance|Spanien im Überblick/i })).toBeVisible();
+    await expect(page.locator(".spain-map-svg")).toBeVisible();
+    await page.goto("/?country=es&view=spain-region&area=madrid", { waitUntil: "domcontentloaded" });
+    await expect(page.locator(".spain-region-page")).toBeVisible();
+    await page.goto("/?region=spain-congress", { waitUntil: "domcontentloaded" });
+    await expect(page.locator(".chart-card").first()).toBeVisible();
+    await page.goto("/?country=uk", { waitUntil: "domcontentloaded" });
+    await expect(page.getByRole("heading", { level: 1, name: /United Kingdom at a glance|Vereinigtes Königreich im Überblick/i })).toBeVisible();
+    await expect(page.locator(".uk-map-visual svg")).toBeVisible();
+    await page.goto("/?view=uk-constituencies&country=uk", { waitUntil: "domcontentloaded" });
+    await expect(page.getByRole("heading", { level: 1, name: /Find your constituency|Finde deinen Wahlkreis/i })).toBeVisible();
+    await page.goto("/?region=uk-westminster", { waitUntil: "domcontentloaded" });
+    await expect(page.locator(".chart-card").first()).toBeVisible();
+    await page.goto("/?region=bayern", { waitUntil: "domcontentloaded" });
+    await expect(page.locator(".chart-card").first()).toBeVisible();
+    await page.goto("/?view=approval&country=de", { waitUntil: "domcontentloaded" });
+    await expect(page.getByRole("heading", { level: 1, name: /Wie zufrieden ist Deutschland|How satisfied is Germany/i })).toBeVisible();
+    await expect(page.getByRole("status")).toContainText(/Offline|Gespeicherter Datenstand|Saved data shown/);
+    await context.setOffline(false);
+  });
+
+  test("renders a summary-only Watchlist without waiting for the background offline archive", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "pixel-5", "representative installed phone app");
+    await page.route(/\/data\/(?:spain-congress|spain-regions)\.json/, (route) => route.abort("failed"));
+    await page.addInitScript(() => {
+      const original = window.matchMedia.bind(window);
+      window.matchMedia = (query) => query === "(display-mode: standalone)"
+        ? { matches: true, media: query, onchange: null, addListener() {}, removeListener() {}, addEventListener() {}, removeEventListener() {}, dispatchEvent() { return true; } }
+        : original(query);
+      window.localStorage.setItem("pollframe-watchlist-es-v2", JSON.stringify([{ id: "issues-only", country: "es", regionSlug: "spain-congress", type: "issues", partyIds: [], label: "España · CIS", layout: "wide", createdAt: "2026-08-01T10:00:00.000Z", lastSnapshot: null }]));
+      window.localStorage.setItem("pollframe-notification-intro-es", "seen");
+    });
+    await page.goto("/?view=watchlist&country=es&lang=es");
+    await expect(page.locator(".watch-card-issues")).toBeVisible();
+    await expect(page.locator(".watch-card-issues")).toContainText(/Problemas de España|Problems facing Spain/);
   });
 });

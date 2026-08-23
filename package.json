@@ -7,21 +7,28 @@
     "prebuild": "node scripts/validate-poll-data.mjs",
     "dev": "vite",
     "build": "vite build",
-    "postbuild": "node scripts/validate-security.mjs",
+    "postbuild": "node scripts/validate-security.mjs && node scripts/validate-performance.mjs && node scripts/validate-aggregate-analytics.mjs",
+    "deploy": "npm run build && wrangler deploy",
     "preview": "vite preview --host 127.0.0.1",
     "check": "npm run build",
     "test:browser": "playwright test",
+    "test:update-pipeline": "node --test tests/update-pipeline.test.mjs",
     "data:update": "node scripts/update-poll-data.mjs",
     "data:update:uk": "node scripts/update-uk-data.mjs",
     "data:update:spain": "node scripts/update-spain-data.mjs",
+    "data:update:spain-regions": "node scripts/update-spain-regions.mjs",
+    "data:update:approval": "node scripts/update-approval-data.mjs",
     "data:map": "node scripts/build-state-map-data.mjs",
     "data:validate": "node scripts/validate-poll-data.mjs",
-    "security:check": "node scripts/validate-security.mjs"
+    "data:review": "node scripts/review-data-changes.mjs",
+    "security:check": "node scripts/validate-security.mjs",
+    "performance:check": "node scripts/validate-performance.mjs"
   },
   "engines": {
     "node": ">=22.12"
   },
   "dependencies": {
+    "@fontsource-variable/inter": "5.3.0",
     "@react-map/united-kingdom": "1.0.9",
     "@svg-maps/germany": "2.0.0",
     "html-to-image": "1.11.13",
@@ -31,12 +38,14 @@
   "devDependencies": {
     "@playwright/test": "1.62.0",
     "cheerio": "1.0.0",
+    "fflate": "0.8.2",
+    "pdfjs-dist": "5.4.624",
     "undici": "7.29.0",
     "vite": "6.4.3",
     "wrangler": "4.119.0"
   },
   "overrides": {
     "undici": "7.29.0",
-    "nanoid": "3.3.17"
+    "nanoid": "3.3.18"
   }
 }

@@ -1,12 +1,33 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "de",
+  "main": "worker/index.js",
   "compatibility_date": "2026-07-30",
   "workers_dev": true,
   "preview_urls": false,
   "assets": {
     "directory": "./dist",
+    "binding": "ASSETS",
+    "run_worker_first": [
+      "/api/*",
+      "/poll-data.json",
+      "/regions.json",
+      "/state-map-data.json",
+      "/uk-summary.json",
+      "/spain-summary.json",
+      "/data/*"
+    ],
     "html_handling": "none",
     "not_found_handling": "single-page-application"
-  }
+  },
+  "durable_objects": {
+    "bindings": [
+      { "name": "BUG_REPORT_STORE", "class_name": "BugReportStore" },
+      { "name": "ANALYTICS_STORE", "class_name": "AnalyticsStore" }
+    ]
+  },
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["BugReportStore"] },
+    { "tag": "v2", "new_sqlite_classes": ["AnalyticsStore"] }
+  ]
 }

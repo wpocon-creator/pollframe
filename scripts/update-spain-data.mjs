@@ -186,7 +186,7 @@ function parsePollingTable($, table, year, pageUrl) {
     if (cells.length < 8) return;
     const pollsterLabel = clean($(cells[0]).clone().find("sup").remove().end().text()).slice(0, 100);
     const pollster = pollsterIdentity(pollsterLabel);
-    if (!pollster || /election|referendum|^Sumar$/i.test(pollster)) return;
+    if (!pollster || /ipsos|election|referendum|^Sumar$/i.test(pollster)) return;
     const fieldwork = parseFieldwork($(cells[1]).text(), year);
     if (!fieldwork || fieldwork[1] > new Date().toISOString().slice(0, 10)) return;
     const sampleText = clean($(cells[2]).text()).replace(/[^\d]/g, "");
@@ -273,7 +273,7 @@ const pollData = {
     databaseUpdated: `${cleanPolls.at(-1).date}T00:00:00.000Z`,
     generatedAt: now,
     derivativeDatabaseNotice: "Pollframe extracts and normalises cited Spanish voting-intention tables and links each row to its original publication where available.",
-    changes: "Dates normalised to ISO format; seat ranges removed; successor-party series kept separate except Podemos/UP; invalid and future rows rejected.",
+    changes: "Dates normalised to ISO format; seat ranges removed; successor-party series kept separate except Podemos/UP; invalid and future rows rejected; polls from a rights-pending source temporarily excluded.",
     attribution: "Wikipedia contributors, Spanish general-election polling archive pages, CC BY-SA 4.0; individual poll publications remain linked per row.",
     region: { slug: "spain-congress", name: "España", type: "spain-federal" },
     geographyNote: "National voting intention for elections to the Congreso de los Diputados.",
@@ -333,12 +333,42 @@ const summary = {
     date: "2026-04-01",
     source: "CIS April 2026 barometer",
     sourceUrl: "https://www.cis.es/es/w/vivienda-preocupacion-barometro-abril-2026",
+    studyUrl: "https://www.cis.es/documents/20117/13932083/es3557mar.pdf/ce0bfd41-b61a-1c1c-d930-b1b55b8790b5?t=1778162215842&version=1.0",
+    study: "3557",
+    interviews: 4020,
+    fieldwork: ["2026-04-06", "2026-04-10"],
+    updateMode: "curated-official-snapshot",
     question: "Principales problemas de España · respuesta espontánea, hasta tres menciones",
     items: [
       { id: "housing", label: "Vivienda", value: 41.3, color: "#805ad5" },
       { id: "economy", label: "Crisis económica", value: 24.9, color: "#dd6b20" },
       { id: "jobs", label: "Calidad del empleo", value: 19.2, color: "#2b6cb0" },
+      { id: "immigration", label: "Inmigración", value: 15.8, color: "#3f8c78" },
+      { id: "unemployment", label: "Paro", value: 14.3, color: "#9b6b43" },
+      { id: "politics", label: "Problemas políticos", value: 13.9, color: "#64748b" },
+      { id: "health", label: "Sanidad", value: 12.8, color: "#278a78" },
+      { id: "government", label: "Gobierno y partidos", value: 11.3, color: "#8662a8" },
+      { id: "politicians", label: "Malos políticos", value: 9.6, color: "#7c6f64" },
+      { id: "youth", label: "Problemas de la juventud", value: 9.0, color: "#4b86b4" },
+      { id: "corruption", label: "Corrupción", value: 8.9, color: "#a15c55" },
+      { id: "extremism", label: "Extremismo político", value: 8.6, color: "#6f617e" },
+      { id: "insecurity", label: "Inseguridad ciudadana", value: 8.5, color: "#b0783c" },
     ],
+    personal: [
+      { id: "economy", value: 38.8, color: "#dd6b20" },
+      { id: "housing", value: 25.6, color: "#805ad5" },
+      { id: "health", value: 19.5, color: "#278a78" },
+      { id: "jobs", value: 16.7, color: "#2b6cb0" },
+      { id: "insecurity", value: 10.1, color: "#b0783c" },
+    ],
+    economy: {
+      personal: { veryGood: 4.0, good: 60.7, regular: 9.9, bad: 19.8, veryBad: 5.0, dontKnow: 0.2, noAnswer: 0.3 },
+      country: { veryGood: 2.9, good: 35.2, regular: 7.0, bad: 38.0, veryBad: 14.8, dontKnow: 1.7, noAnswer: 0.4 },
+    },
+    clockChange: {
+      changePolicy: { end: 65.7, continue: 24.5, indifferent: 8.7, dontKnow: 0.9, noAnswer: 0.3 },
+      permanentTime: { summer: 66.4, winter: 22.0, indifferent: 6.9, dontKnow: 3.2, noAnswer: 1.5 },
+    },
     note: "Los porcentajes no suman 100: cada persona podía mencionar hasta tres problemas.",
   },
 };

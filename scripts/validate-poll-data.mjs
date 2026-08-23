@@ -28,6 +28,8 @@ function realIsoDate(value) {
   return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
 }
 
+const containsWithheldSource = (value) => /\b(?:ipsos|mori)\b/i.test(JSON.stringify(value));
+
 async function readJson(relativePath) {
   const path = resolve(relativePath);
   const file = await stat(path);
@@ -78,6 +80,7 @@ for (const region of summary.regions ?? []) {
 
   for (const [id, name] of Object.entries(data.pollsters ?? {})) {
     if (!/^\d{1,4}$/.test(id) || !safeText(name, 100)) addError(`${prefix}: unsafe pollster metadata`);
+    if (containsWithheldSource(name)) addError(`${prefix}: withheld pollster is still published`);
   }
   for (const [id, name] of Object.entries(data.parties ?? {})) {
     if (!/^\d{1,4}$/.test(id) || !safeText(name, 40)) addError(`${prefix}: unsafe party metadata`);
@@ -139,6 +142,7 @@ if (uk.metadata?.region?.slug !== "uk-westminster") addError("UK region metadata
 if (!Array.isArray(uk.polls) || uk.polls.length < 500 || uk.polls.length > 6_000) addError("UK weighted archive size is implausible");
 if (!Array.isArray(ukRaw.polls) || ukRaw.polls.length < 4_000 || ukRaw.polls.length > 10_000) addError("UK individual-poll archive size is implausible");
 if (!isRecord(uk.pollsters) || !isRecord(uk.parties)) addError("UK metadata maps are missing");
+if (containsWithheldSource(uk) || containsWithheldSource(ukRaw)) addError("UK polling files still contain identifiable withheld-source polls");
 if (!Array.isArray(uk.metadata?.defaultPollsters) || uk.metadata.defaultPollsters[0] !== uk.metadata.weightedAveragePollsterId) addError("UK weighted default is not configured");
 let previousUkDate = "";
 const combinedUkPolls = [...(uk.polls ?? []), ...(ukRaw.polls ?? [])].sort((a, b) => a.date.localeCompare(b.date));
@@ -157,10 +161,12 @@ for (const [index, poll] of combinedUkPolls.entries()) {
 }
 if (ukSummary.westminster?.latestDate !== uk.polls.at(-1)?.date || ukSummary.westminster?.firstDate !== uk.polls[0]?.date) addError("UK summary date range differs");
 if (!isRecord(ukSummary.map?.areas) || Object.keys(ukSummary.map.areas).length < 40) addError("UK regional map data is incomplete");
+if ("issuesIndex" in ukSummary || "personalIssues" in ukSummary || "economicPerceptions" in ukSummary || containsWithheldSource(ukSummary)) addError("UK summary still publishes withheld direct survey modules");
 
 const spain = await readJson("public/data/spain-congress.json");
 const spainSummary = await readJson("public/spain-summary.json");
 const spainMap = await readJson("public/data/spain-autonomies.geojson");
+const spainRegions = await readJson("public/data/spain-regions.json");
 if (spain.metadata?.source !== "Wikipedia contributors · cited polling organisations") addError("Spain source identity is invalid");
 if (spain.metadata?.license !== "CC BY-SA 4.0" || spain.metadata?.licenseUrl !== "https://creativecommons.org/licenses/by-sa/4.0/") addError("Spain reuse licence is invalid");
 if (spain.metadata?.region?.slug !== "spain-congress") addError("Spain region metadata is invalid");
@@ -168,6 +174,8 @@ if (!Array.isArray(spain.polls) || spain.polls.length < 3_000 || spain.polls.len
 if (spain.polls?.[0]?.date > "1997-01-01") addError("Spain historical archive does not reach the 1996–2000 cycle");
 if (!Array.isArray(spain.metadata?.archiveSourceUrls) || spain.metadata.archiveSourceUrls.length < 10) addError("Spain archive source attribution is incomplete");
 if (!isRecord(spain.pollsters) || Object.keys(spain.pollsters).length < 10 || !isRecord(spain.parties)) addError("Spain metadata maps are incomplete");
+if (containsWithheldSource(spain)) addError("Spain national polling file still contains withheld-source polls");
+if (containsWithheldSource(spainRegions)) addError("Spain regional polling file still contains withheld-source polls");
 let previousSpainDate = "";
 for (const [index, poll] of (spain.polls ?? []).entries()) {
   const label = `Spain poll ${index + 1}`;
@@ -187,6 +195,34 @@ if (spainSummary.congress?.latestDate !== spain.polls.at(-1)?.date || spainSumma
 if (spainSummary.congress?.lastElection?.date !== "2023-07-23" || !isRecord(spainSummary.congress?.lastElection?.results) || spainSummary.congress.lastElection.results["401"] !== spain.metadata?.electionResults?.["2023-07-23"]?.["401"]) addError("Spain comparison baseline is missing or inconsistent");
 if (!Array.isArray(spainSummary.issues?.items) || spainSummary.issues.items.length < 3 || !/^https:\/\/www\.cis\.es\//.test(spainSummary.issues?.sourceUrl ?? "")) addError("Spain CIS issue snapshot is incomplete");
 if (spainMap.type !== "FeatureCollection" || !Array.isArray(spainMap.features) || spainMap.features.length < 19) addError("Spain autonomous-community map is incomplete");
+const approval = await readJson("public/data/approval.json");
+if (approval.countries?.uk || containsWithheldSource(approval)) addError("approval data still contains the withheld UK series");
+for (const country of ["de", "es"]) {
+  const dataset = approval.countries?.[country];
+  if (!dataset || !Array.isArray(dataset.administrations) || !/^https:\/\//.test(dataset.source?.href ?? "") || !safeText(dataset.questions?.government, 300) || !safeText(dataset.questions?.leader, 300)) addError(`${country}: approval metadata is incomplete`);
+  for (const metric of ["government", "leader"]) {
+    const points = dataset?.series?.[metric];
+    if (!Array.isArray(points) || points.length < (country === "de" && metric === "government" ? 100 : 120)) {
+      addError(`${country}/${metric}: approval series is too short`);
+      continue;
+    }
+    let previousDate = "";
+    const dates = new Set();
+    for (const point of points) {
+      if (!realIsoDate(point.date) || point.date < previousDate || !Number.isFinite(point.positive) || point.positive < 0 || point.positive > 100 || (point.negative !== null && (!Number.isFinite(point.negative) || point.negative < 0 || point.negative > 100)) || !safeText(point.leader, 100)) addError(`${country}/${metric}: invalid approval point at ${point.date ?? "unknown"}`);
+      if (dates.has(point.date)) addError(`${country}/${metric}: duplicate approval point at ${point.date}`);
+      dates.add(point.date);
+      if (point.date > new Date().toISOString().slice(0, 10)) addError(`${country}/${metric}: future approval point at ${point.date}`);
+      if (Number.isFinite(point.negative) && point.positive + point.negative > 100.01) addError(`${country}/${metric}: answer shares exceed 100 at ${point.date}`);
+      previousDate = point.date;
+    }
+  }
+}
+if (approval.countries?.de?.series?.leader?.at(-1)?.date < "2026-07-31") addError("German approval update regressed behind the verified July 2026 release");
+if (!Array.isArray(approval.events) || approval.events.length < 8) addError("approval event context is too sparse");
+for (const event of approval.events ?? []) {
+  if (!realIsoDate(event.date) || !["de", "es"].includes(event.country) || !safeText(event.labelEn, 160) || !safeText(event.labelDe, 160) || !safeText(event.labelEs, 160) || !/^https:\/\//.test(event.source ?? "")) addError(`invalid approval event at ${event.date ?? "unknown"}`);
+}
 for (const region of stateMap.regions ?? []) {
   if (
     !/^[a-z]{2}$/.test(region.mapId ?? "")

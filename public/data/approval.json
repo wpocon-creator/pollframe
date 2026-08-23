@@ -1,0 +1,2396 @@
+{
+  "generatedAt": "2026-08-23T15:01:25.653Z",
+  "countries": {
+    "es": {
+      "label": "España",
+      "flag": "🇪🇸",
+      "administrations": [
+        {
+          "start": "1982-12-02",
+          "end": "1996-05-03",
+          "leader": "Felipe González",
+          "party": "PSOE",
+          "color": "#e0272f"
+        },
+        {
+          "start": "1996-05-04",
+          "end": "2004-04-16",
+          "leader": "José María Aznar",
+          "party": "PP",
+          "color": "#1479c9"
+        },
+        {
+          "start": "2004-04-17",
+          "end": "2011-12-20",
+          "leader": "José Luis Rodríguez Zapatero",
+          "party": "PSOE",
+          "color": "#e0272f"
+        },
+        {
+          "start": "2011-12-21",
+          "end": "2018-06-01",
+          "leader": "Mariano Rajoy",
+          "party": "PP",
+          "color": "#1479c9"
+        },
+        {
+          "start": "2018-06-02",
+          "end": null,
+          "leader": "Pedro Sánchez",
+          "party": "PSOE",
+          "color": "#e0272f"
+        }
+      ],
+      "questions": {
+        "government": "¿Cómo calificaría la gestión que está haciendo el Gobierno central?",
+        "leader": "¿Le inspira mucha, bastante, poca o ninguna confianza el presidente del Gobierno?"
+      },
+      "source": {
+        "label": "Centro de Investigaciones Sociológicas · Series",
+        "href": "https://www.cis.es/es/series/grado-de-confianza-en-el-presidente-del-gobierno-pedro-sanchez-solo-a-quienes-le-conocen-v-"
+      },
+      "notes": [
+        "La valoración positiva suma ‘muy buena’ + ‘buena’; la confianza positiva suma ‘mucha’ + ‘bastante’.",
+        "La serie comparable de gestión del Gobierno termina en marzo de 2020. No se prolonga con una pregunta distinta.",
+        "La serie de Pedro Sánchez tiene un cambio de ponderación en diciembre de 2023."
+      ],
+      "series": {
+        "government": [
+          {
+            "date": "1984-01-15",
+            "positive": 27.700000000000003,
+            "negative": 17.1,
+            "leader": "Felipe González",
+            "party": "PSOE"
+          },
+          {
+            "date": "1984-04-15",
+            "positive": 29,
+            "negative": 14.899999999999999,
+            "leader": "Felipe González",
+            "party": "PSOE"
+          },
+          {
+            "date": "1992-02-15",
+            "positive": 26.8,
+            "negative": 21.6,
+            "leader": "Felipe González",
+            "party": "PSOE"
+          },
+          {
+            "date": "1992-04-15",
+            "positive": 20.5,
+            "negative": 30.700000000000003,
+            "leader": "Felipe González",
+            "party": "PSOE"
+          },
+          {
+            "date": "1992-09-15",
+            "positive": 16.3,
+            "negative": 36.2,
+            "leader": "Felipe González",
+            "party": "PSOE"
+          },
+          {
+            "date": "1992-10-15",
+            "positive": 23.2,
+            "negative": 33,
+            "leader": "Felipe González",
+            "party": "PSOE"
+          },
+          {
+            "date": "1992-11-15",
+            "positive": 14.299999999999999,
+            "negative": 34.5,
+            "leader": "Felipe González",
+            "party": "PSOE"
+          },
+          {
+            "date": "1992-12-15",
+            "positive": 17.5,
+            "negative": 37.4,
+            "leader": "Felipe González",
+            "party": "PSOE"
+          },
+          {
+            "date": "1993-02-15",
+            "positive": 17,
+            "negative": 39.2,
+            "leader": "Felipe González",
+            "party": "PSOE"
+          },
+          {
+            "date": "1993-03-15",
+            "positive": 15.700000000000001,
+            "negative": 41.7,
+            "leader": "Felipe González",
+            "party": "PSOE"
+          },
+          {
+            "date": "1993-09-15",
+            "positive": 15,
+            "negative": 33.7,
+            "leader": "Felipe González",
+            "party": "PSOE"
+          },
+          {
+            "date": "1993-10-15",
+            "positive": 15.6,
+            "negative": 37.2,
+            "leader": "Felipe González",
+            "party": "PSOE"
+          },
+          {
+            "date": "1993-11-15",
+            "positive": 10.1,
+            "negative": 43.3,
+            "leader": "Felipe González",
+            "party": "PSOE"
+          },
+          {
+            "date": "1993-12-15",
+            "positive": 12,
+            "negative": 42.400000000000006,
+            "leader": "Felipe González",
+            "party": "PSOE"
+          },
+          {
+            "date": "1994-01-15",
+            "positive": 13.399999999999999,
+            "negative": 45.9,
+            "leader": "Felipe González",
+            "party": "PSOE"
+          },
+          {
+            "date": "1994-02-15",
+            "positive": 10,
+            "negative": 47,
+            "leader": "Felipe González",
+            "party": "PSOE"
+          },
+          {
+            "date": "1994-03-15",
+            "positive": 11.9,
+            "negative": 44.9,
+            "leader": "Felipe González",
+            "party": "PSOE"
+          },
+          {
+            "date": "1994-04-15",
+            "positive": 11.6,
+            "negative": 41.6,
+            "leader": "Felipe González",
+            "party": "PSOE"
+          },
+          {
+            "date": "1994-05-15",
+            "positive": 11.4,
+            "negative": 49.7,
+            "leader": "Felipe González",
+            "party": "PSOE"
+          },
+          {
+            "date": "1994-07-15",
+            "positive": 10.6,
+            "negative": 45.2,
+            "leader": "Felipe González",
+            "party": "PSOE"
+          },
+          {
+            "date": "1994-09-15",
+            "positive": 12.7,
+            "negative": 39.6,
+            "leader": "Felipe González",
+            "party": "PSOE"
+          },
+          {
+            "date": "1994-10-15",
+            "positive": 13.6,
+            "negative": 40.8,
+            "leader": "Felipe González",
+            "party": "PSOE"
+          },
+          {
+            "date": "1994-11-15",
+            "positive": 16.9,
+            "negative": 38.2,
+            "leader": "Felipe González",
+            "party": "PSOE"
+          },
+          {
+            "date": "1994-12-15",
+            "positive": 14.4,
+            "negative": 40,
+            "leader": "Felipe González",
+            "party": "PSOE"
+          },
+          {
+            "date": "1995-01-15",
+            "positive": 12.9,
+            "negative": 45.3,
+            "leader": "Felipe González",
+            "party": "PSOE"
+          },
+          {
+            "date": "1995-02-15",
+            "positive": 12.6,
+            "negative": 41.3,
+            "leader": "Felipe González",
+            "party": "PSOE"
+          },
+          {
+            "date": "1995-03-15",
+            "positive": 11.1,
+            "negative": 50.5,
+            "leader": "Felipe González",
+            "party": "PSOE"
+          },
+          {
+            "date": "1995-04-15",
+            "positive": 9.6,
+            "negative": 49.099999999999994,
+            "leader": "Felipe González",
+            "party": "PSOE"
+          },
+          {
+            "date": "1995-05-15",
+            "positive": 15.200000000000001,
+            "negative": 42.6,
+            "leader": "Felipe González",
+            "party": "PSOE"
+          },
+          {
+            "date": "1995-06-15",
+            "positive": 10.4,
+            "negative": 50.9,
+            "leader": "Felipe González",
+            "party": "PSOE"
+          },
+          {
+            "date": "1995-07-15",
+            "positive": 13.399999999999999,
+            "negative": 47.2,
+            "leader": "Felipe González",
+            "party": "PSOE"
+          },
+          {
+            "date": "1995-09-15",
+            "positive": 10.5,
+            "negative": 49,
+            "leader": "Felipe González",
+            "party": "PSOE"
+          },
+          {
+            "date": "1995-10-15",
+            "positive": 11.4,
+            "negative": 46.2,
+            "leader": "Felipe González",
+            "party": "PSOE"
+          },
+          {
+            "date": "1995-11-15",
+            "positive": 14.2,
+            "negative": 43.7,
+            "leader": "Felipe González",
+            "party": "PSOE"
+          },
+          {
+            "date": "1995-12-15",
+            "positive": 16.6,
+            "negative": 39.599999999999994,
+            "leader": "Felipe González",
+            "party": "PSOE"
+          },
+          {
+            "date": "1996-01-15",
+            "positive": 16.7,
+            "negative": 42.2,
+            "leader": "Felipe González",
+            "party": "PSOE"
+          },
+          {
+            "date": "1996-05-15",
+            "positive": 34.5,
+            "negative": 9.4,
+            "leader": "José María Aznar",
+            "party": "PP"
+          },
+          {
+            "date": "1996-06-15",
+            "positive": 34.1,
+            "negative": 12.4,
+            "leader": "José María Aznar",
+            "party": "PP"
+          },
+          {
+            "date": "1996-07-15",
+            "positive": 25.4,
+            "negative": 17.7,
+            "leader": "José María Aznar",
+            "party": "PP"
+          },
+          {
+            "date": "1996-10-15",
+            "positive": 21.599999999999998,
+            "negative": 25.400000000000002,
+            "leader": "José María Aznar",
+            "party": "PP"
+          },
+          {
+            "date": "1997-01-15",
+            "positive": 23.900000000000002,
+            "negative": 20.3,
+            "leader": "José María Aznar",
+            "party": "PP"
+          },
+          {
+            "date": "1997-04-15",
+            "positive": 30.6,
+            "negative": 17.5,
+            "leader": "José María Aznar",
+            "party": "PP"
+          },
+          {
+            "date": "1997-07-15",
+            "positive": 41.300000000000004,
+            "negative": 11.6,
+            "leader": "José María Aznar",
+            "party": "PP"
+          },
+          {
+            "date": "1997-10-15",
+            "positive": 31.3,
+            "negative": 19.7,
+            "leader": "José María Aznar",
+            "party": "PP"
+          },
+          {
+            "date": "1998-01-15",
+            "positive": 34.3,
+            "negative": 16.8,
+            "leader": "José María Aznar",
+            "party": "PP"
+          },
+          {
+            "date": "1998-04-15",
+            "positive": 31.4,
+            "negative": 18.3,
+            "leader": "José María Aznar",
+            "party": "PP"
+          },
+          {
+            "date": "1998-07-15",
+            "positive": 32.3,
+            "negative": 18.7,
+            "leader": "José María Aznar",
+            "party": "PP"
+          },
+          {
+            "date": "1998-10-15",
+            "positive": 34.6,
+            "negative": 16.4,
+            "leader": "José María Aznar",
+            "party": "PP"
+          },
+          {
+            "date": "1999-01-15",
+            "positive": 40,
+            "negative": 13.8,
+            "leader": "José María Aznar",
+            "party": "PP"
+          },
+          {
+            "date": "1999-04-15",
+            "positive": 35.6,
+            "negative": 17.2,
+            "leader": "José María Aznar",
+            "party": "PP"
+          },
+          {
+            "date": "1999-05-15",
+            "positive": 38.8,
+            "negative": 15,
+            "leader": "José María Aznar",
+            "party": "PP"
+          },
+          {
+            "date": "1999-07-15",
+            "positive": 37.4,
+            "negative": 15.299999999999999,
+            "leader": "José María Aznar",
+            "party": "PP"
+          },
+          {
+            "date": "1999-10-15",
+            "positive": 35.8,
+            "negative": 16.2,
+            "leader": "José María Aznar",
+            "party": "PP"
+          },
+          {
+            "date": "2000-01-15",
+            "positive": 44.7,
+            "negative": 13.9,
+            "leader": "José María Aznar",
+            "party": "PP"
+          },
+          {
+            "date": "2000-04-15",
+            "positive": 49.4,
+            "negative": 10.3,
+            "leader": "José María Aznar",
+            "party": "PP"
+          },
+          {
+            "date": "2000-07-15",
+            "positive": 43.300000000000004,
+            "negative": 12.3,
+            "leader": "José María Aznar",
+            "party": "PP"
+          },
+          {
+            "date": "2000-10-15",
+            "positive": 38.300000000000004,
+            "negative": 13.7,
+            "leader": "José María Aznar",
+            "party": "PP"
+          },
+          {
+            "date": "2001-01-15",
+            "positive": 36.3,
+            "negative": 16.7,
+            "leader": "José María Aznar",
+            "party": "PP"
+          },
+          {
+            "date": "2001-04-15",
+            "positive": 34.9,
+            "negative": 17.8,
+            "leader": "José María Aznar",
+            "party": "PP"
+          },
+          {
+            "date": "2001-07-15",
+            "positive": 33.6,
+            "negative": 19.1,
+            "leader": "José María Aznar",
+            "party": "PP"
+          },
+          {
+            "date": "2001-10-15",
+            "positive": 35.9,
+            "negative": 15.7,
+            "leader": "José María Aznar",
+            "party": "PP"
+          },
+          {
+            "date": "2002-01-15",
+            "positive": 41.3,
+            "negative": 13.5,
+            "leader": "José María Aznar",
+            "party": "PP"
+          },
+          {
+            "date": "2002-04-15",
+            "positive": 34.4,
+            "negative": 18.700000000000003,
+            "leader": "José María Aznar",
+            "party": "PP"
+          },
+          {
+            "date": "2002-07-15",
+            "positive": 30.1,
+            "negative": 21.4,
+            "leader": "José María Aznar",
+            "party": "PP"
+          },
+          {
+            "date": "2002-10-15",
+            "positive": 27.7,
+            "negative": 25.1,
+            "leader": "José María Aznar",
+            "party": "PP"
+          },
+          {
+            "date": "2003-01-15",
+            "positive": 27.900000000000002,
+            "negative": 25.6,
+            "leader": "José María Aznar",
+            "party": "PP"
+          },
+          {
+            "date": "2003-04-15",
+            "positive": 24.599999999999998,
+            "negative": 35.1,
+            "leader": "José María Aznar",
+            "party": "PP"
+          },
+          {
+            "date": "2003-07-15",
+            "positive": 28.900000000000002,
+            "negative": 30.5,
+            "leader": "José María Aznar",
+            "party": "PP"
+          },
+          {
+            "date": "2003-10-15",
+            "positive": 30.3,
+            "negative": 27.2,
+            "leader": "José María Aznar",
+            "party": "PP"
+          },
+          {
+            "date": "2004-01-15",
+            "positive": 27.1,
+            "negative": 31.4,
+            "leader": "José María Aznar",
+            "party": "PP"
+          },
+          {
+            "date": "2004-04-15",
+            "positive": 52.5,
+            "negative": 5.7,
+            "leader": "José María Aznar",
+            "party": "PP"
+          },
+          {
+            "date": "2004-07-15",
+            "positive": 43.6,
+            "negative": 12.200000000000001,
+            "leader": "José Luis Rodríguez Zapatero",
+            "party": "PSOE"
+          },
+          {
+            "date": "2004-10-15",
+            "positive": 39.1,
+            "negative": 13,
+            "leader": "José Luis Rodríguez Zapatero",
+            "party": "PSOE"
+          },
+          {
+            "date": "2005-01-15",
+            "positive": 36.9,
+            "negative": 13.5,
+            "leader": "José Luis Rodríguez Zapatero",
+            "party": "PSOE"
+          },
+          {
+            "date": "2005-04-15",
+            "positive": 32,
+            "negative": 19,
+            "leader": "José Luis Rodríguez Zapatero",
+            "party": "PSOE"
+          },
+          {
+            "date": "2005-07-15",
+            "positive": 35.9,
+            "negative": 18.3,
+            "leader": "José Luis Rodríguez Zapatero",
+            "party": "PSOE"
+          },
+          {
+            "date": "2005-10-15",
+            "positive": 25.4,
+            "negative": 24.4,
+            "leader": "José Luis Rodríguez Zapatero",
+            "party": "PSOE"
+          },
+          {
+            "date": "2006-01-15",
+            "positive": 28.2,
+            "negative": 25.700000000000003,
+            "leader": "José Luis Rodríguez Zapatero",
+            "party": "PSOE"
+          },
+          {
+            "date": "2006-04-15",
+            "positive": 36.2,
+            "negative": 21,
+            "leader": "José Luis Rodríguez Zapatero",
+            "party": "PSOE"
+          },
+          {
+            "date": "2006-07-15",
+            "positive": 30.8,
+            "negative": 25.4,
+            "leader": "José Luis Rodríguez Zapatero",
+            "party": "PSOE"
+          },
+          {
+            "date": "2006-10-15",
+            "positive": 29.400000000000002,
+            "negative": 26.4,
+            "leader": "José Luis Rodríguez Zapatero",
+            "party": "PSOE"
+          },
+          {
+            "date": "2007-01-15",
+            "positive": 25.4,
+            "negative": 25.5,
+            "leader": "José Luis Rodríguez Zapatero",
+            "party": "PSOE"
+          },
+          {
+            "date": "2007-04-15",
+            "positive": 27.9,
+            "negative": 24.700000000000003,
+            "leader": "José Luis Rodríguez Zapatero",
+            "party": "PSOE"
+          },
+          {
+            "date": "2007-07-15",
+            "positive": 29.599999999999998,
+            "negative": 23.5,
+            "leader": "José Luis Rodríguez Zapatero",
+            "party": "PSOE"
+          },
+          {
+            "date": "2007-10-15",
+            "positive": 27.8,
+            "negative": 26.5,
+            "leader": "José Luis Rodríguez Zapatero",
+            "party": "PSOE"
+          },
+          {
+            "date": "2008-01-15",
+            "positive": 28,
+            "negative": 25.9,
+            "leader": "José Luis Rodríguez Zapatero",
+            "party": "PSOE"
+          },
+          {
+            "date": "2008-04-15",
+            "positive": 34.7,
+            "negative": 20.9,
+            "leader": "José Luis Rodríguez Zapatero",
+            "party": "PSOE"
+          },
+          {
+            "date": "2008-07-15",
+            "positive": 19.900000000000002,
+            "negative": 33,
+            "leader": "José Luis Rodríguez Zapatero",
+            "party": "PSOE"
+          },
+          {
+            "date": "2008-10-15",
+            "positive": 20.099999999999998,
+            "negative": 34.1,
+            "leader": "José Luis Rodríguez Zapatero",
+            "party": "PSOE"
+          },
+          {
+            "date": "2009-01-15",
+            "positive": 17.2,
+            "negative": 34.9,
+            "leader": "José Luis Rodríguez Zapatero",
+            "party": "PSOE"
+          },
+          {
+            "date": "2009-04-15",
+            "positive": 15.9,
+            "negative": 39.2,
+            "leader": "José Luis Rodríguez Zapatero",
+            "party": "PSOE"
+          },
+          {
+            "date": "2009-07-15",
+            "positive": 15.9,
+            "negative": 39.7,
+            "leader": "José Luis Rodríguez Zapatero",
+            "party": "PSOE"
+          },
+          {
+            "date": "2009-09-15",
+            "positive": 15.3,
+            "negative": 39.6,
+            "leader": "José Luis Rodríguez Zapatero",
+            "party": "PSOE"
+          },
+          {
+            "date": "2009-10-15",
+            "positive": 13.6,
+            "negative": 46.6,
+            "leader": "José Luis Rodríguez Zapatero",
+            "party": "PSOE"
+          },
+          {
+            "date": "2010-01-15",
+            "positive": 12.1,
+            "negative": 46.099999999999994,
+            "leader": "José Luis Rodríguez Zapatero",
+            "party": "PSOE"
+          },
+          {
+            "date": "2010-04-15",
+            "positive": 9.200000000000001,
+            "negative": 52.2,
+            "leader": "José Luis Rodríguez Zapatero",
+            "party": "PSOE"
+          },
+          {
+            "date": "2010-07-15",
+            "positive": 7.8,
+            "negative": 55.5,
+            "leader": "José Luis Rodríguez Zapatero",
+            "party": "PSOE"
+          },
+          {
+            "date": "2010-10-15",
+            "positive": 7.5,
+            "negative": 58.5,
+            "leader": "José Luis Rodríguez Zapatero",
+            "party": "PSOE"
+          },
+          {
+            "date": "2011-01-15",
+            "positive": 5.4,
+            "negative": 58.8,
+            "leader": "José Luis Rodríguez Zapatero",
+            "party": "PSOE"
+          },
+          {
+            "date": "2011-04-15",
+            "positive": 7.7,
+            "negative": 58,
+            "leader": "José Luis Rodríguez Zapatero",
+            "party": "PSOE"
+          },
+          {
+            "date": "2011-07-15",
+            "positive": 8.399999999999999,
+            "negative": 58.1,
+            "leader": "José Luis Rodríguez Zapatero",
+            "party": "PSOE"
+          },
+          {
+            "date": "2011-10-15",
+            "positive": 4.7,
+            "negative": 66.3,
+            "leader": "José Luis Rodríguez Zapatero",
+            "party": "PSOE"
+          },
+          {
+            "date": "2012-04-15",
+            "positive": 17.3,
+            "negative": 48.3,
+            "leader": "Mariano Rajoy",
+            "party": "PP"
+          },
+          {
+            "date": "2012-07-15",
+            "positive": 12.5,
+            "negative": 56.099999999999994,
+            "leader": "Mariano Rajoy",
+            "party": "PP"
+          },
+          {
+            "date": "2012-10-15",
+            "positive": 6.800000000000001,
+            "negative": 67.1,
+            "leader": "Mariano Rajoy",
+            "party": "PP"
+          },
+          {
+            "date": "2013-01-15",
+            "positive": 8.9,
+            "negative": 66,
+            "leader": "Mariano Rajoy",
+            "party": "PP"
+          },
+          {
+            "date": "2013-04-15",
+            "positive": 6.5,
+            "negative": 68.5,
+            "leader": "Mariano Rajoy",
+            "party": "PP"
+          },
+          {
+            "date": "2013-07-15",
+            "positive": 7.300000000000001,
+            "negative": 68.9,
+            "leader": "Mariano Rajoy",
+            "party": "PP"
+          },
+          {
+            "date": "2013-10-15",
+            "positive": 5.7,
+            "negative": 69.4,
+            "leader": "Mariano Rajoy",
+            "party": "PP"
+          },
+          {
+            "date": "2014-01-15",
+            "positive": 5.8999999999999995,
+            "negative": 70.8,
+            "leader": "Mariano Rajoy",
+            "party": "PP"
+          },
+          {
+            "date": "2014-04-15",
+            "positive": 8.1,
+            "negative": 67.9,
+            "leader": "Mariano Rajoy",
+            "party": "PP"
+          },
+          {
+            "date": "2014-07-15",
+            "positive": 8.1,
+            "negative": 67,
+            "leader": "Mariano Rajoy",
+            "party": "PP"
+          },
+          {
+            "date": "2014-10-15",
+            "positive": 6.1,
+            "negative": 68.9,
+            "leader": "Mariano Rajoy",
+            "party": "PP"
+          },
+          {
+            "date": "2015-01-15",
+            "positive": 7.699999999999999,
+            "negative": 67.8,
+            "leader": "Mariano Rajoy",
+            "party": "PP"
+          },
+          {
+            "date": "2015-04-15",
+            "positive": 10.8,
+            "negative": 62.1,
+            "leader": "Mariano Rajoy",
+            "party": "PP"
+          },
+          {
+            "date": "2015-07-15",
+            "positive": 10.9,
+            "negative": 59.9,
+            "leader": "Mariano Rajoy",
+            "party": "PP"
+          },
+          {
+            "date": "2015-10-15",
+            "positive": 10.7,
+            "negative": 57.6,
+            "leader": "Mariano Rajoy",
+            "party": "PP"
+          },
+          {
+            "date": "2017-01-15",
+            "positive": 14.399999999999999,
+            "negative": 51.8,
+            "leader": "Mariano Rajoy",
+            "party": "PP"
+          },
+          {
+            "date": "2017-04-15",
+            "positive": 12.2,
+            "negative": 53.1,
+            "leader": "Mariano Rajoy",
+            "party": "PP"
+          },
+          {
+            "date": "2017-07-15",
+            "positive": 11,
+            "negative": 55.4,
+            "leader": "Mariano Rajoy",
+            "party": "PP"
+          },
+          {
+            "date": "2017-10-15",
+            "positive": 12.200000000000001,
+            "negative": 54.599999999999994,
+            "leader": "Mariano Rajoy",
+            "party": "PP"
+          },
+          {
+            "date": "2018-01-15",
+            "positive": 11.5,
+            "negative": 55,
+            "leader": "Mariano Rajoy",
+            "party": "PP"
+          },
+          {
+            "date": "2018-04-15",
+            "positive": 9.399999999999999,
+            "negative": 59.300000000000004,
+            "leader": "Mariano Rajoy",
+            "party": "PP"
+          },
+          {
+            "date": "2018-07-15",
+            "positive": 19.099999999999998,
+            "negative": 27.3,
+            "leader": "Pedro Sánchez",
+            "party": "PSOE"
+          },
+          {
+            "date": "2018-09-15",
+            "positive": 15.1,
+            "negative": 34.9,
+            "leader": "Pedro Sánchez",
+            "party": "PSOE"
+          },
+          {
+            "date": "2018-10-15",
+            "positive": 13.2,
+            "negative": 39,
+            "leader": "Pedro Sánchez",
+            "party": "PSOE"
+          },
+          {
+            "date": "2018-11-15",
+            "positive": 15.2,
+            "negative": 38.5,
+            "leader": "Pedro Sánchez",
+            "party": "PSOE"
+          },
+          {
+            "date": "2018-12-15",
+            "positive": 12,
+            "negative": 42.2,
+            "leader": "Pedro Sánchez",
+            "party": "PSOE"
+          },
+          {
+            "date": "2019-01-15",
+            "positive": 13.399999999999999,
+            "negative": 41.3,
+            "leader": "Pedro Sánchez",
+            "party": "PSOE"
+          },
+          {
+            "date": "2019-02-15",
+            "positive": 14.100000000000001,
+            "negative": 39.1,
+            "leader": "Pedro Sánchez",
+            "party": "PSOE"
+          },
+          {
+            "date": "2019-07-15",
+            "positive": 21.400000000000002,
+            "negative": 32.5,
+            "leader": "Pedro Sánchez",
+            "party": "PSOE"
+          },
+          {
+            "date": "2019-09-15",
+            "positive": 12.200000000000001,
+            "negative": 46.7,
+            "leader": "Pedro Sánchez",
+            "party": "PSOE"
+          },
+          {
+            "date": "2019-11-15",
+            "positive": 11.1,
+            "negative": 51.7,
+            "leader": "Pedro Sánchez",
+            "party": "PSOE"
+          },
+          {
+            "date": "2020-01-15",
+            "positive": 16,
+            "negative": 39.7,
+            "leader": "Pedro Sánchez",
+            "party": "PSOE"
+          },
+          {
+            "date": "2020-03-15",
+            "positive": 22.8,
+            "negative": 33,
+            "leader": "Pedro Sánchez",
+            "party": "PSOE"
+          }
+        ],
+        "leader": [
+          {
+            "date": "1986-02-15",
+            "positive": 48,
+            "negative": 43.4,
+            "leader": "Felipe González",
+            "party": "PSOE"
+          },
+          {
+            "date": "1987-11-15",
+            "positive": 46.4,
+            "negative": 45.5,
+            "leader": "Felipe González",
+            "party": "PSOE"
+          },
+          {
+            "date": "1988-01-15",
+            "positive": 43.7,
+            "negative": 45.7,
+            "leader": "Felipe González",
+            "party": "PSOE"
+          },
+          {
+            "date": "1988-03-15",
+            "positive": 45,
+            "negative": 45,
+            "leader": "Felipe González",
+            "party": "PSOE"
+          },
+          {
+            "date": "1988-07-15",
+            "positive": 44.6,
+            "negative": 47,
+            "leader": "Felipe González",
+            "party": "PSOE"
+          },
+          {
+            "date": "1988-12-15",
+            "positive": 34.1,
+            "negative": 54.6,
+            "leader": "Felipe González",
+            "party": "PSOE"
+          },
+          {
+            "date": "1989-01-15",
+            "positive": 38,
+            "negative": 52,
+            "leader": "Felipe González",
+            "party": "PSOE"
+          },
+          {
+            "date": "1989-05-15",
+            "positive": 36.5,
+            "negative": 53.599999999999994,
+            "leader": "Felipe González",
+            "party": "PSOE"
+          },
+          {
+            "date": "1992-02-15",
+            "positive": 48.599999999999994,
+            "negative": 42.5,
+            "leader": "Felipe González",
+            "party": "PSOE"
+          },
+          {
+            "date": "1992-04-15",
+            "positive": 40.6,
+            "negative": 51.7,
+            "leader": "Felipe González",
+            "party": "PSOE"
+          },
+          {
+            "date": "1992-06-15",
+            "positive": 44,
+            "negative": 49.5,
+            "leader": "Felipe González",
+            "party": "PSOE"
+          },
+          {
+            "date": "1992-09-15",
+            "positive": 34.1,
+            "negative": 55.3,
+            "leader": "Felipe González",
+            "party": "PSOE"
+          },
+          {
+            "date": "1992-10-15",
+            "positive": 41.599999999999994,
+            "negative": 51.7,
+            "leader": "Felipe González",
+            "party": "PSOE"
+          },
+          {
+            "date": "1992-11-15",
+            "positive": 37.599999999999994,
+            "negative": 53.5,
+            "leader": "Felipe González",
+            "party": "PSOE"
+          },
+          {
+            "date": "1993-02-15",
+            "positive": 36.1,
+            "negative": 58.4,
+            "leader": "Felipe González",
+            "party": "PSOE"
+          },
+          {
+            "date": "1993-03-15",
+            "positive": 39.7,
+            "negative": 57.800000000000004,
+            "leader": "Felipe González",
+            "party": "PSOE"
+          },
+          {
+            "date": "1993-06-15",
+            "positive": 42.5,
+            "negative": 49.699999999999996,
+            "leader": "Felipe González",
+            "party": "PSOE"
+          },
+          {
+            "date": "1993-07-15",
+            "positive": 47.6,
+            "negative": 44.6,
+            "leader": "Felipe González",
+            "party": "PSOE"
+          },
+          {
+            "date": "1993-09-15",
+            "positive": 37.6,
+            "negative": 54,
+            "leader": "Felipe González",
+            "party": "PSOE"
+          },
+          {
+            "date": "1993-10-15",
+            "positive": 36.8,
+            "negative": 57.5,
+            "leader": "Felipe González",
+            "party": "PSOE"
+          },
+          {
+            "date": "1993-11-15",
+            "positive": 29.5,
+            "negative": 63.2,
+            "leader": "Felipe González",
+            "party": "PSOE"
+          },
+          {
+            "date": "1993-12-15",
+            "positive": 31.799999999999997,
+            "negative": 62.699999999999996,
+            "leader": "Felipe González",
+            "party": "PSOE"
+          },
+          {
+            "date": "1994-01-15",
+            "positive": 31.799999999999997,
+            "negative": 63,
+            "leader": "Felipe González",
+            "party": "PSOE"
+          },
+          {
+            "date": "1994-02-15",
+            "positive": 24.099999999999998,
+            "negative": 69.4,
+            "leader": "Felipe González",
+            "party": "PSOE"
+          },
+          {
+            "date": "1994-03-15",
+            "positive": 30.7,
+            "negative": 62.1,
+            "leader": "Felipe González",
+            "party": "PSOE"
+          },
+          {
+            "date": "1994-04-15",
+            "positive": 26.5,
+            "negative": 65.6,
+            "leader": "Felipe González",
+            "party": "PSOE"
+          },
+          {
+            "date": "1994-05-15",
+            "positive": 29.3,
+            "negative": 66,
+            "leader": "Felipe González",
+            "party": "PSOE"
+          },
+          {
+            "date": "1994-07-15",
+            "positive": 32.7,
+            "negative": 63.7,
+            "leader": "Felipe González",
+            "party": "PSOE"
+          },
+          {
+            "date": "1994-09-15",
+            "positive": 33.3,
+            "negative": 61.4,
+            "leader": "Felipe González",
+            "party": "PSOE"
+          },
+          {
+            "date": "1994-10-15",
+            "positive": 29.3,
+            "negative": 64.7,
+            "leader": "Felipe González",
+            "party": "PSOE"
+          },
+          {
+            "date": "1994-11-15",
+            "positive": 37,
+            "negative": 59,
+            "leader": "Felipe González",
+            "party": "PSOE"
+          },
+          {
+            "date": "1994-12-15",
+            "positive": 35.3,
+            "negative": 60.1,
+            "leader": "Felipe González",
+            "party": "PSOE"
+          },
+          {
+            "date": "1995-01-15",
+            "positive": 32.1,
+            "negative": 63.9,
+            "leader": "Felipe González",
+            "party": "PSOE"
+          },
+          {
+            "date": "1995-02-15",
+            "positive": 31.4,
+            "negative": 63.300000000000004,
+            "leader": "Felipe González",
+            "party": "PSOE"
+          },
+          {
+            "date": "1995-03-15",
+            "positive": 28,
+            "negative": 66.80000000000001,
+            "leader": "Felipe González",
+            "party": "PSOE"
+          },
+          {
+            "date": "1995-05-15",
+            "positive": 33.4,
+            "negative": 61,
+            "leader": "Felipe González",
+            "party": "PSOE"
+          },
+          {
+            "date": "1995-06-15",
+            "positive": 29.4,
+            "negative": 65.3,
+            "leader": "Felipe González",
+            "party": "PSOE"
+          },
+          {
+            "date": "1995-07-15",
+            "positive": 32.3,
+            "negative": 62.8,
+            "leader": "Felipe González",
+            "party": "PSOE"
+          },
+          {
+            "date": "1995-09-15",
+            "positive": 27.6,
+            "negative": 65.9,
+            "leader": "Felipe González",
+            "party": "PSOE"
+          },
+          {
+            "date": "1995-10-15",
+            "positive": 30.400000000000002,
+            "negative": 63.9,
+            "leader": "Felipe González",
+            "party": "PSOE"
+          },
+          {
+            "date": "1995-11-15",
+            "positive": 32.9,
+            "negative": 62.8,
+            "leader": "Felipe González",
+            "party": "PSOE"
+          },
+          {
+            "date": "1995-12-15",
+            "positive": 37.400000000000006,
+            "negative": 56.9,
+            "leader": "Felipe González",
+            "party": "PSOE"
+          },
+          {
+            "date": "1996-01-15",
+            "positive": 35.7,
+            "negative": 59.7,
+            "leader": "Felipe González",
+            "party": "PSOE"
+          },
+          {
+            "date": "1996-05-15",
+            "positive": 39.8,
+            "negative": 53.3,
+            "leader": "José María Aznar",
+            "party": "PP"
+          },
+          {
+            "date": "1996-06-15",
+            "positive": 39.7,
+            "negative": 51.2,
+            "leader": "José María Aznar",
+            "party": "PP"
+          },
+          {
+            "date": "1996-07-15",
+            "positive": 36.199999999999996,
+            "negative": 57.800000000000004,
+            "leader": "José María Aznar",
+            "party": "PP"
+          },
+          {
+            "date": "1996-10-15",
+            "positive": 29.8,
+            "negative": 65.6,
+            "leader": "José María Aznar",
+            "party": "PP"
+          },
+          {
+            "date": "1997-01-15",
+            "positive": 31.3,
+            "negative": 61.6,
+            "leader": "José María Aznar",
+            "party": "PP"
+          },
+          {
+            "date": "1997-04-15",
+            "positive": 35.4,
+            "negative": 59.3,
+            "leader": "José María Aznar",
+            "party": "PP"
+          },
+          {
+            "date": "1997-07-15",
+            "positive": 42.5,
+            "negative": 52.699999999999996,
+            "leader": "José María Aznar",
+            "party": "PP"
+          },
+          {
+            "date": "1997-10-15",
+            "positive": 33.5,
+            "negative": 61.9,
+            "leader": "José María Aznar",
+            "party": "PP"
+          },
+          {
+            "date": "1998-01-15",
+            "positive": 36.4,
+            "negative": 57.599999999999994,
+            "leader": "José María Aznar",
+            "party": "PP"
+          },
+          {
+            "date": "1998-04-15",
+            "positive": 35.6,
+            "negative": 60.1,
+            "leader": "José María Aznar",
+            "party": "PP"
+          },
+          {
+            "date": "1998-07-15",
+            "positive": 35.4,
+            "negative": 57.6,
+            "leader": "José María Aznar",
+            "party": "PP"
+          },
+          {
+            "date": "1998-10-15",
+            "positive": 39.3,
+            "negative": 54.7,
+            "leader": "José María Aznar",
+            "party": "PP"
+          },
+          {
+            "date": "1999-01-15",
+            "positive": 40.199999999999996,
+            "negative": 53.699999999999996,
+            "leader": "José María Aznar",
+            "party": "PP"
+          },
+          {
+            "date": "1999-04-15",
+            "positive": 38.4,
+            "negative": 54.9,
+            "leader": "José María Aznar",
+            "party": "PP"
+          },
+          {
+            "date": "1999-07-15",
+            "positive": 39.1,
+            "negative": 53.1,
+            "leader": "José María Aznar",
+            "party": "PP"
+          },
+          {
+            "date": "1999-10-15",
+            "positive": 36.2,
+            "negative": 56.699999999999996,
+            "leader": "José María Aznar",
+            "party": "PP"
+          },
+          {
+            "date": "2000-01-15",
+            "positive": 45.7,
+            "negative": 49.2,
+            "leader": "José María Aznar",
+            "party": "PP"
+          },
+          {
+            "date": "2000-04-15",
+            "positive": 50.1,
+            "negative": 43.9,
+            "leader": "José María Aznar",
+            "party": "PP"
+          },
+          {
+            "date": "2000-07-15",
+            "positive": 46.9,
+            "negative": 44.5,
+            "leader": "José María Aznar",
+            "party": "PP"
+          },
+          {
+            "date": "2000-10-15",
+            "positive": 45.4,
+            "negative": 49.1,
+            "leader": "José María Aznar",
+            "party": "PP"
+          },
+          {
+            "date": "2001-01-15",
+            "positive": 40.4,
+            "negative": 52.800000000000004,
+            "leader": "José María Aznar",
+            "party": "PP"
+          },
+          {
+            "date": "2001-04-15",
+            "positive": 40,
+            "negative": 52.7,
+            "leader": "José María Aznar",
+            "party": "PP"
+          },
+          {
+            "date": "2001-07-15",
+            "positive": 39.800000000000004,
+            "negative": 55,
+            "leader": "José María Aznar",
+            "party": "PP"
+          },
+          {
+            "date": "2001-10-15",
+            "positive": 40.8,
+            "negative": 53.8,
+            "leader": "José María Aznar",
+            "party": "PP"
+          },
+          {
+            "date": "2002-01-15",
+            "positive": 45.3,
+            "negative": 48.8,
+            "leader": "José María Aznar",
+            "party": "PP"
+          },
+          {
+            "date": "2002-04-15",
+            "positive": 39,
+            "negative": 55.099999999999994,
+            "leader": "José María Aznar",
+            "party": "PP"
+          },
+          {
+            "date": "2002-07-15",
+            "positive": 37.7,
+            "negative": 57.7,
+            "leader": "José María Aznar",
+            "party": "PP"
+          },
+          {
+            "date": "2002-10-15",
+            "positive": 33.3,
+            "negative": 60.8,
+            "leader": "José María Aznar",
+            "party": "PP"
+          },
+          {
+            "date": "2003-01-15",
+            "positive": 34.5,
+            "negative": 60.599999999999994,
+            "leader": "José María Aznar",
+            "party": "PP"
+          },
+          {
+            "date": "2003-04-15",
+            "positive": 28.5,
+            "negative": 67.3,
+            "leader": "José María Aznar",
+            "party": "PP"
+          },
+          {
+            "date": "2003-07-15",
+            "positive": 33.8,
+            "negative": 60.8,
+            "leader": "José María Aznar",
+            "party": "PP"
+          },
+          {
+            "date": "2003-10-15",
+            "positive": 35.5,
+            "negative": 59.3,
+            "leader": "José María Aznar",
+            "party": "PP"
+          },
+          {
+            "date": "2004-01-15",
+            "positive": 33,
+            "negative": 60.2,
+            "leader": "José María Aznar",
+            "party": "PP"
+          },
+          {
+            "date": "2004-04-15",
+            "positive": 66.83,
+            "negative": 27.84,
+            "leader": "José Luis Rodríguez Zapatero",
+            "party": "PSOE"
+          },
+          {
+            "date": "2004-07-15",
+            "positive": 57.14,
+            "negative": 36.46,
+            "leader": "José Luis Rodríguez Zapatero",
+            "party": "PSOE"
+          },
+          {
+            "date": "2004-10-15",
+            "positive": 52.09,
+            "negative": 42.980000000000004,
+            "leader": "José Luis Rodríguez Zapatero",
+            "party": "PSOE"
+          },
+          {
+            "date": "2005-01-15",
+            "positive": 50.78,
+            "negative": 44.489999999999995,
+            "leader": "José Luis Rodríguez Zapatero",
+            "party": "PSOE"
+          },
+          {
+            "date": "2005-04-15",
+            "positive": 44.36,
+            "negative": 51.76,
+            "leader": "José Luis Rodríguez Zapatero",
+            "party": "PSOE"
+          },
+          {
+            "date": "2005-07-15",
+            "positive": 45.5,
+            "negative": 48.7,
+            "leader": "José Luis Rodríguez Zapatero",
+            "party": "PSOE"
+          },
+          {
+            "date": "2005-10-15",
+            "positive": 38.17,
+            "negative": 56.64,
+            "leader": "José Luis Rodríguez Zapatero",
+            "party": "PSOE"
+          },
+          {
+            "date": "2006-01-15",
+            "positive": 37.4,
+            "negative": 58.1,
+            "leader": "José Luis Rodríguez Zapatero",
+            "party": "PSOE"
+          },
+          {
+            "date": "2006-04-15",
+            "positive": 44.7,
+            "negative": 52,
+            "leader": "José Luis Rodríguez Zapatero",
+            "party": "PSOE"
+          },
+          {
+            "date": "2006-07-15",
+            "positive": 40.4,
+            "negative": 56.599999999999994,
+            "leader": "José Luis Rodríguez Zapatero",
+            "party": "PSOE"
+          },
+          {
+            "date": "2006-10-15",
+            "positive": 39.3,
+            "negative": 56.7,
+            "leader": "José Luis Rodríguez Zapatero",
+            "party": "PSOE"
+          },
+          {
+            "date": "2007-01-15",
+            "positive": 35.8,
+            "negative": 59.7,
+            "leader": "José Luis Rodríguez Zapatero",
+            "party": "PSOE"
+          },
+          {
+            "date": "2007-04-15",
+            "positive": 37.900000000000006,
+            "negative": 58,
+            "leader": "José Luis Rodríguez Zapatero",
+            "party": "PSOE"
+          },
+          {
+            "date": "2007-07-15",
+            "positive": 39.699999999999996,
+            "negative": 57.4,
+            "leader": "José Luis Rodríguez Zapatero",
+            "party": "PSOE"
+          },
+          {
+            "date": "2007-10-15",
+            "positive": 37.1,
+            "negative": 59.3,
+            "leader": "José Luis Rodríguez Zapatero",
+            "party": "PSOE"
+          },
+          {
+            "date": "2008-01-15",
+            "positive": 40.1,
+            "negative": 56.400000000000006,
+            "leader": "José Luis Rodríguez Zapatero",
+            "party": "PSOE"
+          },
+          {
+            "date": "2008-04-15",
+            "positive": 46,
+            "negative": 51.1,
+            "leader": "José Luis Rodríguez Zapatero",
+            "party": "PSOE"
+          },
+          {
+            "date": "2008-07-15",
+            "positive": 34,
+            "negative": 63.4,
+            "leader": "José Luis Rodríguez Zapatero",
+            "party": "PSOE"
+          },
+          {
+            "date": "2008-10-15",
+            "positive": 34.5,
+            "negative": 62.599999999999994,
+            "leader": "José Luis Rodríguez Zapatero",
+            "party": "PSOE"
+          },
+          {
+            "date": "2009-01-15",
+            "positive": 32.4,
+            "negative": 64.5,
+            "leader": "José Luis Rodríguez Zapatero",
+            "party": "PSOE"
+          },
+          {
+            "date": "2009-04-15",
+            "positive": 30.8,
+            "negative": 65.9,
+            "leader": "José Luis Rodríguez Zapatero",
+            "party": "PSOE"
+          },
+          {
+            "date": "2009-07-15",
+            "positive": 29.4,
+            "negative": 67.8,
+            "leader": "José Luis Rodríguez Zapatero",
+            "party": "PSOE"
+          },
+          {
+            "date": "2009-10-15",
+            "positive": 25.900000000000002,
+            "negative": 72.30000000000001,
+            "leader": "José Luis Rodríguez Zapatero",
+            "party": "PSOE"
+          },
+          {
+            "date": "2010-01-15",
+            "positive": 26.3,
+            "negative": 71.1,
+            "leader": "José Luis Rodríguez Zapatero",
+            "party": "PSOE"
+          },
+          {
+            "date": "2010-04-15",
+            "positive": 22.4,
+            "negative": 75,
+            "leader": "José Luis Rodríguez Zapatero",
+            "party": "PSOE"
+          },
+          {
+            "date": "2010-07-15",
+            "positive": 19.3,
+            "negative": 78.9,
+            "leader": "José Luis Rodríguez Zapatero",
+            "party": "PSOE"
+          },
+          {
+            "date": "2010-10-15",
+            "positive": 17,
+            "negative": 81.4,
+            "leader": "José Luis Rodríguez Zapatero",
+            "party": "PSOE"
+          },
+          {
+            "date": "2011-01-15",
+            "positive": 18,
+            "negative": 80.69999999999999,
+            "leader": "José Luis Rodríguez Zapatero",
+            "party": "PSOE"
+          },
+          {
+            "date": "2011-04-15",
+            "positive": 17.1,
+            "negative": 80.9,
+            "leader": "José Luis Rodríguez Zapatero",
+            "party": "PSOE"
+          },
+          {
+            "date": "2011-07-15",
+            "positive": 17.2,
+            "negative": 81.5,
+            "leader": "José Luis Rodríguez Zapatero",
+            "party": "PSOE"
+          },
+          {
+            "date": "2011-10-15",
+            "positive": 13.399999999999999,
+            "negative": 84.9,
+            "leader": "José Luis Rodríguez Zapatero",
+            "party": "PSOE"
+          },
+          {
+            "date": "2012-01-15",
+            "positive": 36.2,
+            "negative": 59.3,
+            "leader": "Mariano Rajoy",
+            "party": "PP"
+          },
+          {
+            "date": "2012-04-15",
+            "positive": 26.200000000000003,
+            "negative": 71.6,
+            "leader": "Mariano Rajoy",
+            "party": "PP"
+          },
+          {
+            "date": "2012-07-15",
+            "positive": 19.9,
+            "negative": 77.9,
+            "leader": "Mariano Rajoy",
+            "party": "PP"
+          },
+          {
+            "date": "2012-10-15",
+            "positive": 13.899999999999999,
+            "negative": 84.5,
+            "leader": "Mariano Rajoy",
+            "party": "PP"
+          },
+          {
+            "date": "2013-01-15",
+            "positive": 16.5,
+            "negative": 82.1,
+            "leader": "Mariano Rajoy",
+            "party": "PP"
+          },
+          {
+            "date": "2013-04-15",
+            "positive": 12.4,
+            "negative": 85.6,
+            "leader": "Mariano Rajoy",
+            "party": "PP"
+          },
+          {
+            "date": "2013-07-15",
+            "positive": 13.3,
+            "negative": 85,
+            "leader": "Mariano Rajoy",
+            "party": "PP"
+          },
+          {
+            "date": "2013-10-15",
+            "positive": 10.700000000000001,
+            "negative": 87.80000000000001,
+            "leader": "Mariano Rajoy",
+            "party": "PP"
+          },
+          {
+            "date": "2014-01-15",
+            "positive": 10.8,
+            "negative": 88.1,
+            "leader": "Mariano Rajoy",
+            "party": "PP"
+          },
+          {
+            "date": "2014-04-15",
+            "positive": 12.1,
+            "negative": 86.4,
+            "leader": "Mariano Rajoy",
+            "party": "PP"
+          },
+          {
+            "date": "2014-07-15",
+            "positive": 13.100000000000001,
+            "negative": 85.7,
+            "leader": "Mariano Rajoy",
+            "party": "PP"
+          },
+          {
+            "date": "2014-10-15",
+            "positive": 11.7,
+            "negative": 86.6,
+            "leader": "Mariano Rajoy",
+            "party": "PP"
+          },
+          {
+            "date": "2015-01-15",
+            "positive": 13,
+            "negative": 85.9,
+            "leader": "Mariano Rajoy",
+            "party": "PP"
+          },
+          {
+            "date": "2015-04-15",
+            "positive": 14,
+            "negative": 85,
+            "leader": "Mariano Rajoy",
+            "party": "PP"
+          },
+          {
+            "date": "2015-07-15",
+            "positive": 16.3,
+            "negative": 82.4,
+            "leader": "Mariano Rajoy",
+            "party": "PP"
+          },
+          {
+            "date": "2015-10-15",
+            "positive": 15.8,
+            "negative": 82.5,
+            "leader": "Mariano Rajoy",
+            "party": "PP"
+          },
+          {
+            "date": "2017-01-15",
+            "positive": 21.5,
+            "negative": 75.69999999999999,
+            "leader": "Mariano Rajoy",
+            "party": "PP"
+          },
+          {
+            "date": "2017-04-15",
+            "positive": 19.3,
+            "negative": 78.8,
+            "leader": "Mariano Rajoy",
+            "party": "PP"
+          },
+          {
+            "date": "2017-07-15",
+            "positive": 18.6,
+            "negative": 79.8,
+            "leader": "Mariano Rajoy",
+            "party": "PP"
+          },
+          {
+            "date": "2017-10-15",
+            "positive": 19.7,
+            "negative": 78.6,
+            "leader": "Mariano Rajoy",
+            "party": "PP"
+          },
+          {
+            "date": "2018-01-15",
+            "positive": 20.1,
+            "negative": 78.2,
+            "leader": "Mariano Rajoy",
+            "party": "PP"
+          },
+          {
+            "date": "2018-04-15",
+            "positive": 16,
+            "negative": 82.1,
+            "leader": "Mariano Rajoy",
+            "party": "PP"
+          },
+          {
+            "date": "2018-07-15",
+            "positive": 28.799999999999997,
+            "negative": 65.6,
+            "leader": "Pedro Sánchez",
+            "party": "PSOE"
+          },
+          {
+            "date": "2018-10-15",
+            "positive": 24.7,
+            "negative": 72.5,
+            "leader": "Pedro Sánchez",
+            "party": "PSOE"
+          },
+          {
+            "date": "2019-01-15",
+            "positive": 22.5,
+            "negative": 74.5,
+            "leader": "Pedro Sánchez",
+            "party": "PSOE"
+          },
+          {
+            "date": "2019-07-15",
+            "positive": 30.700000000000003,
+            "negative": 66,
+            "leader": "Pedro Sánchez",
+            "party": "PSOE"
+          },
+          {
+            "date": "2019-09-15",
+            "positive": 24.2,
+            "negative": 73.30000000000001,
+            "leader": "Pedro Sánchez",
+            "party": "PSOE"
+          },
+          {
+            "date": "2019-11-15",
+            "positive": 21.3,
+            "negative": 76.1,
+            "leader": "Pedro Sánchez",
+            "party": "PSOE"
+          },
+          {
+            "date": "2020-01-15",
+            "positive": 25.9,
+            "negative": 71.1,
+            "leader": "Pedro Sánchez",
+            "party": "PSOE"
+          },
+          {
+            "date": "2020-02-15",
+            "positive": 31,
+            "negative": 66.69999999999999,
+            "leader": "Pedro Sánchez",
+            "party": "PSOE"
+          },
+          {
+            "date": "2020-03-15",
+            "positive": 28.299999999999997,
+            "negative": 68.5,
+            "leader": "Pedro Sánchez",
+            "party": "PSOE"
+          },
+          {
+            "date": "2020-04-15",
+            "positive": 39,
+            "negative": 60,
+            "leader": "Pedro Sánchez",
+            "party": "PSOE"
+          },
+          {
+            "date": "2020-05-15",
+            "positive": 37,
+            "negative": 62.2,
+            "leader": "Pedro Sánchez",
+            "party": "PSOE"
+          },
+          {
+            "date": "2020-06-15",
+            "positive": 33.6,
+            "negative": 63.7,
+            "leader": "Pedro Sánchez",
+            "party": "PSOE"
+          },
+          {
+            "date": "2020-07-15",
+            "positive": 32.6,
+            "negative": 65.1,
+            "leader": "Pedro Sánchez",
+            "party": "PSOE"
+          },
+          {
+            "date": "2020-09-15",
+            "positive": 30.1,
+            "negative": 66.2,
+            "leader": "Pedro Sánchez",
+            "party": "PSOE"
+          },
+          {
+            "date": "2020-10-15",
+            "positive": 29.6,
+            "negative": 67.9,
+            "leader": "Pedro Sánchez",
+            "party": "PSOE"
+          },
+          {
+            "date": "2020-11-15",
+            "positive": 26.900000000000002,
+            "negative": 69.69999999999999,
+            "leader": "Pedro Sánchez",
+            "party": "PSOE"
+          },
+          {
+            "date": "2020-12-15",
+            "positive": 28.299999999999997,
+            "negative": 68.7,
+            "leader": "Pedro Sánchez",
+            "party": "PSOE"
+          },
+          {
+            "date": "2021-01-15",
+            "positive": 25.799999999999997,
+            "negative": 70.4,
+            "leader": "Pedro Sánchez",
+            "party": "PSOE"
+          },
+          {
+            "date": "2021-02-15",
+            "positive": 26.2,
+            "negative": 70.1,
+            "leader": "Pedro Sánchez",
+            "party": "PSOE"
+          },
+          {
+            "date": "2021-03-15",
+            "positive": 26.9,
+            "negative": 70.30000000000001,
+            "leader": "Pedro Sánchez",
+            "party": "PSOE"
+          },
+          {
+            "date": "2021-04-15",
+            "positive": 28.4,
+            "negative": 68.3,
+            "leader": "Pedro Sánchez",
+            "party": "PSOE"
+          },
+          {
+            "date": "2021-05-15",
+            "positive": 26.2,
+            "negative": 70.6,
+            "leader": "Pedro Sánchez",
+            "party": "PSOE"
+          },
+          {
+            "date": "2021-06-15",
+            "positive": 26.4,
+            "negative": 70.19999999999999,
+            "leader": "Pedro Sánchez",
+            "party": "PSOE"
+          },
+          {
+            "date": "2021-07-15",
+            "positive": 27,
+            "negative": 69.3,
+            "leader": "Pedro Sánchez",
+            "party": "PSOE"
+          },
+          {
+            "date": "2021-09-15",
+            "positive": 28.799999999999997,
+            "negative": 67,
+            "leader": "Pedro Sánchez",
+            "party": "PSOE"
+          },
+          {
+            "date": "2021-10-15",
+            "positive": 29.1,
+            "negative": 67.8,
+            "leader": "Pedro Sánchez",
+            "party": "PSOE"
+          },
+          {
+            "date": "2021-11-15",
+            "positive": 30.2,
+            "negative": 66.6,
+            "leader": "Pedro Sánchez",
+            "party": "PSOE"
+          },
+          {
+            "date": "2021-12-15",
+            "positive": 31.8,
+            "negative": 65.4,
+            "leader": "Pedro Sánchez",
+            "party": "PSOE"
+          },
+          {
+            "date": "2022-01-15",
+            "positive": 27.4,
+            "negative": 69.3,
+            "leader": "Pedro Sánchez",
+            "party": "PSOE"
+          },
+          {
+            "date": "2022-02-15",
+            "positive": 30.1,
+            "negative": 66.4,
+            "leader": "Pedro Sánchez",
+            "party": "PSOE"
+          },
+          {
+            "date": "2022-04-15",
+            "positive": 31.4,
+            "negative": 66.9,
+            "leader": "Pedro Sánchez",
+            "party": "PSOE"
+          },
+          {
+            "date": "2022-05-15",
+            "positive": 27.8,
+            "negative": 69.9,
+            "leader": "Pedro Sánchez",
+            "party": "PSOE"
+          },
+          {
+            "date": "2022-06-15",
+            "positive": 29.6,
+            "negative": 68.8,
+            "leader": "Pedro Sánchez",
+            "party": "PSOE"
+          },
+          {
+            "date": "2022-07-15",
+            "positive": 28.7,
+            "negative": 69.4,
+            "leader": "Pedro Sánchez",
+            "party": "PSOE"
+          },
+          {
+            "date": "2022-09-15",
+            "positive": 29.4,
+            "negative": 68.5,
+            "leader": "Pedro Sánchez",
+            "party": "PSOE"
+          },
+          {
+            "date": "2022-10-15",
+            "positive": 31.5,
+            "negative": 67,
+            "leader": "Pedro Sánchez",
+            "party": "PSOE"
+          },
+          {
+            "date": "2022-11-15",
+            "positive": 31.9,
+            "negative": 66,
+            "leader": "Pedro Sánchez",
+            "party": "PSOE"
+          },
+          {
+            "date": "2022-12-15",
+            "positive": 29.299999999999997,
+            "negative": 69.4,
+            "leader": "Pedro Sánchez",
+            "party": "PSOE"
+          },
+          {
+            "date": "2023-01-15",
+            "positive": 31,
+            "negative": 67.2,
+            "leader": "Pedro Sánchez",
+            "party": "PSOE"
+          },
+          {
+            "date": "2023-02-15",
+            "positive": 30.5,
+            "negative": 67.6,
+            "leader": "Pedro Sánchez",
+            "party": "PSOE"
+          },
+          {
+            "date": "2023-03-15",
+            "positive": 31.9,
+            "negative": 66.5,
+            "leader": "Pedro Sánchez",
+            "party": "PSOE"
+          },
+          {
+            "date": "2023-04-15",
+            "positive": 32.5,
+            "negative": 65.69999999999999,
+            "leader": "Pedro Sánchez",
+            "party": "PSOE"
+          },
+          {
+            "date": "2023-05-15",
+            "positive": 31.6,
+            "negative": 66.9,
+            "leader": "Pedro Sánchez",
+            "party": "PSOE"
+          },
+          {
+            "date": "2023-06-15",
+            "positive": 34.5,
+            "negative": 63.599999999999994,
+            "leader": "Pedro Sánchez",
+            "party": "PSOE"
+          },
+          {
+            "date": "2023-07-15",
+            "positive": 37.3,
+            "negative": 61.5,
+            "leader": "Pedro Sánchez",
+            "party": "PSOE"
+          },
+          {
+            "date": "2023-12-15",
+            "positive": 30.9,
+            "negative": 67.3,
+            "leader": "Pedro Sánchez",
+            "party": "PSOE"
+          },
+          {
+            "date": "2024-01-15",
+            "positive": 34.7,
+            "negative": 63.599999999999994,
+            "leader": "Pedro Sánchez",
+            "party": "PSOE"
+          },
+          {
+            "date": "2024-02-15",
+            "positive": 29.7,
+            "negative": 68.5,
+            "leader": "Pedro Sánchez",
+            "party": "PSOE"
+          },
+          {
+            "date": "2024-03-15",
+            "positive": 28.3,
+            "negative": 69.1,
+            "leader": "Pedro Sánchez",
+            "party": "PSOE"
+          },
+          {
+            "date": "2024-04-15",
+            "positive": 30.5,
+            "negative": 68.2,
+            "leader": "Pedro Sánchez",
+            "party": "PSOE"
+          },
+          {
+            "date": "2024-05-15",
+            "positive": 30.3,
+            "negative": 68,
+            "leader": "Pedro Sánchez",
+            "party": "PSOE"
+          },
+          {
+            "date": "2024-06-15",
+            "positive": 30.299999999999997,
+            "negative": 67.6,
+            "leader": "Pedro Sánchez",
+            "party": "PSOE"
+          },
+          {
+            "date": "2024-07-15",
+            "positive": 30,
+            "negative": 68.6,
+            "leader": "Pedro Sánchez",
+            "party": "PSOE"
+          },
+          {
+            "date": "2024-09-15",
+            "positive": 29.1,
+            "negative": 69.1,
+            "leader": "Pedro Sánchez",
+            "party": "PSOE"
+          },
+          {
+            "date": "2024-11-15",
+            "positive": 25.7,
+            "negative": 72.2,
+            "leader": "Pedro Sánchez",
+            "party": "PSOE"
+          },
+          {
+            "date": "2025-04-15",
+            "positive": 27.799999999999997,
+            "negative": 70.8,
+            "leader": "Pedro Sánchez",
+            "party": "PSOE"
+          },
+          {
+            "date": "2025-07-15",
+            "positive": 25.1,
+            "negative": 73.6,
+            "leader": "Pedro Sánchez",
+            "party": "PSOE"
+          },
+          {
+            "date": "2025-09-15",
+            "positive": 29.6,
+            "negative": 68.9,
+            "leader": "Pedro Sánchez",
+            "party": "PSOE"
+          },
+          {
+            "date": "2025-10-15",
+            "positive": 31.7,
+            "negative": 67.1,
+            "leader": "Pedro Sánchez",
+            "party": "PSOE"
+          },
+          {
+            "date": "2026-01-15",
+            "positive": 28.700000000000003,
+            "negative": 70.2,
+            "leader": "Pedro Sánchez",
+            "party": "PSOE"
+          },
+          {
+            "date": "2026-04-15",
+            "positive": 36.8,
+            "negative": 61.9,
+            "leader": "Pedro Sánchez",
+            "party": "PSOE"
+          },
+          {
+            "date": "2026-05-15",
+            "positive": 35.9,
+            "negative": 62.9,
+            "leader": "Pedro Sánchez",
+            "party": "PSOE"
+          },
+          {
+            "date": "2026-06-15",
+            "positive": 30.9,
+            "negative": 68.2,
+            "leader": "Pedro Sánchez",
+            "party": "PSOE"
+          }
+        ]
+      }
+    }
+  },
+  "events": [
+    {
+      "date": "2018-06-02",
+      "country": "es",
+      "labelDe": "Pedro Sánchez wird Ministerpräsident",
+      "labelEn": "Pedro Sánchez becomes Prime Minister",
+      "labelEs": "Pedro Sánchez se convierte en presidente",
+      "source": "https://www.lamoncloa.gob.es/presidente/actividades/Paginas/2018/020618-sanchezpromesa.aspx"
+    },
+    {
+      "date": "2019-11-10",
+      "country": "es",
+      "labelDe": "Parlamentswahl 2019",
+      "labelEn": "2019 general election",
+      "labelEs": "Elecciones generales de 2019",
+      "source": "https://infoelectoral.interior.gob.es/es/elecciones-celebradas/area-de-descargas/"
+    },
+    {
+      "date": "2020-03-14",
+      "country": "es",
+      "labelDe": "Covid-Ausnahmezustand",
+      "labelEn": "Covid state of alarm",
+      "labelEs": "Estado de alarma por covid",
+      "source": "https://www.boe.es/buscar/doc.php?id=BOE-A-2020-3692"
+    },
+    {
+      "date": "2023-07-23",
+      "country": "es",
+      "labelDe": "Parlamentswahl 2023",
+      "labelEn": "2023 general election",
+      "labelEs": "Elecciones generales de 2023",
+      "source": "https://infoelectoral.interior.gob.es/es/elecciones-celebradas/area-de-descargas/"
+    },
+    {
+      "date": "2023-12-01",
+      "country": "es",
+      "labelDe": "CIS ergänzt Bildung in der Gewichtung",
+      "labelEn": "CIS adds education to weighting",
+      "labelEs": "El CIS añade educación a la ponderación",
+      "source": "https://www.cis.es/es/series/grado-de-confianza-en-el-presidente-del-gobierno-pedro-sanchez-solo-a-quienes-le-conocen-v-"
+    }
+  ]
+}

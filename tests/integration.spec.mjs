@@ -58,7 +58,7 @@ async function expectNoBrokenVisibleText(page) {
           || rect.top > innerHeight * 2
         ) return false;
         if (rect.left < -2 || rect.right > viewportWidth + 2) {
-          const insideHorizontalScroller = element.closest(".chart-wrap,.party-selector,.code-label,.poll-table-scroll");
+          const insideHorizontalScroller = element.closest(".chart-wrap,.party-selector,.line-legend,.code-label,.poll-table-scroll");
           return !insideHorizontalScroller;
         }
         return false;
@@ -112,18 +112,22 @@ test.describe("core routes", () => {
     await settle(page);
     await expect(page.getByRole("heading", { level: 1, name: /Deutschland im Überblick|Germany at a glance/i })).toBeVisible();
     await expect(page.locator('.site-header .brand')).toHaveAttribute("href", "/");
+    await expect(page.locator(".header-report-button")).toHaveAttribute("href", /page=bug-report.*from=/);
+    await expect(page.locator(".header-report-button")).toHaveAttribute("aria-label", /Problem melden|Report issue/i);
     await expect(page.getByRole("link", { name: /Bundestagswahl|Federal election/i })).toBeVisible();
     await expect(page.getByRole("link", { name: /Europawahl in Deutschland|European election in Germany/i })).toHaveCount(0);
     await expect(page.locator('.overview-entry-stack .europe-entry')).toHaveCount(0);
     await expect(page.locator(".germany-map")).toBeVisible();
-    await expect(page.locator(".overview-entry-stack .overview-classic-widget")).toHaveCount(2);
+    await expect(page.locator(".overview-entry-stack .overview-classic-widget")).toHaveCount(3);
     await expect(page.locator('link[rel="canonical"]')).toHaveAttribute("href", "https://de.pollframe.workers.dev/");
     await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /index, follow/);
     await expectDocumentFits(page);
     await expectNoBrokenVisibleText(page);
 
-    await page.getByRole("button", { name: /Einstellungen|Settings/i }).click();
+    const settingsButton = page.getByRole("button", { name: /Einstellungen|Settings/i });
+    await settingsButton.click();
     await expect(page.getByRole("dialog")).toBeVisible();
+    await expect(page.getByRole("dialog").locator(".icon-button")).toBeFocused();
     await page.getByRole("button", { name: /English.*United Kingdom/i }).click();
     await expect(page.getByRole("heading", { level: 1, name: /Germany at a glance/ })).toBeVisible();
     await page.getByRole("button", { name: /Dark/i }).click();
@@ -131,6 +135,7 @@ test.describe("core routes", () => {
     await page.getByRole("button", { name: /Larger.*19 px/i }).click();
     await expect(page.locator("html")).toHaveAttribute("data-text", "large");
     await page.getByRole("button", { name: /Close/i }).click();
+    await expect(settingsButton).toBeFocused();
     await expectDocumentFits(page);
     await expectNoBrokenVisibleText(page);
 
@@ -157,6 +162,17 @@ test.describe("core routes", () => {
     await page.locator(".select-control > summary").first().click();
     await page.locator(".select-menu button").filter({ hasText: /Trend.*Durchschnittspunkte|Trend.*average points/i }).click();
     await expect(page.locator(".average-series-line")).not.toHaveCount(0);
+
+    const eventCategories = page.locator(".customize-panel .multi-select").last();
+    await expect(page.locator(".election-point")).not.toHaveCount(0);
+    await eventCategories.locator("summary").click();
+    const electionCategory = eventCategories.getByText(/Bundestagswahlen|National elections/i, { exact: true });
+    await electionCategory.click();
+    await expect(page.locator(".election-point")).toHaveCount(0);
+    await expect(page.locator(".historical-election-marker")).toHaveCount(0);
+    await electionCategory.click();
+    await expect(page.locator(".election-point")).not.toHaveCount(0);
+    await eventCategories.locator("summary").click();
 
     const chart = page.locator(".poll-chart");
     await chart.scrollIntoViewIfNeeded();
@@ -200,6 +216,14 @@ test.describe("core routes", () => {
     const previewFrame = page.frameLocator(".embed-live-preview iframe");
     await expect(previewFrame.locator(".embed-page")).toBeVisible();
     await expect(previewFrame.locator(".series-line")).not.toHaveCount(0);
+    const staticPreview = page.locator(".static-embed-preview");
+    const previewIframe = staticPreview.locator("iframe");
+    await expect(previewIframe).toHaveAttribute("scrolling", "no");
+    await expect(previewIframe).toHaveAttribute("tabindex", "-1");
+    expect(await previewIframe.evaluate((element) => getComputedStyle(element).pointerEvents)).toBe("none");
+    expect(await staticPreview.evaluate((element) => getComputedStyle(element).overflowY)).toBe("auto");
+    await expect(page.locator(".embed-options")).not.toContainText(/Höhe|Height/i);
+    expect(await page.locator(".embed-modal").evaluate((element) => element.scrollHeight <= element.clientHeight + 2)).toBe(true);
     await page.locator(".embed-live-preview").screenshot({ path: testInfo.outputPath("share-preview.png") });
     await page.getByRole("button", { name: /Schließen|Close/i }).click();
 
@@ -238,7 +262,8 @@ test.describe("core routes", () => {
     await page.goto("/?region=bundestag");
     await settle(page);
     const downloadPromise = page.waitForEvent("download");
-    await page.getByRole("button", { name: /PNG exportieren|Export PNG/i }).click();
+    const chartExportButton = page.locator(".chart-card .png-export-button").first();
+    await chartExportButton.click();
     const download = await downloadPromise;
     await download.saveAs(testInfo.outputPath("bundestag-export.png"));
     expect(download.suggestedFilename()).toMatch(/^pollframe-bundestag-all-trend-\d{4}-\d{2}-\d{2}\.png$/);
@@ -247,37 +272,21 @@ test.describe("core routes", () => {
     expect(png.readUInt32BE(16)).toBeGreaterThanOrEqual(2200);
     expect(png.readUInt32BE(20)).toBeGreaterThan(900);
     await expectPngHasVisibleContent(page, png);
-    await expect(page.getByRole("button", { name: /PNG gespeichert|PNG saved/i })).toBeVisible();
+    await expect(chartExportButton).toContainText(/PNG gespeichert|PNG saved/i);
     expect(errors).toEqual([]);
   });
 
-  test("Turkish, Russian and Arabic settings update language, formats and direction", async ({ page }) => {
+  test("settings expose only the four fully supported locales", async ({ page }) => {
     const errors = watchRuntime(page);
     await page.goto("/");
     await settle(page);
     await page.getByRole("button", { name: /Einstellungen|Settings/i }).click();
-    await expect(page.locator(".language-option")).toHaveCount(7);
-
-    await page.getByRole("button", { name: /Türkçe.*Türkiye/i }).click();
-    await expect(page.locator("html")).toHaveAttribute("lang", "tr");
-    await expect(page.getByRole("heading", { level: 1, name: /Almanya'ya genel bakış/ })).toBeVisible();
-
-    await page.getByRole("button", { name: /Русский/i }).click();
-    await expect(page.locator("html")).toHaveAttribute("lang", "ru");
-    await expect(page.getByRole("heading", { level: 1, name: /Германия в целом/ })).toBeVisible();
-
-    await page.getByRole("button", { name: /العربية/i }).click();
-    await expect(page.locator("html")).toHaveAttribute("lang", "ar");
-    await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
-    await expect(page.getByRole("heading", { level: 1, name: /نظرة عامة على ألمانيا/ })).toBeVisible();
+    await expect(page.locator(".language-option")).toHaveCount(4);
+    await expect(page.locator(".language-more-toggle")).toHaveCount(0);
+    await page.getByRole("button", { name: /Español.*España/i }).click();
+    await expect(page.locator("html")).toHaveAttribute("lang", "es");
     await expectDocumentFits(page);
     await expectNoBrokenVisibleText(page);
-
-    await page.goto("/?region=berlin&share=1&lang=ar");
-    await settle(page);
-    await expect(page.getByRole("heading", { level: 1, name: /استطلاعات انتخابات ولاية Berlin/ })).toBeVisible();
-    await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
-    await expectDocumentFits(page);
     expect(errors).toEqual([]);
   });
 
@@ -324,8 +333,7 @@ test.describe("core routes", () => {
       await page.goto(route);
       await settle(page);
       await expect(page.locator(".poll-chart")).toBeVisible();
-      if (testInfo.project.use.hasTouch) await expect(page.locator(".coverage-banner")).toHaveCount(1);
-      else await expect(page.locator(".coverage-banner")).toBeVisible();
+      await expect(page.locator(".coverage-banner")).toHaveCount(0);
       await expect(page.locator(".chart-footer .data-attribution")).toContainText("dawum.de");
       await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
         "href",
@@ -403,7 +411,7 @@ test.describe("core routes", () => {
     await page.goto("/?country=de");
     await settle(page);
     await expect(page.getByRole("heading", { level: 1, name: /Deutschland im Überblick|Germany at a glance/i })).toBeVisible();
-    await expect(page.locator(".overview-entry-stack .overview-classic-widget")).toHaveCount(2);
+    await expect(page.locator(".overview-entry-stack .overview-classic-widget")).toHaveCount(3);
     await expect(page.locator(".germany-map .map-state")).toHaveCount(16);
     await expect(page).toHaveURL(/\/$/);
     await expect(page.locator('link[rel="canonical"]')).toHaveAttribute("href", "https://de.pollframe.workers.dev/");
@@ -429,39 +437,102 @@ test.describe("core routes", () => {
     await expect(page.getByRole("heading", { level: 1, name: /España de un vistazo/i })).toBeVisible();
     await expect(page.locator("body")).not.toContainText(/Cómo se forma Gobierno|Cómo una gobierno|How a government is formed|Wie eine Regierung entsteht/i);
     await expect(page.locator(".spain-shift-card")).toHaveCount(0);
-    await expect(page.locator(".spain-issues-card")).toContainText(/Qué preocupa a España/i);
+    await expect(page.locator(".spain-issues-entry")).toContainText(/Qué preocupa a España/i);
+    await expect(page.locator(".spain-issues-entry .spain-issue-bars")).toHaveCount(0);
+    await expect(page.locator(".spain-issues-entry footer")).toHaveCount(0);
     await expect(page.locator(".spain-map-detail h3")).toHaveText("—");
     await expect(page.locator(".spain-map-svg .active-outline")).toHaveCount(0);
-    if (testInfo.project.use.hasTouch) await page.locator(".spain-map-svg path[role=button]").first().click();
-    else await page.locator(".spain-map-svg path[role=button]").first().hover();
-    await expect(page.locator(".spain-map-detail h3")).not.toHaveText("—");
+    await page.locator(".spain-map-svg a").first().hover();
+    await expect(page.locator(".spain-map-detail h3")).not.toHaveText("Comunidad de Madrid");
     await expect(page.locator(".spain-map-svg .active-outline")).toHaveCount(1);
+    await expect(page.locator(".spain-map-svg path").first()).toHaveAttribute("style", /--region-party/);
+    await expect(page.locator(".spain-map-party-legend")).toContainText(/Primera fuerza/i);
+    await page.getByRole("button", { name: /Comparar partido/i }).click();
+    await expect(page.locator(".spain-map-value-label")).not.toHaveCount(0);
+    await expect(page.locator(".spain-map-select")).toContainText("PP");
+    await expect(page.locator(".spain-map-party-legend")).toHaveCount(0);
+    await expect(page.locator(".spain-map-detail .uk-map-party-list > div")).toHaveCount(0);
     await page.screenshot({ path: testInfo.outputPath("spain-overview.png"), fullPage: true });
 
-    await page.locator(".spain-issues-card").click();
+    await page.locator(".spain-issues-entry").click();
     await settle(page);
     await expect(page.getByRole("heading", { level: 1, name: /Qué preocupa a España/i })).toBeVisible();
     await expect(page.locator(".spain-concern-panel")).toHaveCount(2);
+    await expect(page.locator(".spain-concern-ranking").first().locator(":scope > div")).toHaveCount(5);
+    await expect(page.locator(".spain-concern-ranking").nth(1).locator(":scope > div")).toHaveCount(5);
     await expect(page.locator(".spain-concern-ranking").first()).toContainText(/41[,.]3%/);
+    await expect(page.locator(".spain-concern-ranking").first().locator("i").first()).toHaveAttribute("style", /width: 41\.3%/);
     await expect(page.locator(".spain-economy-panel")).toContainText(/64[,.]7%/);
+    const spainWidgetGap = await page.evaluate(() => {
+      const concerns = document.querySelector(".spain-concern-grid").getBoundingClientRect();
+      const economy = document.querySelector(".spain-economy-panel").getBoundingClientRect();
+      return Math.round(economy.top - concerns.bottom);
+    });
+    expect(spainWidgetGap).toBeGreaterThanOrEqual(15);
+    await expect(page.locator(".economic-perception-bar").first().locator("i").first()).toHaveAttribute("style", /width: 64\.7%/);
+    await expect(page.locator(".economic-perception-bar").nth(1).locator("i").first()).toHaveAttribute("style", /width: 38\.1%/);
+    await page.getByRole("button", { name: "Todas las respuestas" }).click();
+    await expect(page.locator(".economic-perception-bar").first().locator("i")).toHaveCount(7);
+    await expect(page.locator(".spain-economy-panel")).toContainText(/Muy buena/);
+    await expect(page.locator(".spain-clock-panel")).toHaveCount(0);
     await expect(page.locator(".spain-issues-method")).toContainText(/4020/);
+    const infoCorner = await page.locator(".spain-concern-panel").first().evaluate((widget) => {
+      const widgetBox = widget.getBoundingClientRect();
+      const iconBox = widget.querySelector(".graph-info-popover summary").getBoundingClientRect();
+      const titleBox = widget.querySelector("h2").getBoundingClientRect();
+      return { inset: iconBox.left - widgetBox.left, iconRight: iconBox.right, titleLeft: titleBox.left };
+    });
+    expect(infoCorner.inset).toBeLessThan(32);
+    expect(infoCorner.titleLeft).toBeGreaterThan(infoCorner.iconRight);
     await page.locator(".spain-concern-panel .graph-info-popover summary").first().click();
     await expect(page.locator(".spain-concern-panel .graph-info-card").first()).toBeVisible();
+    await expect(page.locator(".spain-concern-panel .graph-info-card").first()).toHaveAttribute("role", "dialog");
+    await expect(page.locator(".spain-concern-panel .info-glyph").first()).toHaveText("i");
     await expectDocumentFits(page);
     await page.screenshot({ path: testInfo.outputPath("spain-issues.png"), fullPage: true });
+    await page.locator(".spain-concern-panel .graph-info-backdrop").first().click({ position: { x: 5, y: 5 } });
     await page.getByRole("link", { name: /Volver a España/i }).click();
     await settle(page);
 
+    await page.goto("/?country=es&lang=es&view=spain-region&area=cataluna");
+    await settle(page);
+    await expect(page.getByRole("heading", { level: 1, name: "Cataluña" })).toBeVisible();
+    await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
+    await expect(page.locator(".spain-region-history.is-recent")).toHaveCount(1);
+    await expect(page.locator(".region-election-facts")).toContainText(/68/);
+    await expect(page.locator(".spain-region-quality")).toContainText(/83 días/);
+
+    await page.goto("/?country=es&lang=es&view=spain-region&area=asturias");
+    await settle(page);
+    await expect(page.locator(".spain-region-history")).toHaveCount(0);
+    await expect(page.getByRole("heading", { level: 2, name: /Última encuesta publicada/i })).toBeVisible();
+    await expect(page.locator(".spain-region-snapshot")).toContainText(/Una encuesta, no una media/i);
+
+    await page.goto("/?country=es&lang=es&view=spain-region&area=andalucia");
+    await settle(page);
+    await expect(page.locator(".spain-region-history")).toHaveCount(0);
+    await expect(page.getByRole("heading", { level: 2, name: /Sin una media continua/i })).toBeVisible();
+
+    await page.goto("/?country=es&lang=es");
+    await settle(page);
+
     await page.getByRole("button", { name: /Ajustes/i }).click();
-    await expect(page.locator(".language-option")).toHaveCount(3);
+    await expect(page.locator(".language-option")).toHaveCount(4);
     await expect(page.locator(".language-list")).toContainText("Deutsch");
     await expect(page.locator(".language-list")).toContainText("English");
     await expect(page.locator(".language-list")).toContainText("Español");
+    await expect(page.locator(".language-more-toggle")).toHaveCount(0);
     await page.getByRole("button", { name: /Cerrar/i }).click();
 
-    await page.locator(".spain-polling-entry").click();
+    await page.locator(".spain-polling-entry").first().click();
     await settle(page);
     await expect(page.getByRole("heading", { level: 1, name: /Encuestas de las elecciones generales/i })).toBeVisible();
+    await expect(page.locator(".spain-results-card .result-row")).toHaveCount(5);
+    await expect(page.locator(".spain-results-card .snapshot-date")).toBeHidden();
+    if (testInfo.project.name.includes("iphone") || testInfo.project.name.includes("pixel") || testInfo.project.name.includes("galaxy")) {
+      await expect(page.locator(".chart-heading > div > p:not(.section-label)")).toBeHidden();
+      await expect(page.locator(".tendency-heading .widget-info-heading > div > p")).toBeHidden();
+    }
     await page.getByRole("button", { name: /Configurar gráfico/i }).click();
     await expect(page.locator(".customize-panel")).toBeVisible();
     await expect(page.locator(".customize-panel")).not.toContainText(/10 años|10 years|10 Jahre/i);
@@ -497,20 +568,48 @@ test.describe("core routes", () => {
       expect(insightPng.readUInt32BE(16)).toBeGreaterThanOrEqual(3000);
       await expectPngHasVisibleContent(page, insightPng);
 
-      await page.evaluate(() => localStorage.setItem("pollframe-es-locale", "en-GB"));
+      await page.evaluate(() => localStorage.setItem("opinion-poll-locale", "en-GB"));
       await page.goto("/?region=spain-congress");
       await settle(page);
       await expect(page.locator(".spain-pulse-section")).toContainText("What is changing");
-      await expect(page.locator(".spain-agreement-card")).toContainText("How closely pollsters agree");
-      await page.evaluate(() => localStorage.setItem("pollframe-es-locale", "de"));
+      await expect(page.locator(".spain-agreement-card")).toContainText("Spread between pollsters");
+      await page.evaluate(() => localStorage.setItem("opinion-poll-locale", "de"));
       await page.goto("/?region=spain-congress");
       await settle(page);
       await expect(page.locator(".spain-pulse-section")).toContainText("Was sich gerade verändert");
-      await expect(page.locator(".spain-agreement-card")).toContainText("Wie stark die Institute übereinstimmen");
+      await expect(page.locator(".spain-agreement-card")).toContainText("Streuung zwischen Instituten");
     }
     await expectDocumentFits(page);
     await expectNoBrokenVisibleText(page);
     expect(errors).toEqual([]);
+  });
+
+  test("state and autonomous-community maps open their page on the first activation", async ({ page }, testInfo) => {
+    await page.goto("/?view=states");
+    await settle(page);
+    const bavaria = page.locator('.germany-map a[href="/?region=bayern"]');
+    await expect(bavaria).toBeVisible();
+    if (testInfo.project.use.hasTouch) await bavaria.tap();
+    else await bavaria.click();
+    await expect(page).toHaveURL(/region=bayern/);
+    await expect(page.getByRole("heading", { level: 1, name: /Landtagswahl/ })).toBeVisible();
+
+    await page.goto("/?country=es&lang=es");
+    await settle(page);
+    const firstRegion = page.locator('.spain-map-svg a[href*="view=spain-region"]').first();
+    const href = await firstRegion.getAttribute("href");
+    if (testInfo.project.use.hasTouch) await firstRegion.tap();
+    else await firstRegion.click();
+    await expect(page).toHaveURL(new RegExp(href.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/^\//, "")));
+    await expect(page.locator(".spain-region-page")).toBeVisible();
+
+    await page.goto("/?country=uk&lang=en-GB");
+    await settle(page);
+    const ukArea = page.locator('.uk-map-visual path[id]:not([id^="Ireland-"])').first();
+    await expect(ukArea).toBeVisible();
+    if (testInfo.project.use.hasTouch) await ukArea.tap();
+    else await ukArea.click();
+    await expect(page.locator(".uk-map-detail")).not.toContainText("No area selected");
   });
 
   test("UK overview and Westminster detail use a distinct, responsive product flow", async ({ page }, testInfo) => {
@@ -519,7 +618,11 @@ test.describe("core routes", () => {
     await settle(page);
     await expect(page.getByRole("heading", { level: 1, name: /Select a country|Land auswählen/i })).toBeVisible();
     await expect(page.locator(".country-index-grid .overview-classic-widget")).toHaveCount(3);
-    await page.getByRole("link", { name: /United Kingdom/i }).click();
+    if (await page.getByRole("heading", { level: 1, name: "Land auswählen" }).isVisible().catch(() => false)) {
+      await expect(page.locator(".country-index-grid")).toContainText("Vereinigtes Königreich");
+      await expect(page.locator(".country-index-grid")).toContainText("Spanien");
+    }
+    await page.getByRole("link", { name: /United Kingdom|Vereinigtes Königreich/i }).click();
     await settle(page);
     await expect(page.getByRole("heading", { level: 1, name: /United Kingdom at a glance|Vereinigtes Königreich im Überblick/i })).toBeVisible();
     await expect(page.locator('.site-header .brand')).toHaveAttribute("href", "/?country=uk");
@@ -527,9 +630,11 @@ test.describe("core routes", () => {
     await expect(page.locator(".overview-entry-stack .overview-classic-widget")).toHaveCount(2);
     await expect(page.locator(".overview-profile-badge")).toHaveCount(0);
     await expect(page.locator(".uk-devolution")).toHaveCount(0);
+    await expect(page.locator(".uk-issues-widget")).toHaveCount(0);
+    await expect(page.locator(".uk-issues-card-link")).toHaveCount(0);
     await expect(page.locator(".uk-map-visual svg")).toBeVisible();
-    await expect(page.locator(".uk-map-visual svg > .uk-map-active-overlay")).toHaveCount(1);
-    await expect(page.locator(".uk-map-detail")).toContainText(/Greater London/);
+    await expect(page.locator(".uk-map-visual svg > .uk-map-active-overlay")).toHaveCount(0);
+    await expect(page.locator(".uk-map-detail")).toContainText(/No area selected|Keine Region ausgewählt/);
     if (testInfo.project.name === "pixel-5") await expect(page.locator(".uk-map-pointer-advice")).toHaveCount(0);
     await page.getByRole("button", { name: /Compare party|Partei vergleichen/i }).click();
     await expect(page.locator(".uk-map-value-label")).not.toHaveCount(0);
@@ -542,6 +647,18 @@ test.describe("core routes", () => {
     await expect(page.locator('link[rel="canonical"]')).toHaveAttribute("href", "https://de.pollframe.workers.dev/?country=uk");
     await expectDocumentFits(page);
     await expectNoBrokenVisibleText(page);
+
+    await page.goto("/?country=uk&view=uk-issues");
+    await settle(page);
+    await expect(page).toHaveURL(/country=uk(?!.*view=uk-issues)/);
+    await expect(page.getByRole("heading", { level: 1, name: /United Kingdom at a glance|Vereinigtes Königreich im Überblick/i })).toBeVisible();
+    await expect(page.locator(".uk-issues-full-ranking,.uk-economy-perception")).toHaveCount(0);
+    await expect(page.locator('link[rel="canonical"]')).toHaveAttribute("href", "https://de.pollframe.workers.dev/?country=uk");
+    await expectDocumentFits(page);
+    await expectNoBrokenVisibleText(page);
+
+    await page.goto("/?country=uk");
+    await settle(page);
 
     await page.getByRole("link", { name: /Constituency finder|Wahlkreisfinder/i }).click();
     await settle(page);
@@ -582,7 +699,7 @@ test.describe("core routes", () => {
     }
     if (testInfo.project.name === "chromium-desktop") {
       const pngDownloadPromise = page.waitForEvent("download");
-      await page.getByRole("button", { name: /PNG exportieren|Export PNG/i }).click();
+      await page.locator(".chart-actions .png-export-button").click();
       const pngDownload = await pngDownloadPromise;
       await pngDownload.saveAs(testInfo.outputPath("uk-export.png"));
       const png = await readFile(await pngDownload.path());
@@ -629,23 +746,89 @@ test.describe("core routes", () => {
     expect(errors).toEqual([]);
   });
 
-  test("since-last-visit appears only for a real polling change", async ({ page }) => {
+  test("party labels open neutral sourced profiles without shifting the page", async ({ page }, testInfo) => {
+    const errors = watchRuntime(page);
+    await page.goto("/?region=bundestag");
+    await page.evaluate(() => localStorage.setItem("opinion-poll-locale", "en-GB"));
+    await page.reload();
+    await settle(page);
+    const spd = page.locator('[data-party-profile="de:spd"]').first();
+    await expect(spd).toBeVisible();
+    const before = await page.locator("main").evaluate((node) => {
+      const rect = node.getBoundingClientRect();
+      return { left: Math.round(rect.left * 10) / 10, width: Math.round(rect.width * 10) / 10 };
+    });
+    await spd.click();
+    await expect(page.locator(".party-profile-modal")).toBeVisible();
+    await expect(page.locator(".party-profile-modal")).toContainText("Sozialdemokratische Partei Deutschlands");
+    await expect(page.locator(".party-profile-overview")).toContainText(/General position|Allgemeine Einordnung/);
+    await expect(page.locator(".party-profile-overview")).toContainText(/centre-left|Mitte-links/i);
+    await expect(page.locator(".party-profile-policies li")).toHaveCount(4);
+    await expect(page.locator(".party-profile-sources a")).toHaveCount(2);
+    expect(await page.locator(".party-profile-sources a").evaluateAll((links) => links.every((link) => link.href.startsWith("https://")))).toBe(true);
+    const after = await page.locator("main").evaluate((node) => {
+      const rect = node.getBoundingClientRect();
+      return { left: Math.round(rect.left * 10) / 10, width: Math.round(rect.width * 10) / 10 };
+    });
+    expect(after).toEqual(before);
+    await page.locator(".party-profile-modal").screenshot({ path: testInfo.outputPath("party-profile-spd.png") });
+    await page.keyboard.press("Escape");
+    await expect(page.locator(".party-profile-modal")).toHaveCount(0);
+    await expect(spd).toBeFocused();
+
+    await page.goto("/?country=uk");
+    await settle(page);
+    const labour = page.locator('[data-party-profile="uk:labour"]').first();
+    await expect(labour).toBeVisible();
+    await labour.click();
+    await expect(page.locator(".party-profile-modal")).toContainText("Labour Party");
+    await expect(page.locator(".party-profile-modal")).toContainText(/Policy priorities|Politische Schwerpunkte/);
+    await page.locator(".party-profile-modal .icon-button").click();
+
+    await page.goto("/?country=es");
+    await settle(page);
+    const psoe = page.locator('[data-party-profile="es:psoe"]').first();
+    await expect(psoe).toBeVisible();
+    await psoe.click();
+    await expect(page.locator(".party-profile-modal")).toContainText("Partido Socialista Obrero Español");
+    await expect(page.locator(".party-profile-sources a")).toHaveCount(2);
+
+    await page.goto("/?country=es&view=spain-region&area=madrid");
+    await settle(page);
+    const masMadrid = page.locator('[data-party-profile="es:mas-madrid"]').first();
+    await expect(masMadrid).toBeVisible();
+    await masMadrid.click();
+    await expect(page.locator(".party-profile-modal")).toContainText("Más Madrid");
+    await expect(page.locator(".party-profile-modal")).toContainText(/not yet published|noch keine|aún no ha publicado/i);
+    await expect(page.locator(".party-profile-sources a")).toHaveCount(1);
+    await expectDocumentFits(page);
+    expect(errors).toEqual([]);
+  });
+
+  test("an explicitly selected German interface language survives country changes", async ({ page }) => {
+    const errors = watchRuntime(page);
+    await page.goto("/");
+    await page.evaluate(() => localStorage.setItem("opinion-poll-locale", "de"));
+    await page.reload();
+    await settle(page);
+    await page.getByRole("button", { name: "Land auswählen" }).click();
+    await page.getByRole("link", { name: /Spanien.*Kongress/i }).click();
+    await settle(page);
+    await expect(page.getByRole("heading", { level: 1, name: "Spanien im Überblick" })).toBeVisible();
+    await page.getByRole("button", { name: "Land auswählen" }).click();
+    await page.getByRole("link", { name: /Vereinigtes Königreich.*Westminster/i }).click();
+    await settle(page);
+    await expect(page.getByRole("heading", { level: 1, name: "Vereinigtes Königreich im Überblick" })).toBeVisible();
+    expect(errors).toEqual([]);
+  });
+
+  test("since-last-visit is not shown as a separate overview widget", async ({ page }) => {
     await page.goto("/");
     await settle(page);
     await expect(page.locator(".since-visit")).toHaveCount(0);
-    await page.reload();
-    await settle(page);
-    await expect(page.locator(".since-visit")).toHaveCount(0);
     await page.evaluate(() => {
-      const key = "pollframe-last-snapshot-de";
-      const snapshot = JSON.parse(localStorage.getItem(key));
-      snapshot.results["7"] = Number(snapshot.results["7"]) - 0.1;
-      localStorage.setItem(key, JSON.stringify(snapshot));
+      localStorage.setItem("pollframe-last-snapshot-de", JSON.stringify({ date: "2026-08-01", results: { "7": 1 } }));
     });
-    await page.reload();
-    await settle(page);
-    await expect(page.locator(".since-visit")).toBeVisible();
-    await expect(page.locator(".since-visit")).toContainText(/0[,.]1/);
     await page.reload();
     await settle(page);
     await expect(page.locator(".since-visit")).toHaveCount(0);
@@ -680,7 +863,7 @@ test.describe("core routes", () => {
     await expect(page.locator(".watch-card")).toHaveCount(1);
     await expect(page.locator(".watch-card").first()).toContainText(/Grüne/);
     await expect(page.locator(".watch-gallery")).toBeHidden();
-    await page.getByRole("button", { name: /Watchlist-Eintrag hinzufügen|Add Watchlist item/i }).click();
+    await page.getByRole("button", { name: /Watchlist-Eintrag hinzufügen|Add Watchlist item|Hinzufügen$/i }).click();
     await page.getByRole("button", { name: /Mehrheit|Majority/i }).click();
     await page.getByRole("button", { name: /^SPD/ }).click();
     await page.getByRole("button", { name: /^CDU/ }).click();
@@ -703,13 +886,33 @@ test.describe("core routes", () => {
   test("dropdowns close outside, event links adapt to the device and the timeline stays controlled", async ({ page, context }, testInfo) => {
     await page.goto("/?region=bundestag");
     await settle(page);
+    if (testInfo.project.use.hasTouch) {
+      const countryButton = page.getByRole("button", { name: /Land auswählen|Select country/i });
+      const settingsButton = page.getByRole("button", { name: /Einstellungen|Settings/i });
+      await countryButton.click();
+      await expect(page.locator("#header-country-popover")).toBeVisible();
+      await settingsButton.click();
+      await expect(page.locator("#header-country-popover")).toHaveCount(0);
+      await expect(page.locator(".side-panel")).toHaveCount(0);
+      await settingsButton.click();
+      await expect(page.locator(".side-panel")).toBeVisible();
+      await page.locator(".side-panel .icon-button").click();
+    }
     await page.getByRole("button", { name: /Diagramm anpassen|Customise chart/i }).click();
     const display = page.locator(".customize-panel .select-control").first();
     await display.locator("summary").click();
     await expect(display).toHaveAttribute("open", "");
+    const neighbouringControl = page.locator(".customize-panel .select-control").nth(1);
+    await neighbouringControl.locator("summary").click();
+    await expect(display).not.toHaveAttribute("open", "");
+    if (testInfo.project.use.hasTouch) {
+      await expect(neighbouringControl).not.toHaveAttribute("open", "");
+      await neighbouringControl.locator("summary").click();
+    }
+    await expect(neighbouringControl).toHaveAttribute("open", "");
     if (testInfo.project.use.hasTouch) await page.touchscreen.tap(8, 200);
     else await page.locator(".chart-heading h2").click();
-    await expect(display).not.toHaveAttribute("open", "");
+    await expect(neighbouringControl).not.toHaveAttribute("open", "");
     const pollsterMenu = page.locator(".customize-panel .multi-select").first();
     await pollsterMenu.locator("summary").click();
     const menu = pollsterMenu.locator(".multi-menu");
@@ -725,20 +928,49 @@ test.describe("core routes", () => {
     if (testInfo.project.use.hasTouch) await page.touchscreen.tap(8, 200);
     else await page.locator(".chart-heading h2").click();
     await expect(pollsterMenu).not.toHaveAttribute("open", "");
+    await expect(page.locator(".customize-panel .multi-select")).toHaveCount(2);
     await page.locator(".customize-panel .select-control").nth(1).locator("summary").click();
     await page.getByRole("button", { name: /Eigener Zeitraum|Custom dates/i }).click();
     await expect(page.locator(".custom-date-slider input[type=range]")).toHaveCount(2);
     await expect(page.locator(".dual-range-ticks span")).toHaveCount(5);
-    await expect(page.locator(".event-marker title")).toHaveCount(0);
+    await expect(page.locator(".poll-chart > title, .event-marker title")).toHaveCount(0);
+    const eventLayout = await page.locator(".poll-chart").evaluate((chart) => ({
+      labels: chart.querySelectorAll(".event-label-bg").length,
+      dates: chart.querySelectorAll(".event-label-date").length,
+      truncated: [...chart.querySelectorAll(".event-label-text")].some((label) => label.textContent.includes("…")),
+      lanes: new Set([...chart.querySelectorAll(".event-label-bg")].map((label) => label.getAttribute("y"))).size,
+      contextLines: [...chart.querySelectorAll(".event-context-line")].map((line) => ({ y1: Number(line.getAttribute("y1")), y2: Number(line.getAttribute("y2")) })),
+      anchors: chart.querySelectorAll(".event-anchor").length,
+    }));
+    expect(eventLayout.labels).toBeLessThanOrEqual(13);
+    expect(eventLayout.dates).toBe(0);
+    expect(eventLayout.truncated).toBe(false);
+    expect(eventLayout.lanes).toBeLessThanOrEqual(2);
+    expect(eventLayout.contextLines.length).toBe(eventLayout.labels);
+    expect(eventLayout.contextLines.every((line) => line.y1 < line.y2 && line.y2 - line.y1 > 250)).toBe(true);
+    expect(eventLayout.anchors).toBeGreaterThan(0);
+    expect(eventLayout.anchors).toBeLessThanOrEqual(20);
+    const chartEventCount = await page.locator(".event-marker").count()
+      + await page.locator(".interactive-event-layer .event-dot").count()
+      + await page.locator(".historical-election-marker").count();
+    await expect(page.locator(".event-key-item")).toHaveCount(chartEventCount);
+    await expect(page.locator(".event-dot-tick")).toHaveCount(0);
+    expect(await page.locator(".event-dot-hit").first().getAttribute("r").then(Number)).toBeGreaterThanOrEqual(14);
+    await expect(page.locator(".historical-election-marker .election-bottom-label").first()).toBeVisible();
     const chartInfo = page.locator(".chart-title-row .graph-info-popover");
+    const chartInfoOrder = await page.locator(".chart-title-row").evaluate((heading) => {
+      const iconBox = heading.querySelector(".graph-info-popover summary").getBoundingClientRect();
+      const titleBox = heading.querySelector("h2").getBoundingClientRect();
+      return { iconRight: iconBox.right, titleLeft: titleBox.left };
+    });
+    expect(chartInfoOrder.titleLeft).toBeGreaterThan(chartInfoOrder.iconRight);
     await chartInfo.locator("summary").click();
     await expect(chartInfo.locator(".graph-info-card")).toContainText(/keine Wahlprognose|not an election forecast/i);
-    if (testInfo.project.use.hasTouch) await page.touchscreen.tap(8, 200);
-    else await page.locator(".chart-heading h2").click();
+    await chartInfo.locator(".graph-info-backdrop").click({ position: { x: 5, y: 5 } });
     await expect(chartInfo).not.toHaveAttribute("open", "");
     if (testInfo.project.use.hasTouch) {
       await expect(page.locator(".event-marker.inspect-only")).not.toHaveCount(0);
-      await page.locator(".event-marker .event-anchor").last().click({ force: true });
+      await page.locator(".event-marker .event-label-bg").last().click({ force: true });
       await expect(page.locator(".event-hover-card")).toBeVisible();
       expect(context.pages()).toHaveLength(1);
       await page.locator(".event-key summary").click();
@@ -750,12 +982,36 @@ test.describe("core routes", () => {
     } else {
       await expect(page.locator(".event-marker .event-hit-target").first()).toHaveCSS("pointer-events", "none");
       const popupPromise = page.waitForEvent("popup");
-      await page.locator(".event-marker .event-anchor").last().click({ force: true });
+      await page.locator(".event-marker .event-label-bg").last().click({ force: true });
       const popup = await popupPromise;
       expect(new URL(popup.url()).protocol).toMatch(/^https?:$/);
       await popup.close();
     }
     expect(context.pages()).toHaveLength(1);
+  });
+
+  test("the full UK archive keeps every election and reserves both early event lanes", async ({ page }, testInfo) => {
+    await page.goto("/?region=uk-westminster&range=all&share=1&lang=en-GB");
+    await settle(page);
+    const chart = page.locator(".poll-chart").first();
+    await expect(chart.locator(".historical-election-marker")).toHaveCount(22);
+    expect(await chart.locator(".election-bottom-label").count()).toBeGreaterThanOrEqual(16);
+    const electionRows = await chart.locator(".election-bottom-label text").evaluateAll((labels) => new Set(labels.map((label) => label.getAttribute("y"))).size);
+    expect(electionRows).toBe(2);
+    const eventLabels = (await chart.locator(".event-label-text").allTextContents()).join(" ");
+    expect(eventLabels).toMatch(/D-Day/);
+    expect(eventLabels).toMatch(/VE Day/);
+    await expect(chart.locator(".event-dot-tick")).toHaveCount(0);
+    await page.locator(".chart-card").screenshot({ path: testInfo.outputPath("uk-full-archive-events.png") });
+
+    await page.goto("/?region=uk-westminster&lang=en-GB");
+    await settle(page);
+    await page.getByRole("button", { name: /Customise chart/i }).click();
+    const rangeControl = page.locator(".customize-panel .select-control").nth(1);
+    await rangeControl.locator("summary").click();
+    await rangeControl.getByRole("button", { name: /Full archive/i }).click();
+    await expect(page.locator('.event-dot[aria-label*="National Health Service"]')).toHaveCount(1);
+    expect(Number(await page.locator('.event-dot[aria-label*="National Health Service"] .event-dot-hit').getAttribute("r"))).toBeGreaterThanOrEqual(14);
   });
 
   test("the paused German European-election archive returns to Germany overview", async ({ page }) => {
@@ -781,8 +1037,10 @@ test.describe("core routes", () => {
       const url = new URL(route.request().url());
       lookupRequests.push(url.href);
       const headers = { "access-control-allow-origin": "*", "content-type": "application/json" };
-      if (url.pathname === "/postcodes" && url.searchParams.get("query") === "SK17 6BE") {
-        await route.fulfill({ status: 200, headers, body: JSON.stringify({ status: 200, result: [{ postcode: "SK17 6BE", parliamentary_constituency_2024: "High Peak" }] }) });
+      if (url.pathname === "/postcodes/SK176BE") {
+        await route.fulfill({ status: 200, headers, body: JSON.stringify({ status: 200, result: { postcode: "SK17 6BE", parliamentary_constituency_2024: "High Peak" } }) });
+      } else if (url.pathname === "/postcodes/SK176ZZ") {
+        await route.fulfill({ status: 200, headers, body: JSON.stringify({ status: 404, result: null }) });
       } else if (url.pathname === "/postcodes") {
         await route.fulfill({ status: 200, headers, body: JSON.stringify({ status: 200, result: [] }) });
       } else if (url.pathname === "/outcodes/SK17") {
@@ -801,7 +1059,7 @@ test.describe("core routes", () => {
     await page.getByRole("button", { name: /^Search$|^Suchen$/i }).click();
     await expect(page.locator(".selected-constituency")).toContainText("High Peak");
     await expect(search).toHaveValue("High Peak");
-    expect(lookupRequests.some((url) => new URL(url).pathname === "/postcodes" && new URL(url).searchParams.get("query") === "SK17 6BE")).toBeTruthy();
+    expect(lookupRequests.some((url) => new URL(url).pathname === "/postcodes/SK176BE")).toBeTruthy();
     expect(lookupRequests.some((url) => url.includes("Example"))).toBeFalsy();
 
     await page.locator(".selected-constituency").getByRole("button", { name: /Change|Ändern/i }).click();
@@ -822,7 +1080,7 @@ test.describe("core routes", () => {
     await search.fill("Bristol");
     await page.getByRole("button", { name: /^Search$|^Suchen$/i }).click();
     await expect(page.getByRole("status")).toContainText(/Several constituencies|Mehrere Wahlkreise/i);
-    await expect(page.getByRole("listbox").getByRole("option")).toHaveCount(5);
+    await expect(page.getByRole("listbox").getByRole("option")).toHaveCount(6);
     await page.getByRole("option", { name: /^Bristol Central/i }).click();
 
     await page.locator(".selected-constituency").getByRole("button", { name: /Change|Ändern/i }).click();
@@ -878,6 +1136,34 @@ test.describe("core routes", () => {
     await expectDocumentFits(page);
     await expectNoBrokenVisibleText(page);
 
+    await page.route("**/api/bug-reports**", async (route) => {
+      if (route.request().method() === "POST") return route.fulfill({ status: 201, contentType: "application/json", body: JSON.stringify({ ok: true, id: "test-report" }) });
+      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ reports: [{ id: "test-report", type: "visual", message: "A label overlaps", page: "http://127.0.0.1:4174/?view=approval&country=uk", locale: "en-GB", viewport: "390×844", userAgent: "Test browser", createdAt: "2026-08-16T10:00:00.000Z", status: "new" }], stats: { total: 1, typeCounts: { visual: 1 }, statusCounts: { new: 1 }, dayCounts: { "2026-08-16": 1 } } }) });
+    });
+    await page.goto(`/?page=bug-report&from=${encodeURIComponent("http://127.0.0.1:4174/?view=approval&country=uk")}`);
+    await settle(page);
+    await expect(page.getByRole("heading", { name: /Was ist dir aufgefallen|What did you notice/i })).toBeVisible();
+    await expect(page.locator(".header-report-button")).toHaveCount(0);
+    await expect(page.getByRole("radio")).toHaveCount(6);
+    await expect(page.getByText(/Beschreibung ist optional|description is optional/i)).toBeVisible();
+    await page.getByRole("radio", { name: /Darstellung|Display/i }).click();
+    await page.getByRole("button", { name: /Meldung senden|Send report/i }).click();
+    await expect(page.getByRole("status")).toContainText(/Danke|Thanks/i);
+    await expect(page.locator(".bug-contact-separate")).toHaveCount(0);
+
+    await page.goto("/?page=bug-reports");
+    await settle(page);
+    await page.getByLabel("Dashboard key").fill("test-key");
+    await page.getByRole("button", { name: "Open dashboard" }).click();
+    await expect(page.getByRole("heading", { name: "Bug reports" })).toBeVisible();
+    await expect(page.locator(".bug-stats:not(.analytics-stats)")).toContainText("1");
+    await expect(page.locator(".bug-report-list")).toContainText("A label overlaps");
+    const bugExportPromise = page.waitForEvent("download");
+    await page.getByRole("button", { name: "Export JSON" }).click();
+    const bugExport = await bugExportPromise;
+    expect(bugExport.suggestedFilename()).toMatch(/^pollframe-bug-reports-\d{4}-\d{2}-\d{2}\.json$/);
+    expect(JSON.parse(await readFile(await bugExport.path(), "utf8")).reports).toHaveLength(1);
+
     await page.goto("/?page=datenschutz");
     await settle(page);
     await expect(page.getByRole("heading", { name: /Datenschutzerklärung|Privacy notice/i })).toBeVisible();
@@ -892,7 +1178,17 @@ test.describe("core routes", () => {
     await expect(page.getByText(/Derivative Pollframe|abgeleitete Pollframe/i)).toBeVisible();
     await expect(page.getByText(/Meta Platforms/).first()).toBeVisible();
     await expect(page.getByRole("heading", { name: "UK Election Data Vault" })).toBeVisible();
+    await expect(page.getByText(/Rechtestatus|Rights status/)).toBeVisible();
     await expect(page.locator(".placeholder-warning")).toHaveCount(0);
+    await expectDocumentFits(page);
+    await expectNoBrokenVisibleText(page);
+
+    await page.goto("/?page=redaktion");
+    await settle(page);
+    await expect(page.getByRole("heading", { name: /Redaktionelle Standards|Editorial standards/i, level: 1 })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Ereignisse im historischen Kontext|Events as historical context/i })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Öffentliches Änderungsprotokoll|Public change log/i })).toBeVisible();
+    await expect(page.locator('link[rel="canonical"]')).toHaveAttribute("href", "https://de.pollframe.workers.dev/?page=redaktion");
     await expectDocumentFits(page);
     await expectNoBrokenVisibleText(page);
     expect(errors).toEqual([]);
@@ -900,10 +1196,13 @@ test.describe("core routes", () => {
 
   test("chart and map embeds remain self-contained and responsive", async ({ page }, testInfo) => {
     const errors = watchRuntime(page);
-    await page.goto("/embed.html?embed=1&region=bundestag&lang=de&theme=light&range=year&mode=both&parties=1,2,4,5,7&pollsters=1,2,3,5,6,9,13,17&events=national");
+    await page.goto("/embed.html?embed=1&region=bundestag&lang=de&theme=light&range=ten&mode=both&parties=1,2,4,5,7&pollsters=1,2,3,5,6,9,13,17&events=national");
     await settle(page);
     await expect(page.locator(".embed-page .poll-chart")).toBeVisible();
+    await expect(page.locator(".embed-page .interactive-event-layer")).toHaveCount(0);
+    await expect(page.locator(".embed-page .historical-election-marker")).not.toHaveCount(0);
     await expect(page.locator(".embed-footer .data-attribution")).toContainText("Bundeswahlleiterin");
+    await expect(page.getByRole("link", { name: /Interaktiv öffnen|Open interactive/i })).toHaveAttribute("href", /share=1.*mode=both.*pollsters=1%2C2%2C3%2C5%2C6%2C9%2C13/);
     await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
     await expectDocumentFits(page);
     await page.screenshot({ path: testInfo.outputPath("chart-embed.png"), fullPage: true });
@@ -912,8 +1211,252 @@ test.describe("core routes", () => {
     await settle(page);
     await expect(page.locator(".map-embed-page .polling-map")).toBeVisible();
     await expect(page.locator(".embed-footer .data-attribution")).toContainText("CC BY 4.0");
+    await expect(page.getByRole("link", { name: /Interaktiv öffnen|Open interactive/i })).toHaveAttribute("href", /view=map.*mapMode=leader.*mapParty=union/);
     await expectDocumentFits(page);
     await page.screenshot({ path: testInfo.outputPath("map-embed.png"), fullPage: true });
     expect(errors).toEqual([]);
+  });
+
+  test("approval events stay balanced, colour-coded and readable in the default dark ten-year view", async ({ page }, testInfo) => {
+    await page.addInitScript(() => localStorage.setItem("opinion-poll-theme", "dark"));
+    await page.goto("/?view=approval&compare=0&metric=government&range=ten&display=trend&answers=positive&events=1&eventMode=key&eventCats=national%2Cgermany%2Ceurope%2Ccontroversy%2Cglobal&lang=en-GB&country=de");
+    await settle(page);
+    const markers = page.locator(".approval-event-marker-original");
+    await expect(markers).not.toHaveCount(0);
+    const markerCount = await markers.count();
+    expect(markerCount).toBeGreaterThanOrEqual(3);
+    expect(markerCount).toBeLessThanOrEqual(11);
+    const priorityLabels = (await page.locator(".approval-event-marker-original .event-label-text").allTextContents()).join(" ");
+    expect(priorityLabels).toMatch(/COVID-19 pandemic/i);
+    expect(priorityLabels).toMatch(/Invasion of Ukraine/i);
+    await expect(page.locator(".approval-event-marker-original .event-label-date")).toHaveCount(0);
+    expect((await page.locator(".approval-event-marker-original .event-label-text").allTextContents()).some((label) => label.includes("…"))).toBe(false);
+    expect(await page.locator(".approval-main-chart .historical-election-marker").count()).toBeGreaterThanOrEqual(2);
+    expect(await page.locator(".approval-main-chart .interactive-event-layer .event-dot").count()).toBeGreaterThan(0);
+    const representedEvents = markerCount
+      + await page.locator(".approval-main-chart .interactive-event-layer .event-dot").count()
+      + await page.locator(".approval-main-chart .historical-election-marker").count();
+    await expect(page.locator(".approval-main-chart .event-key-item")).toHaveCount(representedEvents);
+    const geometry = await markers.evaluateAll((items) => ({
+      lanes: new Set(items.map((item) => item.querySelector(".event-label-bg").getAttribute("y"))).size,
+      lineStrokes: new Set(items.map((item) => getComputedStyle(item.querySelector(".approval-event-context-line")).stroke)).size,
+      textFills: new Set(items.map((item) => getComputedStyle(item.querySelector(".event-label-text")).fill)).size,
+    }));
+    expect(geometry.lanes).toBeLessThanOrEqual(2);
+    expect(geometry.lineStrokes).toBeGreaterThanOrEqual(2);
+    expect(geometry.textFills).toBeGreaterThanOrEqual(2);
+    await page.locator(".approval-main-chart").screenshot({ path: testInfo.outputPath("approval-calm-dark-events.png") });
+
+    await page.goto("/?view=approval&compare=0&metric=government&range=ten&display=trend&answers=positive&events=1&eventMode=key&eventCats=national%2Cgermany%2Ceurope%2Ccontroversy%2Cglobal&lang=en-GB&country=de&share=1");
+    await settle(page);
+    await expect(page.locator(".approval-main-chart .interactive-event-layer")).toHaveCount(0);
+    await expect(page.locator(".approval-main-chart .historical-election-marker")).not.toHaveCount(0);
+  });
+
+  test("approval workbench supports journalist customisation, exact embed preview and real exports", async ({ page }, testInfo) => {
+    const errors = watchRuntime(page);
+    await page.goto("/?view=approval&country=de&compare=1&lang=en-GB&metric=leader&range=all&display=trend&answers=positive&events=1");
+    await settle(page);
+    await expect(page.getByRole("heading", { name: /How satisfied is Germany with its government and Chancellor/ })).toBeVisible();
+    await expect(page.locator(".approval-question")).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Compare DE · UK" })).toHaveCount(0);
+    expect(await page.locator(".approval-series .series-line").count()).toBeGreaterThanOrEqual(3);
+    await expect(page.locator(".approval-line-legend span:not(.axis-range-note)")).toHaveCount(3);
+    expect(await page.locator(".approval-term-marker").count()).toBeGreaterThanOrEqual(2);
+    const segmentKeys = await page.locator(".approval-series").evaluateAll((groups) => groups.map((group) => `${group.dataset.country}:${group.dataset.term}:${group.dataset.answer}`));
+    expect(new Set(segmentKeys).size).toBe(segmentKeys.length);
+    await expect(page.locator(".approval-insight-grid")).toHaveCount(0);
+
+    const keyMarkerCount = await page.locator(".approval-event-marker-original").count();
+    expect(keyMarkerCount).toBeGreaterThanOrEqual(3);
+    await expect(page.locator(".approval-event-marker-original .event-label-text")).toHaveCount(keyMarkerCount);
+    await expect(page.locator(".approval-event-marker-original .event-label-date")).toHaveCount(0);
+    await expect(page.locator(".approval-event-marker-original .event-date-chip")).toHaveCount(0);
+    expect(await page.locator(".approval-event-marker-original .event-label-text").allTextContents()).not.toEqual(expect.arrayContaining([expect.stringContaining("…")]));
+    const editorialLabels = (await page.locator(".approval-event-marker-original .event-label-text").allTextContents()).join(" ");
+    expect(editorialLabels).toMatch(/Financial (?:crisis|rescue package)/i);
+    expect(editorialLabels).toMatch(/COVID-19 pandemic/i);
+    expect(editorialLabels).toMatch(/Invasion of Ukraine/i);
+    expect(editorialLabels).not.toMatch(/Welfare revisions/i);
+    await expect(page.locator(".approval-poll-chart")).toHaveCSS("cursor", "default");
+    const eventLineGeometry = await page.locator(".approval-event-context-line").evaluateAll((lines) => lines.map((line) => ({ y1: Number(line.getAttribute("y1")), y2: Number(line.getAttribute("y2")) })));
+    expect(eventLineGeometry.every((line) => line.y1 < line.y2 && line.y2 - line.y1 > 300)).toBe(true);
+    expect(await page.locator(".historical-election-marker>line").evaluateAll((lines) => lines.every((line) => line.getAttribute("x1") === line.getAttribute("x2")))).toBe(true);
+    await expect(page.locator(".approval-event-rail-row,.approval-event-cluster")).toHaveCount(0);
+    const eventLabelGeometry = await page.locator(".approval-event-marker-original").evaluateAll((markers) => markers.map((marker) => {
+      const label = marker.querySelector(".event-label-text").getBoundingClientRect();
+      const pill = marker.querySelector(".event-label-bg").getBoundingClientRect();
+      return { inside: label.left >= pill.left - 1 && label.right <= pill.right + 1 && label.top >= pill.top - 1 && label.bottom <= pill.bottom + 1, pill: { left: pill.left, right: pill.right, top: pill.top, bottom: pill.bottom } };
+    }));
+    expect(eventLabelGeometry.every((item) => item.inside)).toBe(true);
+    expect(eventLabelGeometry.every((item, index, all) => all.slice(index + 1).every((other) => item.pill.right <= other.pill.left || other.pill.right <= item.pill.left || item.pill.bottom <= other.pill.top || other.pill.bottom <= item.pill.top))).toBe(true);
+    const termLengths = await page.locator(".approval-term-marker .term-marker-tick").evaluateAll((lines) => lines.map((line) => Number(line.getAttribute("y2")) - Number(line.getAttribute("y1"))));
+    expect(termLengths.every((length) => length > 0 && length <= 24)).toBe(true);
+    await page.locator(".approval-event-marker-original .event-label-bg").first().hover();
+    await expect(page.locator(".approval-event-card")).toBeVisible();
+    await expect(page.locator(".approval-svg-tooltip")).toHaveCount(0);
+    expect(parseFloat(await page.locator(".approval-event-marker-original .event-label-text").first().evaluate((node) => getComputedStyle(node).fontSize))).toBeGreaterThanOrEqual(10);
+    await page.locator(".approval-main-chart").screenshot({ path: testInfo.outputPath("approval-readable-events.png") });
+    await page.locator(".approval-event-marker-original .event-label-bg").first().click();
+    await expect(page.locator(".approval-event-card .event-card-source")).toHaveAttribute("href", /^https:\/\//);
+    await expect(page.locator(".approval-event-card footer")).toHaveCount(0);
+    await page.locator(".approval-main-chart").screenshot({ path: testInfo.outputPath("approval-standard-event-card.png") });
+    await page.locator(".approval-poll-chart .grid-line").last().click({ force: true });
+    await expect(page.locator(".approval-event-card")).toHaveCount(0);
+
+    await page.getByRole("button", { name: "Customise chart" }).click();
+    await expect(page.locator(".approval-customize-panel .select-control").filter({ hasText: "Events" })).toHaveCount(0);
+    await expect(page.locator(".approval-customize-panel .multi-select")).toHaveCount(1);
+    await expect(page.locator(".approval-event-marker-original .event-label-text")).toHaveCount(keyMarkerCount);
+    await expect(page.locator(".historical-election-marker .election-bottom-label").first()).toBeVisible();
+    const answerMode = page.locator(".approval-customize-panel .select-control").filter({ hasText: "Answers" });
+    await answerMode.locator("summary").click();
+    await answerMode.getByRole("button", { name: "Dissatisfied / negative" }).click();
+    await expect(page.locator(".approval-series.answer-negative").first()).toBeVisible();
+    await expect(page.locator(".approval-series.answer-positive")).toHaveCount(0);
+    await answerMode.locator("summary").click();
+    await answerMode.getByRole("button", { name: "Satisfied / positive" }).click();
+    await answerMode.locator("summary").click();
+    await answerMode.getByRole("button", { name: "Net rating" }).click();
+    await expect(page.locator(".approval-series.answer-net").first()).toBeVisible();
+    await expect(page.locator(".approval-poll-chart .zero-line")).toHaveCount(1);
+    await expect(page.locator(".approval-line-legend .axis-range-note")).toContainText("pp");
+    await page.getByRole("button", { name: "Customise chart" }).click();
+
+    await page.locator(".approval-info > summary").click();
+    await expect(page.locator(".approval-info-card")).toContainText("Original question");
+    await expect(page.locator(".approval-info-card h2,.approval-info-card h3,.approval-info-card blockquote,.approval-info-card section")).toHaveCount(0);
+    await expect(page.locator(".approval-info-card .approval-info-prose")).toHaveCount(1);
+    await page.locator(".approval-info-card").screenshot({ path: testInfo.outputPath("approval-info-prose.png") });
+    await page.locator(".approval-info-card header button").click();
+
+    await page.getByRole("button", { name: "Share & embed" }).click();
+    const preview = page.frameLocator(".approval-embed-preview iframe");
+    await expect(preview.getByRole("heading", { name: /Chancellor: Satisfaction over time/ })).toBeVisible();
+    await expect(preview.locator(".approval-series .series-line").first()).toBeVisible();
+    await expect(preview.locator(".interactive-event-layer")).toHaveCount(0);
+    await expect(preview.locator(".historical-election-marker")).not.toHaveCount(0);
+    await expect(page.locator(".approval-embed-preview iframe")).toHaveAttribute("src", /country=de.*compare=0.*metric=leader.*range=all.*display=trend.*answers=net/);
+    await expect(page.locator(".approval-embed-preview iframe")).not.toHaveAttribute("src", /country=es/);
+    await expect(page.locator(".approval-embed-preview")).toHaveCSS("overflow-y", "auto");
+    expect(await page.locator(".approval-embed-preview").evaluate((node) => node.scrollHeight > node.clientHeight)).toBe(true);
+    await expect(page.locator(".approval-embed-preview iframe")).toHaveCSS("pointer-events", "none");
+
+    const pngDownload = page.waitForEvent("download");
+    await page.locator(".approval-share-actions").getByRole("button", { name: "Export PNG", exact: true }).click();
+    const png = await pngDownload;
+    await expectPngHasVisibleContent(page, (await readFile(await png.path())).toString("base64"));
+
+    const csvDownload = page.waitForEvent("download");
+    await page.getByRole("button", { name: "Download CSV" }).click();
+    const csv = await csvDownload;
+    expect((await readFile(await csv.path(), "utf8")).split("\n").length).toBeGreaterThan(100);
+    await page.screenshot({ path: testInfo.outputPath("approval-share-preview.png"), fullPage: true });
+    expect(errors).toEqual([]);
+  });
+
+  test("approval embed is self-contained, configurable and excluded from indexing", async ({ page }, testInfo) => {
+    const errors = watchRuntime(page);
+    await page.goto("/embed.html?view=approval&country=de&compare=1&lang=de&metric=government&range=ten&display=both&answers=positive,negative&events=1&theme=dark");
+    await settle(page);
+    await expect(page.locator(".approval-page.is-embed .approval-poll-chart")).toBeVisible();
+    await expect(page.locator(".approval-line-legend span:not(.axis-range-note)")).toHaveCount(3);
+    await expect(page.locator(".approval-average-point").first()).toBeVisible();
+    await expect(page.locator(".approval-embed-footer")).toContainText("POLLFRAME");
+    await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+    await page.locator(".approval-main-chart").screenshot({ path: testInfo.outputPath("approval-dark-embed.png") });
+    await expectDocumentFits(page);
+    expect(errors).toEqual([]);
+  });
+
+  test("withheld UK approval URLs fall back to the cleared German series", async ({ page }) => {
+    const errors = watchRuntime(page);
+    await page.goto("/?view=approval&country=uk&lang=en-GB");
+    await settle(page);
+    await expect(page).toHaveURL(/view=approval.*country=de/);
+    await expect(page.getByRole("heading", { name: /How satisfied is Germany/ })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Compare DE · UK" })).toHaveCount(0);
+    expect(errors).toEqual([]);
+  });
+
+  test("journalist snapshot modules have exact responsive embeds", async ({ page }, testInfo) => {
+    const errors = watchRuntime(page);
+    await page.goto("/?region=bundestag&lang=de");
+    await settle(page);
+    const shareButton = page.getByRole("button", { name: /Teilen.*Letzte Umfrage/i });
+    await shareButton.click();
+    await expect(page.locator(".widget-share-modal")).toBeVisible();
+    await expect(page.locator(".widget-embed-preview iframe")).toHaveAttribute("src", /widget=current-average/);
+    await expect(page.locator(".widget-embed-preview iframe")).toHaveAttribute("src", /pollsters=/);
+    await expect(page.locator(".code-label code")).toContainText("&amp;");
+    await page.getByRole("button", { name: /Handy|Phone/i }).click();
+    expect(await page.locator(".widget-embed-preview").evaluate((node) => Math.round(node.getBoundingClientRect().width))).toBeLessThanOrEqual(390);
+    await expect(page.locator(".widget-share-modal").getByRole("link", { name: /Problem melden|Report issue/i })).toHaveAttribute("href", /page=bug-report.*from=/);
+    await page.keyboard.press("Escape");
+    await expect(page.locator(".widget-share-modal")).toHaveCount(0);
+    await expect(shareButton).toBeFocused();
+
+    const snapshotDownloadPromise = page.waitForEvent("download");
+    await page.locator(".results-card").getByRole("button", { name: /PNG exportieren|Export PNG/i }).click();
+    const snapshotDownload = await snapshotDownloadPromise;
+    const snapshotPng = await readFile(await snapshotDownload.path());
+    await snapshotDownload.saveAs(testInfo.outputPath("current-average-export.png"));
+    expect(snapshotPng.readUInt32BE(16)).toBeGreaterThanOrEqual(3000);
+    expect(snapshotPng.readUInt32BE(20)).toBeGreaterThan(900);
+    await expectPngHasVisibleContent(page, snapshotPng);
+    await expect(page.locator(".results-card").getByRole("button", { name: /PNG gespeichert|PNG saved/i })).toBeVisible();
+
+    await page.goto("/embed.html?embed=1&widget=current-average&region=bundestag&lang=de&theme=dark");
+    await settle(page);
+    await expect(page.locator(".widget-embed-current-average .results-card")).toBeVisible();
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+    await expectDocumentFits(page);
+
+    await page.goto("/embed.html?embed=1&widget=current-average&region=bundestag&lang=de&theme=dark&pollsters=1,2");
+    await settle(page);
+    await expect(page.locator(".widget-embed-current-average .results-card")).toContainText("Letzte Umfrage");
+    await expect(page.locator(".widget-embed-current-average .results-card")).not.toContainText("Mittel aus");
+    await expect(page.getByRole("link", { name: /Interaktiv öffnen|Open interactive/i })).toHaveAttribute("href", /share=1.*pollsters=1%2C2/);
+
+    await page.goto("/embed.html?embed=1&widget=modelled-seats&region=bundestag&lang=de&theme=light");
+    await settle(page);
+    await expect(page.locator(".widget-embed-modelled-seats .projection-section")).toBeVisible();
+    await expect(page.locator(".projection-summary")).not.toContainText("Unterhalb der 5-%-Hürde");
+    await expect(page.locator(".threshold-box")).toContainText("Größere erfasste Parteien ohne Sitze");
+    await expectDocumentFits(page);
+
+    await page.goto("/embed.html?embed=1&widget=tendencies&region=uk-westminster&lang=en-GB&theme=dark");
+    await settle(page);
+    await expect(page.locator(".widget-embed-tendencies .tendency-card")).toHaveCount(8);
+    await expectDocumentFits(page);
+    expect(errors).toEqual([]);
+  });
+
+  test("recommended embed heights contain every publishing product at phone and article widths", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "chromium-desktop", "one deterministic Chromium matrix is sufficient");
+    const cases = [
+      ["historical chart", 760, "/embed.html?embed=1&region=bundestag&range=all&mode=trend&parties=7,1,4,2,5&pollsters=1,2,3,5,6,9,13,17&events=national&lang=de&theme=light"],
+      ["current average", 620, "/embed.html?embed=1&widget=current-average&region=bundestag&lang=de&theme=light"],
+      ["tendencies", 1216, "/embed.html?embed=1&widget=tendencies&region=bundestag&lang=de&theme=light"],
+      ["modelled seats", 1272, "/embed.html?embed=1&widget=modelled-seats&region=bundestag&lang=de&theme=light"],
+      ["approval", 1120, "/embed.html?view=approval&country=de&compare=1&metric=leader&range=ten&display=trend&answers=positive&eventMode=key&lang=de&theme=light"],
+      ["map", 1240, "/embed.html?embed=1&view=map&lang=de&theme=light&mapMode=leader&mapParty=union"],
+    ];
+    for (const width of [320, 760, 1200]) {
+      for (const [name, height, url] of cases) {
+        await page.setViewportSize({ width, height });
+        await page.goto(url);
+        await settle(page);
+        const geometry = await page.evaluate(() => ({
+          clientHeight: document.documentElement.clientHeight,
+          scrollHeight: document.documentElement.scrollHeight,
+          clientWidth: document.documentElement.clientWidth,
+          scrollWidth: document.documentElement.scrollWidth,
+        }));
+        expect.soft(geometry.scrollHeight, `${name} clips vertically at ${width}px: ${JSON.stringify(geometry)}`).toBeLessThanOrEqual(geometry.clientHeight + 1);
+        expect.soft(geometry.scrollWidth, `${name} clips horizontally at ${width}px: ${JSON.stringify(geometry)}`).toBeLessThanOrEqual(geometry.clientWidth + 1);
+      }
+    }
   });
 });
