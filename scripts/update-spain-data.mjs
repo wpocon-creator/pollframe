@@ -1,6 +1,7 @@
 import { writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { load } from "cheerio/slim";
+import { fetchTextWithRetry } from "./lib/resilient-source.mjs";
 
 const WIKIPEDIA_PAGE = "Opinion_polling_for_the_next_Spanish_general_election";
 const WIKIPEDIA_URL = `https://en.wikipedia.org/wiki/${WIKIPEDIA_PAGE}`;
@@ -81,26 +82,6 @@ function safeUrl(value) {
   if (!value) return null;
   const url = new URL(value, "https://en.wikipedia.org");
   return ["http:", "https:"].includes(url.protocol) ? url.href : null;
-}
-
-async function fetchText(url) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 30_000);
-  try {
-    const response = await fetch(url, {
-      headers: { "Api-User-Agent": USER_AGENT, Accept: "application/json,text/plain,*/*" },
-      signal: controller.signal,
-      redirect: "error",
-    });
-    if (!response.ok) throw new Error(`${url}: HTTP ${response.status}`);
-    const length = Number(response.headers.get("content-length"));
-    if (Number.isFinite(length) && length > MAX_RESPONSE_BYTES) throw new Error(`${url}: response is too large`);
-    const text = await response.text();
-    if (Buffer.byteLength(text) > MAX_RESPONSE_BYTES) throw new Error(`${url}: response is too large`);
-    return text;
-  } finally {
-    clearTimeout(timer);
-  }
 }
 
 function isoDate(year, month, day) {
@@ -220,18 +201,26 @@ function yearForTable($, table, fallbackYear) {
 
 async function fetchWikipediaPage(page, attempts = 4) {
   const apiUrl = `https://en.wikipedia.org/w/api.php?action=parse&page=${page}&prop=text&format=json&formatversion=2`;
-  for (let attempt = 1; attempt <= attempts; attempt += 1) {
-    const body = await fetchText(apiUrl);
+  const pageUrl = `https://en.wikipedia.org/wiki/${page}?action=render`;
+  const body = await fetchTextWithRetry(apiUrl, {
+    attempts,
+    fallbackUrl: pageUrl,
+    headers: { "Api-User-Agent": USER_AGENT, Accept: "application/json,text/plain,*/*" },
+    fallbackHeaders: { "User-Agent": USER_AGENT, Accept: "text/html,*/*" },
+    fetchOptions: { redirect: "error" },
+    maxBytes: MAX_RESPONSE_BYTES,
+    timeoutMs: 30_000,
+  });
+  if (body.trimStart().startsWith("{")) {
     try {
       const payload = JSON.parse(body);
       if (typeof payload?.parse?.text !== "string") throw new Error("missing rendered HTML");
       return load(payload.parse.text);
     } catch (error) {
-      if (attempt === attempts) throw new Error(`${page}: invalid Wikipedia API response (${error.message})`);
-      await new Promise((resolveWait) => setTimeout(resolveWait, attempt * 2_000));
+      throw new Error(`${page}: invalid Wikipedia API response (${error.message})`);
     }
   }
-  throw new Error(`${page}: unavailable`);
+  return load(body);
 }
 
 const currentPage = await fetchWikipediaPage(WIKIPEDIA_PAGE);
@@ -375,7 +364,13 @@ const summary = {
 
 let mapData = null;
 try {
-  mapData = JSON.parse(await fetchText(MAP_URL));
+  mapData = JSON.parse(await fetchTextWithRetry(MAP_URL, {
+    attempts: 3,
+    headers: { "User-Agent": USER_AGENT, Accept: "application/geo+json,application/json" },
+    fetchOptions: { redirect: "error" },
+    maxBytes: MAX_RESPONSE_BYTES,
+    timeoutMs: 30_000,
+  }));
   if (mapData?.type !== "FeatureCollection" || !Array.isArray(mapData.features) || mapData.features.length < 17) {
     throw new Error("Autonomous-community map is incomplete");
   }

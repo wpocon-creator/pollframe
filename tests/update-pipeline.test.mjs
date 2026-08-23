@@ -68,6 +68,20 @@ test("regional work is bounded and one rejection does not cancel its neighbours"
   assert.deepEqual(results.filter((result) => result.status === "fulfilled").map((result) => result.value), [2, 6, 8, 10, 12]);
 });
 
+test("Wikipedia rate limiting is retried instead of aborting Spain updates", async () => {
+  let calls = 0;
+  const text = await fetchTextWithRetry("https://en.wikipedia.org/w/api.php", {
+    attempts: 3,
+    sleep: async () => {},
+    fetchImpl: async () => {
+      calls += 1;
+      return new Response(calls === 1 ? "rate limited" : "fresh polling data", { status: calls === 1 ? 429 : 200 });
+    },
+  });
+  assert.equal(calls, 2);
+  assert.equal(text, "fresh polling data");
+});
+
 test("the update workflow cannot be blocked by dependency audit or one source", async () => {
   const workflow = await readFile(new URL("../.github/workflows/update-poll-data.yml", import.meta.url), "utf8");
   assert.doesNotMatch(workflow, /npm audit/);
