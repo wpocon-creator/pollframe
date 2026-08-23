@@ -40,6 +40,9 @@ test("the update workflow cannot be blocked by dependency audit or one source", 
   }
   assert.match(workflow, /needs:\s*\[update, publish\]/);
   assert.match(workflow, /validate-update-health\.mjs/);
+  assert.match(workflow, /cp incoming-poll-data\/public\/poll-data\.json public\/poll-data\.json/);
+  assert.match(workflow, /cp -R incoming-poll-data\/public\/data\/\. public\/data\//);
+  assert.doesNotMatch(workflow, /incoming-poll-data\/poll-data\.json/);
 });
 
 test("all public polling data paths use the fast live-data route", () => {

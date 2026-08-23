@@ -82,7 +82,7 @@ jobs:
         run: node scripts/write-update-health.mjs data-update-health.json
 
       - name: Pass only validated public data to the publishing job
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: validated-poll-data
           path: |
@@ -109,7 +109,7 @@ jobs:
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
       - name: Download validated polling data
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: validated-poll-data
           path: incoming-poll-data
@@ -118,12 +118,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          cp incoming-poll-data/poll-data.json public/poll-data.json
-          cp incoming-poll-data/regions.json public/regions.json
-          cp incoming-poll-data/state-map-data.json public/state-map-data.json
-          cp incoming-poll-data/uk-summary.json public/uk-summary.json
-          cp incoming-poll-data/spain-summary.json public/spain-summary.json
-          cp -R incoming-poll-data/data/. public/data/
+          cp incoming-poll-data/public/poll-data.json public/poll-data.json
+          cp incoming-poll-data/public/regions.json public/regions.json
+          cp incoming-poll-data/public/state-map-data.json public/state-map-data.json
+          cp incoming-poll-data/public/uk-summary.json public/uk-summary.json
+          cp incoming-poll-data/public/spain-summary.json public/spain-summary.json
+          cp -R incoming-poll-data/public/data/. public/data/
           node scripts/validate-poll-data.mjs
           git diff --check
 
@@ -155,7 +155,7 @@ jobs:
       - name: Check out the default branch
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
       - name: Download the source health report
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: validated-poll-data
           path: incoming-poll-data
