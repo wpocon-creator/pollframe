@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import { discoverFgwCurrentDownloads, fetchWithRetry } from "../scripts/lib/approval-sources.mjs";
+import { fetchTextWithRetry, settleWithConcurrency } from "../scripts/lib/resilient-source.mjs";
 import { isLiveDataPath } from "../worker/index.js";
 
 test("official FGW download discovery survives versioned filename changes", () => {
@@ -31,13 +32,52 @@ test("temporary source errors are retried", async () => {
   assert.equal(calls, 2);
 });
 
+test("a hanging regional source times out, falls back, and cannot block the rest", async () => {
+  let primaryCalls = 0;
+  // AbortSignal.timeout deliberately uses an unref'ed timer. Keep this test's
+  // event loop alive long enough to model an actually hung network request.
+  const keepAlive = setTimeout(() => {}, 100);
+  const text = await fetchTextWithRetry("https://primary.invalid", {
+    attempts: 2,
+    fallbackUrl: "https://fallback.invalid",
+    sleep: async () => {},
+    timeoutMs: 5,
+    fetchImpl: async (url, { signal }) => {
+      if (url.includes("fallback")) return new Response("last validated source", { status: 200 });
+      primaryCalls += 1;
+      return new Promise((_, reject) => signal.addEventListener("abort", () => reject(signal.reason), { once: true }));
+    },
+  }).finally(() => clearTimeout(keepAlive));
+  assert.equal(primaryCalls, 2);
+  assert.equal(text, "last validated source");
+});
+
+test("regional work is bounded and one rejection does not cancel its neighbours", async () => {
+  let active = 0;
+  let peak = 0;
+  const results = await settleWithConcurrency([1, 2, 3, 4, 5, 6], async (value) => {
+    active += 1;
+    peak = Math.max(peak, active);
+    await new Promise((resolve) => setTimeout(resolve, 2));
+    active -= 1;
+    if (value === 2) throw new Error("temporary source failure");
+    return value * 2;
+  }, 3);
+  assert.equal(peak, 3);
+  assert.equal(results[1].status, "rejected");
+  assert.deepEqual(results.filter((result) => result.status === "fulfilled").map((result) => result.value), [2, 6, 8, 10, 12]);
+});
+
 test("the update workflow cannot be blocked by dependency audit or one source", async () => {
   const workflow = await readFile(new URL("../.github/workflows/update-poll-data.yml", import.meta.url), "utf8");
   assert.doesNotMatch(workflow, /npm audit/);
   assert.match(workflow, /cron:\s*["']17 \*\/4 \* \* \*["']/);
   for (const id of ["germany", "uk", "spain", "spain_regions", "approval"]) {
-    assert.match(workflow, new RegExp(`id: ${id}[\\s\\S]{0,260}continue-on-error: true`));
+    const sourceStep = workflow.match(new RegExp(`id: ${id}[\\s\\S]{0,320}?(?=\\n\\s+- name:|$)`))?.[0] ?? "";
+    assert.match(sourceStep, /continue-on-error: true/, `${id} must not block other sources`);
+    assert.match(sourceStep, /timeout-minutes: [3-8]/, `${id} needs its own timeout`);
   }
+  assert.match(workflow, /jobs:[\s\S]*?update:[\s\S]*?timeout-minutes: 20/);
   assert.match(workflow, /needs:\s*\[update, publish\]/);
   assert.match(workflow, /validate-update-health\.mjs/);
   assert.match(workflow, /cp incoming-poll-data\/public\/poll-data\.json public\/poll-data\.json/);

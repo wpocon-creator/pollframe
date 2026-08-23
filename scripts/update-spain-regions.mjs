@@ -1,8 +1,11 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { load } from "cheerio/slim";
+import { fetchTextWithRetry, settleWithConcurrency } from "./lib/resilient-source.mjs";
 
 const USER_AGENT = "PollframeDataUpdater/1.0 (regional polling coverage audit)";
+const FETCH_TIMEOUT_MS = 20_000;
+const UPDATE_CONCURRENCY = 3;
 const REGIONS = [
   ["01", "andalucia", "Andalucía", "Andalusia", "Andalusien", "2026_Andalusian_regional_election"],
   ["02", "aragon", "Aragón", "Aragon", "Aragonien", "2026_Aragonese_regional_election"],
@@ -46,23 +49,20 @@ function parseDate(value, fallbackYear) {
   return Number.isInteger(month) ? iso(Number(match[3] ?? fallbackYear), month, Number(match[1])) : null;
 }
 async function wiki(page) {
-  for (let attempt = 1; attempt <= 4; attempt += 1) {
-    const response = await fetch(`https://en.wikipedia.org/w/api.php?action=parse&page=${encodeURIComponent(page)}&prop=text&format=json&formatversion=2`, { headers: { "Api-User-Agent": USER_AGENT } });
-    if (response.status === 429 || response.status >= 500) {
-      if (attempt === 4) {
-        const fallback = await fetch(`https://en.wikipedia.org/wiki/${page}?action=render`, { headers: { "User-Agent": USER_AGENT } });
-        if (fallback.ok) return load(await fallback.text());
-        throw new Error(`HTTP ${response.status}`);
-      }
-      await new Promise((resolveWait) => setTimeout(resolveWait, attempt * 4_000));
-      continue;
-    }
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const payload = await response.json();
+  const apiUrl = `https://en.wikipedia.org/w/api.php?action=parse&page=${encodeURIComponent(page)}&prop=text&format=json&formatversion=2`;
+  const fallbackUrl = `https://en.wikipedia.org/wiki/${page}?action=render`;
+  const text = await fetchTextWithRetry(apiUrl, {
+    fallbackUrl,
+    headers: { "Api-User-Agent": USER_AGENT },
+    fallbackHeaders: { "User-Agent": USER_AGENT },
+    timeoutMs: FETCH_TIMEOUT_MS,
+  });
+  if (text.trimStart().startsWith("{")) {
+    const payload = JSON.parse(text);
     if (!payload?.parse?.text) throw new Error(payload?.error?.info ?? "missing page HTML");
     return load(payload.parse.text);
   }
-  throw new Error("unavailable");
+  return load(text);
 }
 function rowSource($, row, fallback) {
   const id = $(row).find("sup.reference a").first().attr("href");
@@ -174,20 +174,23 @@ function parseRegion(region, $) {
 const requestedSlug = process.argv[2] ?? null;
 const selectedRegions = requestedSlug ? REGIONS.filter((region) => region.slug === requestedSlug) : REGIONS;
 if (requestedSlug && !selectedRegions.length) throw new Error(`Unknown region slug: ${requestedSlug}`);
-const previous = requestedSlug ? JSON.parse(await readFile(resolve("public/data/spain-regions.json"), "utf8")) : null;
-const regions = previous ? [...previous.regions] : [];
-for (const region of selectedRegions) {
-  try {
-    const $ = await wiki(region.page);
-    const parsed = parseRegion(region, $);
-    const previousIndex = regions.findIndex((item) => item.slug === region.slug);
+const previous = JSON.parse(await readFile(resolve("public/data/spain-regions.json"), "utf8").catch(() => '{"regions":[]}'));
+const regions = [...(previous.regions ?? [])];
+const updates = await settleWithConcurrency(selectedRegions, async (region) => {
+  const $ = await wiki(region.page);
+  return parseRegion(region, $);
+}, UPDATE_CONCURRENCY);
+for (const [index, result] of updates.entries()) {
+  const region = selectedRegions[index];
+  const previousIndex = regions.findIndex((item) => item.slug === region.slug);
+  if (result.status === "fulfilled") {
+    const parsed = result.value;
     if (previousIndex >= 0) regions.splice(previousIndex, 1, parsed); else regions.push(parsed);
     console.log(`${region.names.es}: ${parsed.coverage.usablePolls} polls (${parsed.coverage.status})`);
-  } catch (error) {
-    console.warn(`${region.names.es}: ${error.message}`);
-    if (!previous) regions.push({ ...region, sourceUrl: `https://en.wikipedia.org/wiki/${region.page}`, parties: [], polls: [], lastElection: null, current: null, coverage: { status: "unavailable", usablePolls: 0, postElectionPolls: 0, pollsterCount: 0, firstDate: null, latestDate: null } });
+  } else {
+    console.warn(`${region.names.es}: ${result.reason.message}; retaining the last validated snapshot`);
+    if (previousIndex < 0) regions.push({ ...region, sourceUrl: `https://en.wikipedia.org/wiki/${region.page}`, parties: [], polls: [], lastElection: null, current: null, coverage: { status: "unavailable", usablePolls: 0, postElectionPolls: 0, pollsterCount: 0, firstDate: null, latestDate: null } });
   }
-  await new Promise((resolveWait) => setTimeout(resolveWait, 1_500));
 }
 regions.sort((a, b) => a.code.localeCompare(b.code));
 const output = { metadata: { generatedAt: new Date().toISOString(), methodology: "Headline vote estimates from the cited regional polling tables (raw vote-intention duplicates are excluded); the current snapshot averages each pollster's latest post-election poll within 180 days of the latest poll." }, regions };
