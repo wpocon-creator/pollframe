@@ -1,5 +1,8 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
+import { load as loadHtml } from "cheerio/slim";
+
+const INCLUDE_IPSOS = process.env.POLLFRAME_INCLUDE_IPSOS === "1";
 
 const SOURCES = {
   polls: "https://storage.googleapis.com/election-data-vault-charts/downloads/opinion_polls_raw.csv",
@@ -68,6 +71,45 @@ const MAP_GROUPS = {
   Sussex: ["East Sussex", "West Sussex"],
 };
 
+const PERSONAL_ISSUES = {
+  date: "2024-09-10",
+  fieldwork: ["2024-09-04", "2024-09-10"],
+  sample: 1003,
+  question: "What do you see as the main/other important issues facing you personally today?",
+  method: "Spontaneous, unprompted combined answers; representative Great Britain adults aged 18+.",
+  items: [
+    { id: "inflation", label: "Inflation / prices", value: 24 },
+    { id: "nhs", label: "NHS / hospitals / healthcare", value: 23 },
+    { id: "economy", label: "Economy / economic situation", value: 18 },
+    { id: "housing", label: "Housing", value: 9 },
+    { id: "taxation", label: "Taxation", value: 9 },
+    { id: "mental-health", label: "Mental health / wellbeing", value: 7 },
+    { id: "education", label: "Education / schools", value: 7 },
+    { id: "pensions", label: "Pensions / social security / benefits", value: 6 },
+  ],
+  sourceUrl: "https://www.ipsos.com/en-uk/nhs-has-been-biggest-issue-britain-over-past-50-years",
+  documentUrl: "https://www.ipsos.com/sites/default/files/ct/news/documents/2024-10/Ipsos-Issues-Index-September-2024-tables.pdf",
+};
+
+const PERSONAL_ECONOMY = {
+  date: "2025-11-14",
+  fieldwork: ["2025-11-13", "2025-11-14"],
+  sample: 1028,
+  question: "How would you describe your current household income situation?",
+  values: { comfortable: 23, coping: 50, difficult: 27 },
+  sourceUrl: "https://www.ipsos.com/en-uk/economic-pessimism-rises-ahead-budget",
+};
+
+const COUNTRY_ECONOMY_FALLBACK = {
+  date: "2026-07-08",
+  fieldwork: ["2026-07-01", "2026-07-08"],
+  sample: 1003,
+  question: "Do you think that the general economic condition of the country will improve, stay the same, or get worse over the next 12 months?",
+  values: { improve: 13, same: 19, worse: 64, other: 4 },
+  net: -51,
+  sourceUrl: "https://www.ipsos.com/en-uk/immigration-continues-top-concern-facing-britain",
+};
+
 function parseCsv(text) {
   const rows = [];
   let row = [];
@@ -107,6 +149,97 @@ async function load(key) {
   return response.text();
 }
 
+const ISSUE_NAMES = new Map([
+  ["immigration immigrants", ["immigration", "Immigration / immigrants"]],
+  ["economy", ["economy", "Economy"]],
+  ["nhs hospitals healthcare", ["nhs", "NHS / hospitals / healthcare"]],
+  ["inflation prices", ["inflation", "Inflation / prices"]],
+  ["defence foreign affairs international terrorism", ["defence", "Defence / foreign affairs"]],
+  ["lack of faith in politics politicians government", ["political-trust", "Lack of faith in politics"]],
+  ["lack of faith in politicians politics", ["political-trust", "Lack of faith in politics"]],
+  ["housing", ["housing", "Housing"]],
+  ["poverty inequality", ["poverty", "Poverty / inequality"]],
+  ["unemployment", ["unemployment", "Unemployment"]],
+  ["education", ["education", "Education"]],
+  ["crime law order", ["crime", "Crime / law and order"]],
+  ["crime law order violence vandalism asb", ["crime", "Crime / law and order"]],
+]);
+
+function normaliseIssue(value) {
+  return String(value ?? "").toLowerCase().replace(/&/g, " and ").replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+function issueIdentity(value) {
+  const normalised = normaliseIssue(value);
+  if (ISSUE_NAMES.has(normalised)) return ISSUE_NAMES.get(normalised);
+  for (const [name, identity] of ISSUE_NAMES) if (normalised.startsWith(name) || name.startsWith(normalised)) return identity;
+  return null;
+}
+
+async function updateIssuesIndex() {
+  const topicUrl = "https://www.ipsos.com/en-uk/topic/issues-index";
+  const topicResponse = await fetch(topicUrl, { headers: { "user-agent": "Pollframe data updater/1.0" } });
+  if (!topicResponse.ok) throw new Error(`Ipsos topic: HTTP ${topicResponse.status}`);
+  const topic = loadHtml(await topicResponse.text());
+  const latestLink = topic('a[href^="/en-uk/"]').toArray().find((link) => {
+    const href = topic(link).attr("href") ?? "";
+    return !href.includes("/topic/") && /issues index|issue facing|concern facing|biggest issue|top concern/i.test(topic(link).text());
+  });
+  const articlePath = latestLink ? topic(latestLink).attr("href") : null;
+  if (!articlePath) throw new Error("Ipsos latest Issues Index article not found");
+  const articleUrl = new URL(articlePath, topicUrl).href;
+  const articleResponse = await fetch(articleUrl, { headers: { "user-agent": "Pollframe data updater/1.0" } });
+  if (!articleResponse.ok) throw new Error(`Ipsos article: HTTP ${articleResponse.status}`);
+  const article = loadHtml(await articleResponse.text());
+  const articleText = article("body").text().replace(/\s+/g, " ");
+  const pdfHref = article('a[href*=".pdf" i]').toArray().map((link) => article(link).attr("href")).find((href) => /issues[^/]*index/i.test(decodeURIComponent(href ?? "")))
+    ?? article('a[href*=".pdf" i]').first().attr("href");
+  if (!pdfHref) throw new Error("Ipsos Issues Index PDF not found");
+  const pdfUrl = new URL(pdfHref, articleUrl).href;
+  const pdfResponse = await fetch(pdfUrl, { headers: { "user-agent": "Pollframe data updater/1.0" } });
+  if (!pdfResponse.ok) throw new Error(`Ipsos PDF: HTTP ${pdfResponse.status}`);
+  const { getDocument } = await import("pdfjs-dist/legacy/build/pdf.mjs");
+  const document = await getDocument({ data: new Uint8Array(await pdfResponse.arrayBuffer()), disableWorker: true }).promise;
+  const page = await document.getPage(2);
+  const content = await page.getTextContent();
+  const strings = content.items.map((item) => item.str?.trim()).filter(Boolean);
+  const values = strings.filter((value) => /^\d{1,3}%$/.test(value)).map((value) => Number(value.slice(0, -1)));
+  const labels = [];
+  for (const value of strings) {
+    const identity = issueIdentity(value);
+    if (identity && !labels.some(([id]) => id === identity[0])) labels.push(identity);
+  }
+  if (values.length < 5 || labels.length < 5 || Math.max(...values.slice(0, labels.length)) > 100) throw new Error("Ipsos ranked table failed validation");
+  const pageText = strings.join(" ");
+  const fieldwork = pageText.match(/Base:\s*([\d,]+)\s+British adults.*?(\d{1,2})\s*[–—-]\s*(\d{1,2})\s+([A-Za-z]+)\s+(20\d{2})/i);
+  const months = { january: 0, february: 1, march: 2, april: 3, may: 4, june: 5, july: 6, august: 7, september: 8, october: 9, november: 10, december: 11 };
+  if (!fieldwork || !Number.isInteger(months[fieldwork[4].toLowerCase()])) throw new Error("Ipsos fieldwork metadata failed validation");
+  const month = months[fieldwork[4].toLowerCase()];
+  const year = Number(fieldwork[5]);
+  const date = (day) => new Date(Date.UTC(year, month, Number(day))).toISOString().slice(0, 10);
+  const economyMatch = articleText.match(/(?:This month\s+)?(\d{1,2})%[^.]{0,90}(?:improve|better)[^.]{0,160}?(\d{1,2})%[^.]{0,90}(?:worse)[^.]{0,160}?(\d{1,2})%[^.]{0,90}(?:stay the same|same)/i);
+  const economyOutlook = economyMatch ? {
+    date: date(fieldwork[3]),
+    fieldwork: [date(fieldwork[2]), date(fieldwork[3])],
+    sample: Number(fieldwork[1].replace(/,/g, "")),
+    question: "Do you think that the general economic condition of the country will improve, stay the same, or get worse over the next 12 months?",
+    values: { improve: Number(economyMatch[1]), worse: Number(economyMatch[2]), same: Number(economyMatch[3]), other: Math.max(0, 100 - Number(economyMatch[1]) - Number(economyMatch[2]) - Number(economyMatch[3])) },
+    net: Number(economyMatch[1]) - Number(economyMatch[2]),
+    sourceUrl: articleUrl,
+  } : null;
+  return {
+    date: date(fieldwork[3]),
+    fieldwork: [date(fieldwork[2]), date(fieldwork[3])],
+    sample: Number(fieldwork[1].replace(/,/g, "")),
+    question: "What do you see as the most/other important issues facing Britain today?",
+    method: "Spontaneous, unprompted combined answers; representative Great Britain adults aged 18+.",
+    items: labels.slice(0, 8).map(([id, label], index) => ({ id, label, value: values[index] })),
+    sourceUrl: articleUrl,
+    documentUrl: pdfUrl,
+    economyOutlook,
+  };
+}
+
 function mappedParty(name) {
   return PARTY_IDS[name] ?? "209";
 }
@@ -142,6 +275,17 @@ function latestByDate(rows) {
 const [rawPollRows, averageRows, electionRows, ratingRows, constituencyRows] = await Promise.all(
   ["polls", "averages", "elections", "ratings", "constituencies"].map(async (key) => parseCsv(await load(key))),
 );
+let issuesIndex = null;
+const previousSummary = JSON.parse(await readFile(resolve("public/uk-summary.json"), "utf8").catch(() => "{}"));
+if (INCLUDE_IPSOS) {
+  try {
+    issuesIndex = await updateIssuesIndex();
+  } catch (error) {
+    if (!previousSummary.issuesIndex?.items?.length) throw error;
+    issuesIndex = previousSummary.issuesIndex;
+    console.warn(`Ipsos Issues Index unchanged: ${error.message}`);
+  }
+}
 const generatedAt = new Date().toISOString();
 const sourceMetadata = {
   source: "UK Election Data Vault",
@@ -150,7 +294,7 @@ const sourceMetadata = {
   licenseUrl: "https://electiondatavault.co.uk/about/",
   generatedAt,
   derivativeDatabaseNotice: "Pollframe normalises, groups and republishes selected Election Data Vault fields.",
-  changes: "Great Britain rows selected; party names consolidated; weighted series and individual polls combined.",
+  changes: "Great Britain rows selected; party names consolidated; weighted series and individual polls combined. Individual polls from a rights-pending source are temporarily excluded.",
 };
 
 const averageGroups = new Map();
@@ -188,6 +332,7 @@ const weightedPolls = [...historicalBuckets.values()].sort((a, b) => a.date.loca
 const rawGroups = new Map();
 for (const row of rawPollRows) {
   if (row.country_name !== "Great Britain" || !PARTY_IDS[row.party_name]) continue;
+  if (!INCLUDE_IPSOS && /\b(?:ipsos|mori)\b/i.test(row.pollster_name ?? "")) continue;
   const key = [row.start_date, row.end_date, row.pollster_name, row.poll_series, row.client, row.sample_size].join("|");
   if (!rawGroups.has(key)) rawGroups.set(key, []);
   rawGroups.get(key).push(row);
@@ -308,6 +453,14 @@ const summary = {
   metadata: { ...sourceMetadata, databaseUpdated, electionSourceUrl: "https://commonslibrary.parliament.uk/research-briefings/cbp-10009/" },
   westminster: { firstDate: polls[0].date, latestDate: polls.at(-1).date, pollCount: individualPolls.length, trendPointCount: weightedPolls.length },
   current: weightedPolls.at(-1),
+  ...(issuesIndex ? {
+    issuesIndex,
+    personalIssues: PERSONAL_ISSUES,
+    economicPerceptions: {
+    personal: PERSONAL_ECONOMY,
+    country: issuesIndex.economyOutlook ?? previousSummary.economicPerceptions?.country ?? COUNTRY_ECONOMY_FALLBACK,
+    },
+  } : {}),
   election2024: {
     votes: Object.keys(ukElectionVotes2024).length ? ukElectionVotes2024 : electionResults["2024-07-04"],
     seats: Object.keys(ukElectionSeats2024).length ? ukElectionSeats2024 : electionSeats2024,

@@ -1,73 +1,52 @@
-# Security audit — updated 2026-08-03
+# Security audit — 16 August 2026
 
-## Scope
+## Scope and result
 
-Reviewed the complete Pollframe application and deployment surface:
+Reviewed the React application, URL handling, export/embed paths, local PWA
+storage, service worker, public datasets, update pipeline, GitHub Actions,
+Cloudflare headers and the Worker/Durable Object bug-report API.
 
-- React rendering, URL/query handling, SVG/chart output, external links,
-  clipboard fallback, local storage and iframe generation
-- Vite production/dev configuration and generated files
-- Cloudflare Pages headers, caching, CORS and framing rules
-- DAWUM ingestion, generated JSON schemas and atomic writes
-- npm dependency tree and lockfile integrity
-- GitHub Actions permissions, supply-chain references and update publishing
-- accidental secret, source-map and sensitive-file exposure
+No unresolved high-severity code finding was found. The site must not yet be
+described as independently audited or absolutely secure. Account configuration,
+the production bug-report secret and external rights/privacy review cannot be
+verified from this repository.
 
-The production site is static. There are no accounts, cookies, forms, database
-queries, server functions or private APIs to audit.
-
-## Findings and remediation
+## Findings
 
 | Severity | Finding | Status |
 | --- | --- | --- |
-| High | The updater performed npm builds while holding a repository write token. A compromised dependency could potentially push code. | Fixed: read-only build job and isolated write-only JSON publishing job. |
-| Medium | `frame-ancestors *` allowed the complete site to be framed, not only journalist embeds. | Fixed: normal entry denied by CSP/X-Frame-Options; only `/embed.html` is frameable. |
-| Medium | CSP did not restrict script, connection, object, form or base sources. | Fixed: default-deny CSP, Trusted Types, no inline/eval scripts and restricted browser capabilities. |
-| Medium | The data updater accepted arbitrary HTTP URLs, followed redirects and had no response-size limit. | Fixed: exact HTTPS allowlist, redirects rejected, JSON content type required, 25 MiB streaming limit. |
-| Medium | Remote metadata supplied URLs later rendered as links. A compromised source could replace a license link. | Fixed: source and license destinations are hardcoded trusted HTTPS URLs. |
-| Low | `vite preview` listened on `0.0.0.0`, unnecessarily exposing a local server to the LAN. | Fixed: development and preview bind to `127.0.0.1`. |
-| Low | Embed query lists accepted unlimited duplicate input. | Fixed: 512-character bound, allowlists, de-duplication and item limits. |
-| Low | GitHub Actions used mutable major tags and package ranges were not exact. | Fixed: full verified action SHAs, exact package versions, lockfile SHA-512 checks and Dependabot. |
-| Low | Generated iframes lacked sandbox/referrer restrictions. | Fixed: sandboxed iframe with no-referrer and a dedicated noindex entry. |
-| Defense in depth | Security assumptions could regress silently. | Fixed: `npm run check` now validates policies, pins, sinks, link protections, source maps, sensitive output and both builds. |
+| High | Data build previously held repository write permission. | Fixed: isolated read-only update and minimal publishing jobs. |
+| Medium | Normal pages were frameable and CSP was permissive. | Fixed: main pages deny framing; only sandboxed `/embed.html` is frameable. |
+| Medium | Upstream values could be structurally valid but anomalous. | Fixed: deterministic large-movement review gate added before automated publication. |
+| Medium | Normal code changes had no mandatory multi-browser CI workflow. | Fixed in repository: quality workflow covers build, audit and all configured browser/device profiles; branch protection still must require it. |
+| Medium | Security documents incorrectly claimed there was no backend or private API. | Fixed: Worker, Durable Object, dashboard, retention and rate limiting are now in scope. |
+| Low | Dev/preview servers could be exposed to the LAN. | Fixed: loopback-only. |
+| Low | Actions and npm versions could float. | Fixed: full action SHAs, exact npm versions and lockfile integrity checks. |
+| Defence in depth | Performance or policy regressions had no hard budget. | Fixed: production check now enforces CSP/build controls and gzip budgets. |
 
-No unresolved high- or medium-severity application finding was identified after
-the fixes.
+## Current evidence
 
-## Verification evidence
+- `npm audit --audit-level=low`: zero known advisories at the checked snapshot.
+- Dataset validator covers 17 German regions, 8,082 UK records, 3,278 Spanish
+  polls, approval series, regional election data, dates, totals and sources.
+- Live root response checked on 16 August 2026: HTTPS 200, HSTS, default-deny
+  CSP, `frame-ancestors 'none'`, DENY framing, no-referrer, nosniff, COOP and
+  restrictive Permissions Policy were present.
+- The dedicated embed is built separately, noindexed, excluded from analytics
+  and deliberately frameable.
+- The API uses bounded same-origin JSON writes, no CORS opt-in, secret-salted
+  rate identifiers, a private dashboard key and automatic retention cleanup.
 
-- `npm audit --audit-level=low`: **0 known vulnerabilities**
-- Data validation: **17 regions and 3,154 polls**
-- Live DAWUM `--check-only`: trusted source validated; **no files written**
-- Production build: main and embed entries built without source maps
-- Browser/device integration matrix: **90/90 final scenarios passed** across
-  Chromium, Firefox, WebKit, Pixel 5, Galaxy S9+, iPhone SE, iPhone 13, iPad
-  Mini and phone landscape profiles
-- CSP browser smoke tests: main page, chart embed and map embed rendered
-- Trusted Types browser enforcement: rendered without injection-policy errors
-- Negative updater test: non-allowlisted remote URL rejected before fetching
-- GitHub workflow and Dependabot YAML parsed successfully
-- Secret-pattern scan: no credential/private-key material found
+## Residual and operational risks
 
-`npm audit signatures` could not produce a clean provenance result because the
-npm registry signature on `source-map-js@1.2.1` references a registry key that
-expired on 2025-01-29. This is not a reported vulnerability or an integrity
-mismatch. The installed package remains protected by the exact lockfile
-SHA-512 integrity value; the full advisory audit reports zero vulnerabilities.
-
-## Remaining operational risks
-
-- Account takeover of GitHub, Cloudflare, the domain registrar or email remains
-  possible unless strong 2FA/passkeys and recovery controls are enabled.
-- `/embed.html` is intentionally frameable by any publisher. It contains no
-  sensitive actions and generated embeds add a sandbox.
-- Poll JSON is deliberately public and CORS-enabled.
-- Browser extensions, compromised visitor devices, zero-day browser/dependency
-  vulnerabilities and upstream data mistakes cannot be eliminated by site
-  code.
-- Cloudflare's deployed response headers must be externally verified after the
-  first real deployment. Local and build tests cannot prove an undeployed
-  platform configuration.
-- Release verification uses a project-local Node 22.12.0 runtime; production
-  and CI require Node 22.12 or newer. The system-wide Node installation may be
-  older and must not be used for Playwright or deployment commands.
+- GitHub, Cloudflare, registrar and email passkeys/recovery cannot be checked
+  from code. Branch protection and failure notifications also require dashboard
+  changes.
+- The live bug-report secret and backup/export routine require an authorised
+  production test.
+- Cloudflare Web Analytics and non-open-licensed source reuse require a final
+  responsible-adult or qualified privacy/rights review before promotion.
+- The current `workers.dev` address is technically valid but is not a durable
+  final editorial domain. HSTS preload should wait for that domain.
+- A real low-end Android and physical iPhone/iPad check remains necessary even
+  after emulated Chromium/WebKit tests.

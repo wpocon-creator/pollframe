@@ -2,8 +2,8 @@ name: Update polling data
 
 on:
   schedule:
-    # Daily at 06:17 UTC. A commit is created only when a source changed.
-    - cron: "17 6 * * *"
+    # Check every four hours. A commit is created only when a source changed.
+    - cron: "17 */4 * * *"
   workflow_dispatch:
 
 permissions:
@@ -33,18 +33,53 @@ jobs:
       - name: Install exact dependencies
         run: npm ci --ignore-scripts
 
-      - name: Audit dependencies
-        run: npm audit --audit-level=low
+      - name: Install browser for official CIS series
+        run: npx playwright install chromium
 
-      - name: Fetch and validate the latest polling data
+      # A temporary failure or renamed file at one provider must not prevent the
+      # other countries from being published. The health job still turns the
+      # overall workflow red after publication so a partial failure is visible.
+      - name: Update Germany
+        id: germany
+        continue-on-error: true
+        run: npm run data:update
+
+      - name: Update the United Kingdom
+        id: uk
+        continue-on-error: true
+        run: npm run data:update:uk
+
+      - name: Update Spain
+        id: spain
+        continue-on-error: true
         env:
           SPAIN_ELECTION_DATE: ${{ vars.SPAIN_ELECTION_DATE }}
+        run: npm run data:update:spain
+
+      - name: Update Spanish regions
+        id: spain_regions
+        continue-on-error: true
+        run: npm run data:update:spain-regions
+
+      - name: Update government and leader approval
+        id: approval
+        continue-on-error: true
+        run: npm run data:update:approval
+
+      - name: Validate the complete publishable snapshot
         run: |
           set -euo pipefail
-          npm run data:update
-          npm run data:update:uk
-          npm run data:update:spain
+          npm run data:review
           npm run check
+
+      - name: Record every source outcome
+        env:
+          GERMANY_OUTCOME: ${{ steps.germany.outcome }}
+          UK_OUTCOME: ${{ steps.uk.outcome }}
+          SPAIN_OUTCOME: ${{ steps.spain.outcome }}
+          SPAIN_REGIONS_OUTCOME: ${{ steps.spain_regions.outcome }}
+          APPROVAL_OUTCOME: ${{ steps.approval.outcome }}
+        run: node scripts/write-update-health.mjs data-update-health.json
 
       - name: Pass only validated public data to the publishing job
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -57,6 +92,7 @@ jobs:
             public/uk-summary.json
             public/spain-summary.json
             public/data
+            data-update-health.json
           if-no-files-found: error
           retention-days: 1
 
@@ -105,3 +141,23 @@ jobs:
           git add public/poll-data.json public/regions.json public/state-map-data.json public/uk-summary.json public/spain-summary.json public/data
           git commit -m "data: update German, UK and Spanish polls"
           git push
+
+  health:
+    name: Report partial source failures after publishing healthy data
+    needs: [update, publish]
+    if: always() && needs.update.result == 'success' && needs.publish.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - name: Check out the default branch
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - name: Download the source health report
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: validated-poll-data
+          path: incoming-poll-data
+      - name: Fail visibly if any provider update failed
+        run: node scripts/validate-update-health.mjs incoming-poll-data/data-update-health.json

@@ -23,10 +23,12 @@
   <circle cx="80" cy="670" r="280" fill="#65c4a2" opacity=".055"/>
 
   <g transform="translate(72 62)">
-    <rect width="58" height="58" rx="14" fill="#f7f7f2"/>
-    <path d="M20 15h-7v29h7M38 15h7v29h-7" fill="none" stroke="#14171a" stroke-linecap="round" stroke-linejoin="round" stroke-width="4"/>
-    <path d="m19 37 10-10 7 5 10-17" fill="none" stroke="#14171a" stroke-linecap="round" stroke-linejoin="round" stroke-width="4.5"/>
-    <circle cx="36" cy="32" r="3.3" fill="#14171a"/>
+    <rect width="58" height="58" rx="14.95" fill="#f7f7f2"/>
+    <g transform="scale(1.8125)">
+      <path d="M11 7.25H7.75v17.5H11M21 7.25h3.25v17.5H21" fill="none" stroke="#14171a" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
+      <path d="m10.25 20.75 4.1-4.2 3.45 2.35 4.25-7.65" fill="none" stroke="#14171a" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.35"/>
+      <circle cx="17.8" cy="18.9" r="1.45" fill="#14171a"/>
+    </g>
     <text x="78" y="39" fill="#f7f7f2" font-size="27" font-weight="760" letter-spacing="3.4">POLLFRAME</text>
     <rect x="286" y="11" width="63" height="34" rx="9" fill="none" stroke="#525a63"/>
     <text x="317.5" y="33.5" fill="#aeb7c0" font-size="13" font-weight="700" text-anchor="middle" letter-spacing="1.5">BETA</text>

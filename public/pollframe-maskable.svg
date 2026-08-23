@@ -2,8 +2,8 @@
   <rect width="512" height="512" fill="#14171a"/>
   <g transform="translate(76.8 76.8) scale(.7)">
     <rect width="512" height="512" rx="128" fill="#14171a"/>
-    <path d="M168 120h-48v272h48M344 120h48v272h-48" fill="none" stroke="#fbfbf7" stroke-linecap="round" stroke-linejoin="round" stroke-width="36"/>
-    <path d="m160 320 68-68 56 40 68-108" fill="none" stroke="#fbfbf7" stroke-linecap="round" stroke-linejoin="round" stroke-width="40"/>
-    <circle cx="284" cy="292" r="26.4" fill="#fbfbf7"/>
+    <path d="M176 116h-52v280h52M336 116h52v280h-52" fill="none" stroke="#fbfbf7" stroke-linecap="round" stroke-linejoin="round" stroke-width="32"/>
+    <path d="m164 332 65.6-67.2 55.2 37.6 68-122.4" fill="none" stroke="#fbfbf7" stroke-linecap="round" stroke-linejoin="round" stroke-width="37.6"/>
+    <circle cx="284.8" cy="302.4" r="23.2" fill="#fbfbf7"/>
   </g>
 </svg>

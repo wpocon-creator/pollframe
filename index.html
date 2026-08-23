@@ -2,7 +2,7 @@
 <html lang="de">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta
       name="description"
       content="Aktuelle Wahlumfragen für Bundestag und Bundesländer: transparente Durchschnittswerte, langfristige Trends, Ereignisse und rechnerische Sitzverteilungen."
@@ -44,6 +44,23 @@
   </head>
   <body>
     <div id="root"></div>
+    <noscript>
+      <main>
+        <h1>Pollframe – Wahlumfragen für Deutschland, das Vereinigte Königreich und Spanien</h1>
+        <p>Pollframe veröffentlicht nachvollziehbare Umfragedurchschnitte, historische Verläufe, Wahlergebnisse und dokumentierte Quellen.</p>
+        <nav aria-label="Öffentliche Pollframe-Seiten">
+          <a href="/">Deutschland</a>
+          <a href="/?region=bundestag">Bundestagswahl-Umfragen</a>
+          <a href="/?country=uk">Vereinigtes Königreich</a>
+          <a href="/?region=uk-westminster">Westminster-Umfragen</a>
+          <a href="/?country=es">Spanien</a>
+          <a href="/?region=spain-congress">Spanische Parlamentsumfragen</a>
+          <a href="/?page=lizenzen">Quellen und Lizenzen</a>
+          <a href="/?page=redaktion">Redaktionelle Standards</a>
+        </nav>
+        <p>Datenquellen: <a href="https://dawum.de/Urheberrecht/">DAWUM – ODC-ODbL</a>, <a href="https://electiondatavault.co.uk/about/">UK Election Data Vault</a>, <a href="https://www.cis.es/es/condiciones-reutilizaci%C3%B3n-datos-del-cis">Centro de Investigaciones Sociológicas</a> sowie die auf der Lizenzseite einzeln dokumentierten amtlichen und offenen Quellen.</p>
+      </main>
+    </noscript>
     <script type="module" src="/src/main.jsx"></script>
     <!-- Cloudflare Web Analytics -->
     <script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "4e1831c7e0754afa811e25e2a7a07943"}'></script>

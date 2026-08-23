@@ -14,6 +14,9 @@ coverage/
 .dev.vars
 .wrangler/
 
+# Rights-cleared release quarantine (local recovery copies; never publish)
+data/licensing-pending/
+
 # Editor and operating-system files
 .DS_Store
 Thumbs.db

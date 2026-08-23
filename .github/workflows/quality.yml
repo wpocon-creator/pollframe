@@ -1,0 +1,71 @@
+name: Quality gate
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: quality-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-policy:
+    name: Build, data, dependencies and policy
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - name: Use Node.js 22
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install exact dependencies
+        run: npm ci --ignore-scripts
+      - name: Audit dependencies
+        run: npm audit --audit-level=low
+      - name: Validate and build production files
+        run: |
+          set -euo pipefail
+          npm run test:update-pipeline
+          npm run check
+          git diff --check
+
+  browser-matrix:
+    name: Browser and device regressions
+    needs: build-and-policy
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - name: Use Node.js 22
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install exact dependencies
+        run: npm ci --ignore-scripts
+      - name: Install current browser engines
+        run: npx playwright install --with-deps chromium firefox webkit
+      - name: Build production files
+        run: |
+          set -euo pipefail
+          npm run build
+      - name: Run complete core regressions in all three browser engines
+        run: npx playwright test tests/accessibility.spec.mjs tests/current-endpoint.spec.mjs tests/event-selection.spec.mjs tests/integration.spec.mjs --project=chromium-desktop --project=firefox-desktop --project=webkit-desktop
+      - name: Run geometry, PWA and visual regressions on representative devices
+        run: npx playwright test tests/mobile-layout.spec.mjs tests/pwa.spec.mjs tests/watchlist-visual.spec.mjs --project=pixel-5 --project=iphone-13 --project=ipad-mini --project=phone-landscape
+      - name: Preserve failure screenshots, traces and report
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: browser-regression-evidence
+          path: test-results
+          if-no-files-found: ignore
+          retention-days: 7

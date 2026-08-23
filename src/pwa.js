@@ -1,6 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { trackAggregateEvent } from "./aggregateAnalytics.js";
 
 const UPDATE_CHECK_INTERVAL = 60 * 60 * 1000;
+const DATA_REFRESH_AFTER = 5 * 60 * 1000;
+let serviceWorkerPolicy;
+
+function trustedServiceWorkerUrl(path) {
+  if (!window.trustedTypes) return path;
+  serviceWorkerPolicy ??= window.trustedTypes.createPolicy("pollframe-sw", {
+    createScriptURL: (value) => value,
+  });
+  return serviceWorkerPolicy.createScriptURL(path);
+}
 
 function standaloneDisplay() {
   return window.matchMedia?.("(display-mode: standalone)").matches
@@ -19,8 +30,13 @@ export function usePwaLifecycle({ disabled = false, country = "de" } = {}) {
   const [updateAvailable, setUpdateAvailable] = useState(false);
   const [showIosInstructions, setShowIosInstructions] = useState(false);
   const [usedCachedData, setUsedCachedData] = useState(false);
+  const [dataRefreshVersion, setDataRefreshVersion] = useState(0);
   const registrationRef = useRef(null);
   const reloadForUpdateRef = useRef(false);
+  const controlledAtMountRef = useRef(Boolean(window.navigator.serviceWorker?.controller));
+  const reloadStartedRef = useRef(false);
+  const hiddenAtRef = useRef(null);
+  const completedInstallTrackedRef = useRef(false);
   const isIos = iosBrowser();
 
   useEffect(() => {
@@ -35,6 +51,10 @@ export function usePwaLifecycle({ disabled = false, country = "de" } = {}) {
       setInstalled(true);
       setInstallPrompt(null);
       setShowIosInstructions(false);
+      if (!completedInstallTrackedRef.current) {
+        completedInstallTrackedRef.current = true;
+        trackAggregateEvent("install_completed");
+      }
     };
     window.addEventListener("beforeinstallprompt", capturePrompt);
     window.addEventListener("appinstalled", markInstalled);
@@ -67,21 +87,29 @@ export function usePwaLifecycle({ disabled = false, country = "de" } = {}) {
     let disposed = false;
     let updateTimer;
 
+    const activateWaitingUpdate = (registration) => {
+      if (!registration.waiting || !window.navigator.serviceWorker.controller) return;
+      setUpdateAvailable(true);
+      reloadForUpdateRef.current = true;
+      registration.waiting.postMessage({ type: "SKIP_WAITING" });
+    };
+
     const inspectRegistration = (registration) => {
-      if (registration.waiting && window.navigator.serviceWorker.controller) setUpdateAvailable(true);
+      activateWaitingUpdate(registration);
       registration.addEventListener("updatefound", () => {
         const worker = registration.installing;
         worker?.addEventListener("statechange", () => {
-          if (worker.state === "installed" && window.navigator.serviceWorker.controller) setUpdateAvailable(true);
+          if (worker.state === "installed") activateWaitingUpdate(registration);
         });
       });
     };
 
-    window.navigator.serviceWorker.register("/sw.js", { scope: "/", updateViaCache: "none" })
+    window.navigator.serviceWorker.register(trustedServiceWorkerUrl("/sw.js"), { scope: "/", updateViaCache: "none" })
       .then((registration) => {
         if (disposed) return;
         registrationRef.current = registration;
         inspectRegistration(registration);
+        registration.update().catch(() => {});
         const activeWorker = registration.active ?? registration.waiting ?? registration.installing;
         activeWorker?.postMessage({ type: "PREFETCH_COUNTRY", country });
         window.navigator.serviceWorker.ready.then((readyRegistration) => {
@@ -95,10 +123,25 @@ export function usePwaLifecycle({ disabled = false, country = "de" } = {}) {
       if (event.data?.type === "POLLFRAME_CACHED_DATA") setUsedCachedData(true);
     };
     const handleControllerChange = () => {
-      if (reloadForUpdateRef.current) window.location.reload();
+      if (!controlledAtMountRef.current) {
+        controlledAtMountRef.current = true;
+        return;
+      }
+      if (!reloadStartedRef.current) {
+        reloadStartedRef.current = true;
+        window.location.reload();
+      }
     };
     const checkWhenVisible = () => {
-      if (document.visibilityState === "visible") registrationRef.current?.update().catch(() => {});
+      if (document.visibilityState === "hidden") {
+        hiddenAtRef.current = Date.now();
+        return;
+      }
+      registrationRef.current?.update().catch(() => {});
+      if (window.navigator.onLine && hiddenAtRef.current && Date.now() - hiddenAtRef.current >= DATA_REFRESH_AFTER) {
+        setDataRefreshVersion((version) => version + 1);
+      }
+      hiddenAtRef.current = null;
     };
     window.navigator.serviceWorker.addEventListener("message", handleMessage);
     window.navigator.serviceWorker.addEventListener("controllerchange", handleControllerChange);
@@ -113,6 +156,15 @@ export function usePwaLifecycle({ disabled = false, country = "de" } = {}) {
   }, [disabled, country]);
 
   useEffect(() => {
+    if (disabled || !installed || !import.meta.env.PROD || !("serviceWorker" in window.navigator)) return undefined;
+    let disposed = false;
+    window.navigator.serviceWorker.ready.then((registration) => {
+      if (!disposed) registration.active?.postMessage({ type: "PREFETCH_OFFLINE_APP" });
+    }).catch(() => {});
+    return () => { disposed = true; };
+  }, [disabled, installed]);
+
+  useEffect(() => {
     document.documentElement.dataset.standalone = installed ? "true" : "false";
     return () => { delete document.documentElement.dataset.standalone; };
   }, [installed]);
@@ -122,11 +174,15 @@ export function usePwaLifecycle({ disabled = false, country = "de" } = {}) {
     if (installPrompt) {
       await installPrompt.prompt();
       const choice = await installPrompt.userChoice.catch(() => ({ outcome: "dismissed" }));
-      if (choice.outcome === "accepted") setInstallPrompt(null);
+      if (choice.outcome === "accepted") {
+        setInstallPrompt(null);
+        trackAggregateEvent("install_prompt_accepted");
+      }
       return choice.outcome;
     }
     if (isIos) {
       setShowIosInstructions(true);
+      trackAggregateEvent("ios_install_instructions_opened");
       return "instructions";
     }
     return "unavailable";
@@ -150,5 +206,6 @@ export function usePwaLifecycle({ disabled = false, country = "de" } = {}) {
     setShowIosInstructions,
     requestInstall,
     applyUpdate,
+    dataRefreshVersion,
   };
 }

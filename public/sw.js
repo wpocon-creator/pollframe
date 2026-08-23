@@ -1,7 +1,8 @@
-const VERSION = "pollframe-app-v7";
+const VERSION = "pollframe-app-v17";
 const SHELL_CACHE = `${VERSION}-shell`;
 const RUNTIME_CACHE = `${VERSION}-runtime`;
 const DATA_CACHE = `${VERSION}-data`;
+const OFFLINE_READY_URL = new URL("/__pollframe-offline-ready__", self.location.origin).href;
 const SHELL = [
   "/manifest-context.js",
   "/manifest.webmanifest",
@@ -10,10 +11,43 @@ const SHELL = [
   "/pollframe-app-512.png",
   "/pollframe-maskable-512.png"
 ];
+const CORE_DATA = [
+  "/regions.json",
+  "/state-map-data.json",
+  "/uk-summary.json",
+  "/spain-summary.json",
+  "/data/approval.json",
+];
 const COUNTRY_DATA = {
-  de: ["/", "/regions.json", "/state-map-data.json", "/data/bundestag.json"],
-  uk: ["/?country=uk", "/uk-summary.json", "/data/uk-westminster.json", "/data/uk-constituencies.json"],
-  es: ["/?country=es", "/?country=es&view=spain-issues", "/spain-summary.json", "/data/spain-congress.json", "/data/spain-autonomies.geojson"],
+  de: [
+    "/data/bundestag.json",
+    "/data/baden-wuerttemberg.json",
+    "/data/bayern.json",
+    "/data/berlin.json",
+    "/data/brandenburg.json",
+    "/data/bremen.json",
+    "/data/hamburg.json",
+    "/data/hessen.json",
+    "/data/mecklenburg-vorpommern.json",
+    "/data/niedersachsen.json",
+    "/data/nordrhein-westfalen.json",
+    "/data/rheinland-pfalz.json",
+    "/data/saarland.json",
+    "/data/sachsen.json",
+    "/data/sachsen-anhalt.json",
+    "/data/schleswig-holstein.json",
+    "/data/thueringen.json",
+  ],
+  uk: [
+    "/data/uk-westminster.json",
+    "/data/uk-westminster-polls.json",
+    "/data/uk-constituencies.json",
+  ],
+  es: [
+    "/data/spain-congress.json",
+    "/data/spain-autonomies.geojson",
+    "/data/spain-regions.json",
+  ],
 };
 
 async function cacheBuiltAssetGraph(cache, initialPaths) {
@@ -35,6 +69,21 @@ async function cacheBuiltAssetGraph(cache, initialPaths) {
   }
 }
 
+async function cacheDataPaths(paths) {
+  const dataCache = await caches.open(DATA_CACHE);
+  const results = await Promise.all([...new Set(paths)].map(async (path) => {
+    try {
+      const response = await fetch(path);
+      if (!response.ok) return false;
+      await dataCache.put(new URL(path, self.location.origin).href, response);
+      return true;
+    } catch {
+      return false;
+    }
+  }));
+  return results.every(Boolean);
+}
+
 async function installAppShell() {
   const shellCache = await caches.open(SHELL_CACHE);
   await shellCache.addAll(SHELL);
@@ -44,23 +93,32 @@ async function installAppShell() {
   const html = await rootResponse.text();
   const builtAssets = [...html.matchAll(/(?:src|href)="(\/assets\/[^"]+)"/g)].map((match) => match[1]);
   await cacheBuiltAssetGraph(shellCache, [...new Set(builtAssets)]);
-
+  if (!await cacheDataPaths(CORE_DATA)) throw new Error("Core offline data could not be cached");
 }
 
 async function prefetchCountry(country) {
+  return cacheDataPaths(COUNTRY_DATA[country] ?? COUNTRY_DATA.de);
+}
+
+async function prefetchOfflineApp() {
+  const complete = await cacheDataPaths([
+    ...CORE_DATA,
+    ...Object.values(COUNTRY_DATA).flat(),
+  ]);
   const dataCache = await caches.open(DATA_CACHE);
-  await Promise.all((COUNTRY_DATA[country] ?? COUNTRY_DATA.de).map(async (path) => {
-    try {
-      const response = await fetch(path);
-      if (response.ok) await dataCache.put(path, response);
-    } catch {
-      // A temporary data failure must not prevent the app shell from installing.
-    }
-  }));
+  if (complete) {
+    await dataCache.put(OFFLINE_READY_URL, new Response(JSON.stringify({ version: VERSION, cachedAt: new Date().toISOString() }), {
+      headers: { "content-type": "application/json" },
+    }));
+  } else {
+    await dataCache.delete(OFFLINE_READY_URL);
+  }
+  const clients = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+  clients.forEach((client) => client.postMessage({ type: "POLLFRAME_OFFLINE_READY", ready: complete }));
 }
 
 self.addEventListener("install", (event) => {
-  event.waitUntil(installAppShell());
+  event.waitUntil(installAppShell().then(() => self.skipWaiting()));
 });
 
 self.addEventListener("activate", (event) => {
@@ -69,6 +127,7 @@ self.addEventListener("activate", (event) => {
       keys.filter((key) => key.startsWith("pollframe-app-") && ![SHELL_CACHE, RUNTIME_CACHE, DATA_CACHE].includes(key))
         .map((key) => caches.delete(key)),
     )),
+    self.registration.navigationPreload?.enable().catch(() => {}),
     self.clients.claim(),
   ]));
 });
@@ -76,6 +135,7 @@ self.addEventListener("activate", (event) => {
 self.addEventListener("message", (event) => {
   if (event.data?.type === "SKIP_WAITING") self.skipWaiting();
   if (event.data?.type === "PREFETCH_COUNTRY") event.waitUntil(prefetchCountry(event.data.country));
+  if (event.data?.type === "PREFETCH_OFFLINE_APP") event.waitUntil(prefetchOfflineApp());
 });
 
 self.addEventListener("notificationclick", (event) => {
@@ -109,8 +169,10 @@ async function notifyCachedData() {
 
 async function networkFirst(request, cacheName, { data = false } = {}) {
   const cache = await caches.open(cacheName);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), data ? 4500 : 10000);
   try {
-    const response = await fetch(request);
+    const response = await fetch(request, { signal: controller.signal });
     if (response.ok) await cache.put(request, response.clone());
     return response;
   } catch (error) {
@@ -118,7 +180,21 @@ async function networkFirst(request, cacheName, { data = false } = {}) {
     if (!cached) throw error;
     if (data) await notifyCachedData();
     return cached;
+  } finally {
+    clearTimeout(timeout);
   }
+}
+
+async function navigationResponse(event) {
+  const preloaded = await event.preloadResponse;
+  if (preloaded) {
+    if (preloaded.ok) {
+      const cache = await caches.open(SHELL_CACHE);
+      await cache.put(event.request, preloaded.clone());
+    }
+    return preloaded;
+  }
+  return networkFirst(event.request, SHELL_CACHE);
 }
 
 async function cacheFirst(request) {
@@ -137,7 +213,7 @@ self.addEventListener("fetch", (event) => {
   if (url.origin !== self.location.origin || url.pathname === "/embed.html") return;
 
   if (request.mode === "navigate") {
-    event.respondWith(networkFirst(request, SHELL_CACHE).catch(() => caches.match("/")));
+    event.respondWith(navigationResponse(event).catch(() => caches.match("/")));
     return;
   }
   if (isDataRequest(url)) {
