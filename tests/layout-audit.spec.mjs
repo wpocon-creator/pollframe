@@ -75,6 +75,7 @@ async function auditVisibleLayout(page) {
     const controlRoot = activeLayer ?? document;
     const controls = [...controlRoot.querySelectorAll("button,a[href],summary,input:not([type=hidden]),select,textarea")]
       .filter(visible)
+      .filter((element) => !element.closest("[inert],[aria-hidden='true']"))
       .filter((element) => !element.matches(".graph-info-backdrop"))
       .filter((element) => !element.closest("svg,.poll-chart,.germany-map,.spain-map-svg,.uk-map-svg"))
       .map((element) => ({ element, rect: element.getBoundingClientRect() }))

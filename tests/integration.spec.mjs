@@ -113,7 +113,7 @@ async function downloadPng(page, button, format = "content") {
   await button.click();
   const modal = page.locator(".png-options-modal");
   await expect(modal).toBeVisible();
-  await expect(modal.locator(".png-format-grid > button")).toHaveCount(5);
+  await expect(modal.locator(".png-format-grid > button")).toHaveCount(3);
   const overlap = await modal.evaluate((root) => {
     const formats = root.querySelector(".png-format-grid")?.getBoundingClientRect();
     const actions = root.querySelector(".png-options-actions")?.getBoundingClientRect();
@@ -301,6 +301,14 @@ test.describe("core routes", () => {
     expect(png.readUInt32BE(16)).toBe(1920);
     expect(png.readUInt32BE(20)).toBe(1080);
     await expectPngHasVisibleContent(page, png);
+    const squareDownload = await downloadPng(page, chartExportButton, "square");
+    await squareDownload.saveAs(testInfo.outputPath("bundestag-export-square.png"));
+    expect(squareDownload.suggestedFilename()).toMatch(/-square-\d{4}-\d{2}-\d{2}\.png$/);
+    const squarePng = await readFile(await squareDownload.path());
+    expect(squarePng.readUInt32BE(16)).toBe(1080);
+    expect(squarePng.readUInt32BE(20)).toBe(1080);
+    expect(squarePng.equals(png)).toBe(false);
+    await expectPngHasVisibleContent(page, squarePng);
     expect(errors).toEqual([]);
   });
 
@@ -1374,9 +1382,7 @@ test.describe("core routes", () => {
     expect(await page.locator(".approval-embed-preview").evaluate((node) => node.scrollHeight > node.clientHeight)).toBe(true);
     await expect(page.locator(".approval-embed-preview iframe")).toHaveCSS("pointer-events", "none");
 
-    const pngDownload = page.waitForEvent("download");
-    await page.locator(".approval-share-actions").getByRole("button", { name: "Export PNG", exact: true }).click();
-    const png = await pngDownload;
+    const png = await downloadPng(page, page.locator(".approval-share-actions").getByRole("button", { name: "Export PNG", exact: true }), "landscape");
     await expectPngHasVisibleContent(page, (await readFile(await png.path())).toString("base64"));
 
     const csvDownload = page.waitForEvent("download");

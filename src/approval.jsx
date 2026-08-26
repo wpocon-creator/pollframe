@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Icon, MultiSelect, SelectControl, StaticEmbedPreview } from "./pollframe-ui.jsx";
 import { includeHistoricalEvent, isPrimaryElectionEvent, rankHistoricalEvents } from "./event-selection.js";
+import { PngExportButton } from "./png-export.jsx";
+import { trackAggregateEvent } from "./aggregateAnalytics.js";
 
 const DAY = 86_400_000;
 const COUNTRY_IDS = ["de", "uk"];
@@ -277,13 +279,18 @@ function categoryLabel(category, locale) {
 function InfoDialog({ data, countries, metric, locale }) {
   const text = textFor(locale);
   const close = (event) => event.currentTarget.closest("details")?.removeAttribute("open");
+  const calculation = locale === "de"
+    ? "Die Linien übernehmen die veröffentlichten Anteile positiver oder negativer Antworten; der Saldo ist positiv minus negativ in Prozentpunkten. Der kompakte Balken im aktuellen Stand verteilt nur diese beiden Antwortgruppen auf 100 Prozent, damit ihr Verhältnis lesbar bleibt. Neutrale Antworten und fehlende Angaben werden dort nicht als eigene Gruppe gezeigt, bleiben aber Bestandteil der Originalerhebung."
+    : locale === "es"
+      ? "Las líneas reproducen los porcentajes publicados de respuestas positivas o negativas; el saldo es el porcentaje positivo menos el negativo, en puntos porcentuales. La barra compacta del dato actual reparte solo esos dos grupos hasta el 100 % para mostrar su relación. Las respuestas neutras y la falta de respuesta no aparecen como grupo separado, pero siguen formando parte del estudio original."
+      : "The lines reproduce the published positive or negative response shares; net rating is positive minus negative in percentage points. The compact current bar rescales only those two answer groups to 100% so their relationship is readable. Neutral and missing answers are not shown as a separate group there, but remain part of the original study.";
   return (
     <details className="approval-info graph-info-popover graph-info-compact" data-export-ignore="true">
       <summary aria-label={text.methodology}><span className="info-glyph">i</span></summary>
       <button className="graph-info-backdrop" type="button" tabIndex="-1" onClick={close} aria-label={text.closeEditor} />
       <div className="graph-info-card approval-info-card" role="dialog" aria-modal="true">
         <header><strong>{text.methodology}</strong><button type="button" onClick={close} aria-label={text.closeEditor}><Icon name="close" size={16} /></button></header>
-        <p className="approval-info-prose">{countries.length > 1 ? text.chartCompare : text.chartSingle} {locale === "de" ? "Pollframe führt nur die redaktionell ausgewählten Ereignisse für diesen Zeitraum auf. Jedes davon hat im Diagramm eine Markierung: Wahlen erscheinen als durchgezogene Linien, die wichtigsten Ereignisse als Beschriftungen und alle übrigen als kleine hohle Punkte auf der interaktiven Website. Das liefert zeitlichen Kontext, aber keinen Beleg für Ursache und Wirkung." : locale === "es" ? "Pollframe solo enumera los acontecimientos seleccionados editorialmente para este periodo. Cada uno tiene una marca en el gráfico: las elecciones aparecen como líneas continuas, los acontecimientos principales como etiquetas y los demás como pequeños puntos huecos en la web interactiva. Aportan contexto temporal, no demuestran causalidad." : "Pollframe lists only the editorially selected events for this period. Every one has a chart marker: elections use solid lines, the leading events receive labels, and all others use small hollow dots on the interactive website. They provide timing context, not evidence of causation."} {countries.map((country, index) => {
+        <p className="approval-info-prose">{countries.length > 1 ? text.chartCompare : text.chartSingle} {calculation} {locale === "de" ? "Pollframe führt nur die redaktionell ausgewählten Ereignisse für diesen Zeitraum auf. Jedes davon hat im Diagramm eine Markierung: Wahlen erscheinen als durchgezogene Linien, die wichtigsten Ereignisse als Beschriftungen und alle übrigen als kleine hohle Punkte auf der interaktiven Website. Das liefert zeitlichen Kontext, aber keinen Beleg für Ursache und Wirkung." : locale === "es" ? "Pollframe solo enumera los acontecimientos seleccionados editorialmente para este periodo. Cada uno tiene una marca en el gráfico: las elecciones aparecen como líneas continuas, los acontecimientos principales como etiquetas y los demás como pequeños puntos huecos en la web interactiva. Aportan contexto temporal, no demuestran causalidad." : "Pollframe lists only the editorially selected events for this period. Every one has a chart marker: elections use solid lines, the leading events receive labels, and all others use small hollow dots on the interactive website. They provide timing context, not evidence of causation."} {countries.map((country, index) => {
           const item = data.countries[country];
           const series = item.series[metric];
           const latest = series.at(-1);
@@ -682,8 +689,8 @@ function ShareDialog({ open, onClose, url, embedUrl, chartRef, data, countries, 
   const [copied, setCopied] = useState("");
   const [previewWidth, setPreviewWidth] = useState("article");
   const [copyError, setCopyError] = useState(false);
-  const [png, setPng] = useState("idle");
   const dialogRef = useDialogFocus(open, onClose);
+  useEffect(() => { if (open) trackAggregateEvent("share_dialog_opened"); }, [open]);
   useEffect(() => {
     if (!open) return undefined;
     const htmlOverflow = document.documentElement.style.overflow;
@@ -708,14 +715,15 @@ function ShareDialog({ open, onClose, url, embedUrl, chartRef, data, countries, 
   const bugUrl = `/?page=bug-report&from=${encodeURIComponent(url)}`;
   const copy = async (value, kind) => {
     setCopyError(false);
-    try { await copyText(value); setCopied(kind); window.setTimeout(() => setCopied(""), 1800); }
+    try {
+      await copyText(value);
+      setCopied(kind);
+      if (kind === "link") trackAggregateEvent("share_link_copied");
+      if (kind === "embed") trackAggregateEvent("embed_code_copied");
+      if (kind === "credit") trackAggregateEvent("source_note_copied");
+      window.setTimeout(() => setCopied(""), 1800);
+    }
     catch { setCopyError(true); window.setTimeout(() => setCopyError(false), 2400); }
-  };
-  const exportPng = async () => {
-    setPng("working");
-    try { await downloadPng(chartRef.current, text.chartTitle); setPng("done"); }
-    catch (error) { console.error("Approval PNG export failed", error); setPng("error"); }
-    window.setTimeout(() => setPng("idle"), 2400);
   };
   const downloadCsv = () => {
     const rows = [["country", "metric", "date", "positive", "negative", "net", "remainder", "leader", "party", "source"]];
@@ -729,6 +737,7 @@ function ShareDialog({ open, onClose, url, embedUrl, chartRef, data, countries, 
     link.click();
     link.remove();
     window.setTimeout(() => URL.revokeObjectURL(objectUrl), 30_000);
+    trackAggregateEvent("csv_downloaded");
   };
   return (
     <div className="overlay modal-overlay approval-share-modal" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
@@ -744,7 +753,7 @@ function ShareDialog({ open, onClose, url, embedUrl, chartRef, data, countries, 
         <div className="embed-actions approval-share-actions">
           <button className="secondary-button" type="button" onClick={() => copy(url, "link")}><Icon name="share" size={16} />{copied === "link" ? text.copied : text.copyLink}</button>
           <button className="primary-button" type="button" onClick={() => copy(code, "embed")}><Icon name="code" size={16} />{copied === "embed" ? text.copied : text.copyEmbed}</button>
-          <button className="secondary-button png-export-button" type="button" onClick={exportPng} disabled={png === "working"} aria-live="polite"><Icon name={png === "done" ? "check" : "download"} size={17} />{png === "working" ? text.pngPreparing : png === "done" ? text.pngReady : png === "error" ? text.pngError : text.png}</button>
+          <PngExportButton elementRef={chartRef} filename={`pollframe-approval-${metric}`} title={text.chartTitle} subtitle={countries.map((country) => countryName(country, locale)).join(" · ")} locale={locale} label={text.png} credit={`${countries.map((country) => data.countries[country].source.label).join(" · ")} · Pollframe`} profile="approval" />
           <button className="secondary-button" type="button" onClick={downloadCsv}><Icon name="download" size={16} />{text.csv}</button>
           <button className="secondary-button" type="button" onClick={() => copy(sourceNote, "credit")}><Icon name="check" size={16} />{copied === "credit" ? labels.creditDone : labels.credit}</button>
           <a className="secondary-button" href={bugUrl}><Icon name="info" size={16} />{labels.bug}</a>
@@ -776,7 +785,6 @@ export function ApprovalPage({ data, locale, embed = false, eventCatalog = {} })
   const [customizeOpen, setCustomizeOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [shareTheme, setShareTheme] = useState("light");
-  const [pngStatus, setPngStatus] = useState("idle");
   const chartRef = useRef(null);
   const countries = compare && canCompare ? COMPARE_COUNTRIES : [requestedCountry];
   const allEvents = useMemo(() => normalizeEvents(data, eventCatalog, countries), [data, eventCatalog, countries.join(",")]);
@@ -811,13 +819,6 @@ export function ApprovalPage({ data, locale, embed = false, eventCatalog = {} })
     url.searchParams.delete("share");
     window.history.replaceState({}, "", url);
   }, [compare, metric, range, display, answers, selectedEventCategories, locale, embed]);
-  const exportPng = async () => {
-    if (pngStatus === "working") return;
-    setPngStatus("working");
-    try { await downloadPng(chartRef.current, `${text.chartTitle}-${countryName(requestedCountry, locale)}`); setPngStatus("done"); }
-    catch (error) { console.error("Approval PNG export failed", error); setPngStatus("error"); }
-    window.setTimeout(() => setPngStatus("idle"), 2400);
-  };
   const primarySeries = data.countries[countries[0]].series[metric];
   const primaryLatest = primarySeries.at(-1);
   const backHref = requestedCountry === "uk" ? "/?country=uk" : "/";
@@ -834,7 +835,7 @@ export function ApprovalPage({ data, locale, embed = false, eventCatalog = {} })
           <button className={`secondary-button ${customizeOpen ? "active" : ""}`} type="button" onClick={() => setCustomizeOpen((value) => !value)} aria-expanded={customizeOpen}><Icon name="sliders" />{text.customize}</button>
           {canCompare && <button className={`secondary-button approval-compare-toggle ${compare ? "active" : ""}`} type="button" aria-pressed={compare} onClick={() => setCompare((value) => !value)}><Icon name="globe" />{text.compareShort}</button>}
           <button className="primary-button" type="button" onClick={() => setShareOpen(true)}><Icon name="share" />{text.share}</button>
-          <button className="secondary-button png-export-button" type="button" onClick={exportPng} disabled={pngStatus === "working"} aria-live="polite"><Icon name={pngStatus === "done" ? "check" : "download"} size={17} />{pngStatus === "working" ? text.pngPreparing : pngStatus === "done" ? text.pngReady : pngStatus === "error" ? text.pngError : text.png}</button>
+          <PngExportButton elementRef={chartRef} filename={`pollframe-approval-${requestedCountry}-${metric}`} title={graphTitle} subtitle={countryName(requestedCountry, locale)} locale={locale} label={text.png} credit={`${countries.map((country) => data.countries[country].source.label).join(" · ")} · Pollframe`} profile="approval" />
         </div>}
       </div>
       {customizeOpen && !embed && <div className="customize-panel approval-customize-panel" data-export-ignore="true">

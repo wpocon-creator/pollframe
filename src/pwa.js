@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { trackAggregateEvent } from "./aggregateAnalytics.js";
+import { trackAggregateEvent, trackAggregateEventOnce } from "./aggregateAnalytics.js";
 
 const UPDATE_CHECK_INTERVAL = 60 * 60 * 1000;
 const DATA_REFRESH_AFTER = 5 * 60 * 1000;
@@ -169,6 +169,7 @@ export function usePwaLifecycle({ disabled = false, country = "de" } = {}) {
 
   useEffect(() => {
     document.documentElement.dataset.standalone = installed ? "true" : "false";
+    if (installed) trackAggregateEventOnce("app_opened_standalone");
     return () => { delete document.documentElement.dataset.standalone; };
   }, [installed]);
 
