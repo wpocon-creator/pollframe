@@ -4764,9 +4764,8 @@ function HeaderCountryMenu({ locale, country }) {
   );
 }
 
-function SiteHeader({ t, locale = "de", onSettings, onInfo, pwa, homeHref = "/", homeLabel = "Pollframe Deutschland-Übersicht", countryCode, showReport = true }) {
+function SiteHeader({ t, locale = "de", onSettings, onInfo, pwa, homeHref = "/", homeLabel = "Pollframe Deutschland-Übersicht", countryCode }) {
   const headerCountry = countryCode ?? (homeHref.includes("country=uk") ? "uk" : homeHref.includes("country=es") ? "es" : "de");
-  const reportLabel = t.reportBug ?? (locale === "de" ? "Problem melden" : locale === "es" ? "Informar" : "Report issue");
   const installApp = async () => {
     const outcome = await pwa?.requestInstall();
     if (outcome === "instructions" || outcome === "unavailable") onSettings?.();
@@ -4790,11 +4789,6 @@ function SiteHeader({ t, locale = "de", onSettings, onInfo, pwa, homeHref = "/",
             <button className="header-button info-button" onClick={onInfo} aria-label={t.dataInfo}>
               <Icon name="info" /><span>{t.info}</span>
             </button>
-          )}
-          {showReport && (
-            <a className="header-button header-report-button" href={reportBugHref()} aria-label={reportLabel}>
-              <Icon name="flag" /><span>{reportLabel}</span>
-            </a>
           )}
           <button className="header-button" onClick={onSettings} aria-label={t.settings}>
             <Icon name="settings" /><span>{t.settings}</span>
@@ -8510,7 +8504,7 @@ function RegionalApp() {
   if (bugReportPage) {
     return (
       <>
-        <SiteHeader t={t} locale={locale} pwa={pwa} onSettings={() => setSettingsOpen(true)} showReport={false} />
+        <SiteHeader t={t} locale={locale} pwa={pwa} onSettings={() => setSettingsOpen(true)} />
         <BugReportPage locale={locale} />
         <SiteFooter t={t} pwa={pwa} onSettings={() => setSettingsOpen(true)} />
         {settings}

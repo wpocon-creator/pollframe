@@ -137,8 +137,8 @@ test.describe("core routes", () => {
     await settle(page);
     await expect(page.getByRole("heading", { level: 1, name: /Deutschland im Überblick|Germany at a glance/i })).toBeVisible();
     await expect(page.locator('.site-header .brand')).toHaveAttribute("href", "/");
-    await expect(page.locator(".header-report-button")).toHaveAttribute("href", /page=bug-report.*from=/);
-    await expect(page.locator(".header-report-button")).toHaveAttribute("aria-label", /Problem melden|Report issue/i);
+    await expect(page.locator(".header-report-button")).toHaveCount(0);
+    await expect(page.locator("footer .report-bug-link")).toHaveAttribute("href", /page=bug-report.*from=/);
     await expect(page.getByRole("link", { name: /Bundestagswahl|Federal election/i })).toBeVisible();
     await expect(page.getByRole("link", { name: /Europawahl in Deutschland|European election in Germany/i })).toHaveCount(0);
     await expect(page.locator('.overview-entry-stack .europe-entry')).toHaveCount(0);

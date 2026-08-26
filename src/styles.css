@@ -1972,6 +1972,7 @@ body:has(.graph-info-popover[open]) { overflow: hidden; }
   gap: .35rem;
   margin: -.35rem 0 -.35rem -.45rem;
   padding: .35rem .45rem;
+  min-height: 32px;
 }
 
 .page-back-button:hover,
@@ -2795,9 +2796,6 @@ footer {
   border-color: color-mix(in srgb, var(--accent) 30%, var(--line));
   color: var(--accent);
 }
-.header-report-button svg {
-  color: var(--accent);
-}
 .watchlist-header-button { color: var(--ink); }
 .watchlist-header-button svg { color: var(--accent); }
 
@@ -3197,6 +3195,11 @@ footer {
   .party-profile-sources a { justify-content:space-between; }
 }
 .graph-info-compact > summary { width: 1.65rem; height: 1.65rem; }
+
+@media (hover:none) and (pointer:coarse) {
+  .party-info-trigger { min-height:30px; margin-block:-7px; }
+  .graph-info-compact > summary { width:2rem; height:2rem; }
+}
 .party-modal-title-row { align-items: flex-start; }
 .party-modal-title-row .graph-info-popover { margin-top: .12rem; }
 
