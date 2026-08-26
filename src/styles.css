@@ -2796,6 +2796,9 @@ footer {
   border-color: color-mix(in srgb, var(--accent) 30%, var(--line));
   color: var(--accent);
 }
+.header-report-button svg {
+  color: var(--accent);
+}
 .watchlist-header-button { color: var(--ink); }
 .watchlist-header-button svg { color: var(--accent); }
 

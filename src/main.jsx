@@ -36,6 +36,7 @@ const GERMAN_ELECTION_DATA_LICENSE_URL = "https://www.govdata.de/dl-de/by-2-0";
 const CONTACT_EMAIL = "opinionpoll.redaktion@proton.me";
 const SITE_ORIGIN = "https://de.pollframe.workers.dev";
 const SOCIAL_IMAGE_URL = `${SITE_ORIGIN}/pollframe-social.png`;
+const BUG_REPORT_DASHBOARD_PATH = "/pf-ops/3f592c524cff69071b258ce63776e793/reports";
 const IS_EMBED_ENTRY = window.location.pathname === EMBED_PATH;
 const LOCALE_META = {
   de: { language: "de", direction: "ltr", number: "de-DE", openGraph: "de_DE" },
@@ -4764,8 +4765,9 @@ function HeaderCountryMenu({ locale, country }) {
   );
 }
 
-function SiteHeader({ t, locale = "de", onSettings, onInfo, pwa, homeHref = "/", homeLabel = "Pollframe Deutschland-Übersicht", countryCode }) {
+function SiteHeader({ t, locale = "de", onSettings, onInfo, pwa, homeHref = "/", homeLabel = "Pollframe Deutschland-Übersicht", countryCode, showReport = true }) {
   const headerCountry = countryCode ?? (homeHref.includes("country=uk") ? "uk" : homeHref.includes("country=es") ? "es" : "de");
+  const reportLabel = t.reportBug ?? (locale === "de" ? "Problem melden" : locale === "es" ? "Informar" : "Report issue");
   const installApp = async () => {
     const outcome = await pwa?.requestInstall();
     if (outcome === "instructions" || outcome === "unavailable") onSettings?.();
@@ -4789,6 +4791,11 @@ function SiteHeader({ t, locale = "de", onSettings, onInfo, pwa, homeHref = "/",
             <button className="header-button info-button" onClick={onInfo} aria-label={t.dataInfo}>
               <Icon name="info" /><span>{t.info}</span>
             </button>
+          )}
+          {showReport && (
+            <a className="header-button header-report-button" href={reportBugHref()} aria-label={reportLabel}>
+              <Icon name="flag" /><span>{reportLabel}</span>
+            </a>
           )}
           <button className="header-button" onClick={onSettings} aria-label={t.settings}>
             <Icon name="settings" /><span>{t.settings}</span>
@@ -7768,7 +7775,7 @@ function RegionalApp() {
   const editorialStandardsPage = !embedMode && query.get("page") === "redaktion";
   const contactPage = !embedMode && query.get("page") === "kontakt";
   const bugReportPage = !embedMode && query.get("page") === "bug-report";
-  const bugReportsDashboard = !embedMode && query.get("page") === "bug-reports";
+  const bugReportsDashboard = !embedMode && window.location.pathname.replace(/\/+$/, "") === BUG_REPORT_DASHBOARD_PATH;
   const requestedRegion = query.get("region");
   const requestedCountryParameter = query.get("country");
   const requestedCountry = requestedCountryParameter ?? (query.get("view") === "watchlist"
@@ -8151,7 +8158,7 @@ function RegionalApp() {
     } else if (bugReportPage || bugReportsDashboard) {
       title = bugReportsDashboard ? "Bug reports · Pollframe" : bugCopy(locale, "Problem melden · Pollframe", "Send a report · Pollframe", "Enviar un aviso · Pollframe");
       description = bugCopy(locale, "Einen Fehler auf Pollframe schnell melden.", "Quickly report a bug on Pollframe.", "Informa rápidamente de un error en Pollframe.");
-      canonicalPath = bugReportsDashboard ? "/?page=bug-reports" : "/?page=bug-report";
+      canonicalPath = bugReportsDashboard ? "/" : "/?page=bug-report";
       indexable = false;
     } else if (licencesPage) {
       title = isGerman ? "Quellen und Lizenzen · Pollframe" : "Sources and licences · Pollframe";
@@ -8504,7 +8511,7 @@ function RegionalApp() {
   if (bugReportPage) {
     return (
       <>
-        <SiteHeader t={t} locale={locale} pwa={pwa} onSettings={() => setSettingsOpen(true)} />
+        <SiteHeader t={t} locale={locale} pwa={pwa} onSettings={() => setSettingsOpen(true)} showReport={false} />
         <BugReportPage locale={locale} />
         <SiteFooter t={t} pwa={pwa} onSettings={() => setSettingsOpen(true)} />
         {settings}
