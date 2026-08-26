@@ -1,4 +1,4 @@
-import React, { Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
+import React, { Suspense, lazy, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { createRoot } from "react-dom/client";
 import { usePwaLifecycle } from "./pwa.js";
@@ -6318,8 +6318,11 @@ function WatchlistPage({ locale, initialCountry = "de", refreshVersion = 0 }) {
   const [addState, setAddState] = useState("idle");
   const [mapAssets, setMapAssets] = useState({ data: null, geometry: null, summary: null, component: null, approval: null, regions: null });
   const dragId = useRef(null);
-  const dragTarget = useRef({ id: null, since: 0 });
+  const dragSession = useRef(null);
+  const dragBeforeRects = useRef(null);
+  const itemsRef = useRef(items);
   const [draggingId, setDraggingId] = useState(null);
+  const [dragAnnouncement, setDragAnnouncement] = useState("");
   const [notificationState, setNotificationState] = useState(() => typeof Notification === "undefined" ? "unsupported" : Notification.permission);
   const regions = REGION_META.filter((region) => initialCountry === "uk" ? region.type === "uk-federal" : initialCountry === "es" ? region.type === "spain-federal" : region.type === "federal" || region.type === "state");
   const selectedRegion = regions.find((region) => region.slug === regionSlug) ?? regions[0];
@@ -6332,6 +6335,41 @@ function WatchlistPage({ locale, initialCountry = "de", refreshVersion = 0 }) {
     const openGallery = () => setGalleryOpen(true);
     window.addEventListener("pollframe-watchlist-add", openGallery);
     return () => window.removeEventListener("pollframe-watchlist-add", openGallery);
+  }, []);
+
+  useEffect(() => { itemsRef.current = items; }, [items]);
+
+  useLayoutEffect(() => {
+    const before = dragBeforeRects.current;
+    if (!before || !dragSession.current?.active) return;
+    dragBeforeRects.current = null;
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    document.querySelectorAll(".watchlist-v3 .watchlist-grid > [data-watch-id]").forEach((card) => {
+      if (card.dataset.watchId === dragId.current) return;
+      const previous = before.get(card.dataset.watchId);
+      if (!previous) return;
+      const current = card.getBoundingClientRect();
+      const deltaX = previous.left - current.left;
+      const deltaY = previous.top - current.top;
+      if (Math.abs(deltaX) < 1 && Math.abs(deltaY) < 1) return;
+      card.getAnimations().filter((animation) => animation.id === "watchlist-reorder").forEach((animation) => animation.cancel());
+      if (!reduceMotion) {
+        const animation = card.animate([
+          { transform: `translate3d(${deltaX}px, ${deltaY}px, 0)` },
+          { transform: "translate3d(0, 0, 0)" },
+        ], { duration: 235, easing: "cubic-bezier(.2,.78,.2,1)" });
+        animation.id = "watchlist-reorder";
+      }
+    });
+  }, [cards]);
+
+  useEffect(() => () => {
+    const session = dragSession.current;
+    if (session?.frame) cancelAnimationFrame(session.frame);
+    if (session?.holdTimer) window.clearTimeout(session.holdTimer);
+    session?.detachReleaseListeners?.();
+    session?.shell?.remove();
+    document.documentElement.classList.remove("watch-reordering");
   }, []);
 
   useEffect(() => {
@@ -6443,7 +6481,11 @@ function WatchlistPage({ locale, initialCountry = "de", refreshVersion = 0 }) {
       const { history, ...lastSnapshot } = card.snapshot;
       return { ...item, lastSnapshot };
     });
-    try { window.localStorage.setItem(watchlistStorageKey(initialCountry), JSON.stringify(updated.slice(0, 30))); } catch { /* local-only */ }
+    // A live insertion preview is deliberately temporary. Persist only when no
+    // drag is active; pointer release writes the final order in one operation.
+    if (!dragSession.current?.active) {
+      try { window.localStorage.setItem(watchlistStorageKey(initialCountry), JSON.stringify(updated.slice(0, 30))); } catch { /* local-only */ }
+    }
   }, [items, datasets, locale, initialCountry]);
 
   const allSignals = cards.flatMap((card) => card.signals.map((signal) => ({ ...signal, id: `${card.item.id}-${card.snapshot?.date}-${signal.kind}` })));
@@ -6459,28 +6501,234 @@ function WatchlistPage({ locale, initialCountry = "de", refreshVersion = 0 }) {
   const persist = (next) => { writeWatchlist(initialCountry, next); setItems(next); };
   const removeItem = (id) => persist(readSupportedWatchlist(initialCountry).filter((item) => item.id !== id));
   const updateItem = (id, change) => persist(readSupportedWatchlist(initialCountry).map((item) => item.id === id ? { ...item, ...change } : item));
-  const reorderItem = (sourceId, targetId) => {
-    if (!sourceId || sourceId === targetId) return;
-    const next = [...readSupportedWatchlist(initialCountry)];
+  const captureWatchRects = () => new Map([...document.querySelectorAll(".watchlist-v3 .watchlist-grid > [data-watch-id]")].map((card) => [card.dataset.watchId, card.getBoundingClientRect()]));
+  const previewReorder = (sourceId, targetId, afterTarget = false) => {
+    if (!sourceId || !targetId || sourceId === targetId) return false;
+    const next = [...itemsRef.current];
     const from = next.findIndex((item) => item.id === sourceId);
-    const to = next.findIndex((item) => item.id === targetId);
-    if (from < 0 || to < 0) return;
+    const targetIndex = next.findIndex((item) => item.id === targetId);
+    if (from < 0 || targetIndex < 0) return false;
     const [moved] = next.splice(from, 1);
-    next.splice(to, 0, moved);
-    persist(next);
+    let insertion = targetIndex - (from < targetIndex ? 1 : 0) + (afterTarget ? 1 : 0);
+    insertion = Math.max(0, Math.min(next.length, insertion));
+    next.splice(insertion, 0, moved);
+    if (next.every((item, index) => item.id === itemsRef.current[index]?.id)) return false;
+    dragBeforeRects.current = captureWatchRects();
+    itemsRef.current = next;
+    setItems(next);
+    return true;
+  };
+  const updateDragPreview = (session) => {
+    if (!session?.active) return;
+    const { clientX, clientY } = session;
+    const x = clientX - session.offsetX;
+    const y = clientY - session.offsetY;
+    session.shell.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+    if (!session.moved) {
+      if (Math.hypot(clientX - session.startX, clientY - session.startY) < 6) return;
+      session.moved = true;
+    }
+    const grid = session.grid ?? document.querySelector(".watchlist-v3 .watchlist-grid");
+    if (!grid) return;
+    const candidates = session.candidates ?? [...grid.querySelectorAll("[data-watch-id]")].filter((card) => card.dataset.watchId !== session.id);
+    let target = document.elementFromPoint(clientX, clientY)?.closest?.("[data-watch-id]");
+    if (!target || target.dataset.watchId === session.id) {
+      target = candidates.reduce((nearest, card) => {
+        const rect = card.getBoundingClientRect();
+        const distance = ((rect.left + rect.width / 2) - clientX) ** 2 + ((rect.top + rect.height / 2) - clientY) ** 2;
+        return !nearest || distance < nearest.distance ? { card, distance } : nearest;
+      }, null)?.card;
+    }
+    if (!target) return;
+    const rect = target.getBoundingClientRect();
+    const gridRect = grid.getBoundingClientRect();
+    const verticalEdgeTarget = clientY < rect.top + rect.height * .28 || clientY > rect.bottom - rect.height * .28;
+    const compactRowTarget = !verticalEdgeTarget && rect.width < gridRect.width * .72 && clientY >= rect.top && clientY <= rect.bottom;
+    const axisPosition = compactRowTarget ? clientX : clientY;
+    const axisMiddle = compactRowTarget ? rect.left + rect.width / 2 : rect.top + rect.height / 2;
+    const axisSize = compactRowTarget ? rect.width : rect.height;
+    const calmZone = Math.min(compactRowTarget ? 17 : 22, axisSize * .13);
+    if (Math.abs(axisPosition - axisMiddle) < calmZone) return;
+    const afterTarget = axisPosition > axisMiddle;
+    const slot = `${target.dataset.watchId}:${afterTarget ? "after" : "before"}`;
+    const now = performance.now();
+    const movementSinceReorder = session.lastReorderPointer
+      ? Math.hypot(clientX - session.lastReorderPointer.x, clientY - session.lastReorderPointer.y)
+      : Number.POSITIVE_INFINITY;
+    const reorderTravel = session.pointerType === "touch" ? 14 : 10;
+    if (slot === session.lastSlot || now - session.lastReorder < 72 || movementSinceReorder < reorderTravel) return;
+    if (previewReorder(session.id, target.dataset.watchId, afterTarget)) {
+      session.lastSlot = slot;
+      session.lastReorder = now;
+      session.lastReorderPointer = { x: clientX, y: clientY };
+    }
+  };
+  const runDragFrame = () => {
+    const session = dragSession.current;
+    if (!session?.active) return;
+    session.frame = 0;
+    if (session.positionDirty) {
+      session.positionDirty = false;
+      updateDragPreview(session);
+    }
+    const edge = Math.min(96, window.innerHeight * .17);
+    let velocity = 0;
+    if (session.clientY < edge) velocity = -Math.min(15, ((edge - session.clientY) / edge) * 15);
+    else if (session.clientY > window.innerHeight - edge) velocity = Math.min(15, ((session.clientY - (window.innerHeight - edge)) / edge) * 15);
+    if (velocity && window.scrollY + velocity >= 0) {
+      window.scrollBy(0, velocity);
+      updateDragPreview(session);
+    }
+    if (velocity) session.frame = requestAnimationFrame(runDragFrame);
+  };
+  const activatePointerDrag = (session) => {
+    if (dragSession.current !== session || !session.pending) return;
+    session.pending = false;
+    session.active = true;
+    session.holdTimer = 0;
+    const card = session.card;
+    const rect = card.getBoundingClientRect();
+    const ghost = card.cloneNode(true);
+    ghost.removeAttribute("data-watch-id");
+    ghost.removeAttribute("role");
+    ghost.removeAttribute("tabindex");
+    ghost.setAttribute("aria-hidden", "true");
+    ghost.classList.remove("is-dragging");
+    ghost.classList.add("watch-card-drag-ghost");
+    ghost.querySelectorAll("button,a").forEach((control) => control.setAttribute("tabindex", "-1"));
+    const shell = document.createElement("div");
+    shell.className = "watch-card-drag-shell";
+    shell.style.width = `${rect.width}px`;
+    shell.style.height = `${rect.height}px`;
+    shell.append(ghost);
+    document.body.append(shell);
+    session.originalRect = rect;
+    session.originalScrollY = window.scrollY;
+    session.shell = shell;
+    session.ghost = ghost;
+    session.grid = card.closest(".watchlist-grid");
+    session.candidates = session.grid ? [...session.grid.querySelectorAll("[data-watch-id]")].filter((candidate) => candidate.dataset.watchId !== session.id) : null;
+    session.offsetX = session.clientX - rect.left;
+    session.offsetY = session.clientY - rect.top;
+    session.startX = session.clientX;
+    session.startY = session.clientY;
+    session.moved = false;
+    session.lastSlot = null;
+    session.lastReorder = 0;
+    session.lastReorderPointer = null;
+    session.positionDirty = true;
+    dragId.current = session.id;
+    setDraggingId(session.id);
+    document.documentElement.classList.add("watch-reordering");
+    try { session.captureElement?.setPointerCapture?.(session.pointerId); } catch { /* pointer may already be captured */ }
+    session.frame = requestAnimationFrame(runDragFrame);
+  };
+  const beginPointerDrag = (event, itemId) => {
+    if (event.pointerType === "mouse" && event.button !== 0) return;
+    if (event.target.closest(".watch-remove,.watch-card-size-picker,.party-info-trigger,a,input,select,textarea")) return;
+    if (dragSession.current) endPointerDrag(false);
+    const card = event.currentTarget.closest("[data-watch-id]");
+    if (!card) return;
+    const session = {
+      active: false,
+      pending: true,
+      id: itemId,
+      pointerId: event.pointerId,
+      pointerType: event.pointerType,
+      card,
+      captureElement: event.currentTarget,
+      originalItems: [...itemsRef.current],
+      clientX: event.clientX,
+      clientY: event.clientY,
+      pressX: event.clientX,
+      pressY: event.clientY,
+      frame: 0,
+      holdTimer: 0,
+    };
+    const finishFromPointer = (releaseEvent) => {
+      if (releaseEvent.pointerId === session.pointerId) endPointerDrag(true);
+    };
+    const cancelFromPointer = (cancelEvent) => {
+      if (cancelEvent.pointerId === session.pointerId) endPointerDrag(false);
+    };
+    const finishFromTouch = () => endPointerDrag(true);
+    const blockTouchMove = (moveEvent) => { if (session.active) moveEvent.preventDefault(); };
+    session.detachReleaseListeners = () => {
+      window.removeEventListener("pointerup", finishFromPointer, true);
+      window.removeEventListener("pointercancel", cancelFromPointer, true);
+      window.removeEventListener("touchend", finishFromTouch, true);
+      window.removeEventListener("touchmove", blockTouchMove, true);
+    };
+    window.addEventListener("pointerup", finishFromPointer, true);
+    window.addEventListener("pointercancel", cancelFromPointer, true);
+    window.addEventListener("touchend", finishFromTouch, { capture: true, passive: true });
+    window.addEventListener("touchmove", blockTouchMove, { capture: true, passive: false });
+    dragSession.current = session;
+    try { session.captureElement.setPointerCapture?.(event.pointerId); } catch { /* synthetic or already captured pointer */ }
+    session.holdTimer = window.setTimeout(() => activatePointerDrag(session), 185);
   };
   const pointerMove = (event) => {
-    if (!dragId.current) return;
-    const target = document.elementFromPoint(event.clientX, event.clientY)?.closest?.("[data-watch-id]");
-    const targetId = target?.dataset.watchId;
-    if (!targetId || targetId === dragId.current) { dragTarget.current = { id: null, since: 0 }; return; }
-    const now = performance.now();
-    if (dragTarget.current.id !== targetId) { dragTarget.current = { id: targetId, since: now }; return; }
-    if (now - dragTarget.current.since < 110) return;
-    reorderItem(dragId.current, targetId);
-    dragTarget.current = { id: null, since: now };
+    const session = dragSession.current;
+    if (!session || event.pointerId !== session.pointerId) return;
+    session.clientX = event.clientX;
+    session.clientY = event.clientY;
+    if (session.pending) {
+      if (Math.hypot(event.clientX - session.pressX, event.clientY - session.pressY) > 9) endPointerDrag(false);
+      return;
+    }
+    if (!session.active) return;
+    event.preventDefault();
+    session.positionDirty = true;
+    if (!session.frame) session.frame = requestAnimationFrame(runDragFrame);
   };
-  const endPointerDrag = () => { dragId.current = null; dragTarget.current = { id: null, since: 0 }; setDraggingId(null); document.documentElement.classList.remove("watch-reordering"); };
+  const endPointerDrag = (commit = true) => {
+    const session = dragSession.current;
+    if (!session) return;
+    if (session.holdTimer) window.clearTimeout(session.holdTimer);
+    if (!session.active) {
+      session.detachReleaseListeners?.();
+      try { session.captureElement?.releasePointerCapture?.(session.pointerId); } catch { /* already released */ }
+      dragSession.current = null;
+      return;
+    }
+    session.active = false;
+    if (session.frame) cancelAnimationFrame(session.frame);
+    session.detachReleaseListeners?.();
+    try { session.captureElement?.releasePointerCapture?.(session.pointerId); } catch { /* already released */ }
+    const finalItems = commit ? [...itemsRef.current] : [...session.originalItems];
+    itemsRef.current = finalItems;
+    if (commit) writeWatchlist(initialCountry, finalItems);
+    else setItems(finalItems);
+    const destination = commit
+      ? document.querySelector(`.watchlist-v3 [data-watch-id="${CSS.escape(session.id)}"]`)?.getBoundingClientRect()
+      : { left: session.originalRect.left, top: session.originalRect.top - (window.scrollY - session.originalScrollY) };
+    document.documentElement.classList.remove("watch-reordering");
+    dragId.current = null;
+    dragSession.current = null;
+    if (destination && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      session.shell.style.transition = "transform 190ms cubic-bezier(.2,.8,.2,1), opacity 190ms ease";
+      session.shell.style.transform = `translate3d(${destination.left}px, ${destination.top}px, 0)`;
+      session.shell.style.opacity = ".28";
+      session.ghost.classList.add("is-dropping");
+      window.setTimeout(() => { session.shell.remove(); setDraggingId(null); }, 200);
+    } else {
+      session.shell.remove();
+      setDraggingId(null);
+    }
+    const position = finalItems.findIndex((item) => item.id === session.id) + 1;
+    setDragAnnouncement(commit ? wl(`Widget an Position ${position} abgelegt`, `Widget placed at position ${position}`, `Widget colocado en la posición ${position}`) : wl("Verschieben abgebrochen", "Move cancelled", "Movimiento cancelado"));
+  };
+  const keyboardReorder = (itemId, direction) => {
+    const next = [...itemsRef.current];
+    const from = next.findIndex((item) => item.id === itemId);
+    const to = Math.max(0, Math.min(next.length - 1, from + direction));
+    if (from < 0 || from === to) return;
+    const [moved] = next.splice(from, 1);
+    next.splice(to, 0, moved);
+    itemsRef.current = next;
+    persist(next);
+    setDragAnnouncement(wl(`Widget an Position ${to + 1} verschoben`, `Widget moved to position ${to + 1}`, `Widget movido a la posición ${to + 1}`));
+  };
   const toggleParty = (id) => setPartyIds((current) => type === "party" ? [id] : current.includes(id) ? (current.length > 1 ? current.filter((entry) => entry !== id) : current) : [...current, id]);
 
   const layoutOptions = type === "party" ? [
@@ -6549,6 +6797,7 @@ function WatchlistPage({ locale, initialCountry = "de", refreshVersion = 0 }) {
     <nav className="region-breadcrumb"><BackButton fallback={initialCountry === "uk" ? "/?country=uk" : initialCountry === "es" ? "/?country=es" : "/"} label={locale === "es" ? "Atrás" : isGerman ? "Zurück" : "Back"} /><span>/</span><strong>{initialCountry === "uk" ? "UK" : initialCountry === "es" ? "España" : "Deutschland"}</strong></nav>
     <section className="watchlist-hero"><div><p className="section-label">{initialCountry === "uk" ? "United Kingdom" : initialCountry === "es" ? "España" : "Deutschland"}</p><h1>{wl("Watchlist", "Watchlist", "Seguimiento")}</h1></div><div className="watchlist-hero-actions">{cards.length > 0 && <button className={`watch-edit-toggle ${editMode ? "active" : ""}`} type="button" onClick={() => setEditMode((value) => !value)}><Icon name={editMode ? "check" : "sliders"} size={18} />{editMode ? wl("Fertig", "Done", "Listo") : wl("Bearbeiten", "Edit", "Editar")}</button>}<button className="watchlist-add-button" type="button" onClick={() => setGalleryOpen(true)} aria-label={wl("Watchlist-Eintrag hinzufügen", "Add Watchlist item", "Añadir elemento")}><Icon name="plus" size={22} /></button></div></section>
     {allSignals.length > 0 && <section className="watchlist-alerts"><p className="section-label">{isGerman ? "Neu seit dem letzten Öffnen" : "New since last opened"}</p>{allSignals.map((signal) => <div key={signal.id}><Icon name={signal.kind === "majority" ? "check" : "bell"} size={17} /><span>{signal.text}</span></div>)}</section>}
+    <p className="sr-only" aria-live="polite" aria-atomic="true">{dragAnnouncement}</p>
     <section className="watchlist-grid" aria-label="Watchlist">{cards.length ? cards.map(({ item, region, definitions, snapshot, previous }, cardIndex) => {
       const layout = defaultWatchLayout(item, cardIndex);
       const names = definitions.filter((party) => item.partyIds?.includes(party.id));
@@ -6559,8 +6808,8 @@ function WatchlistPage({ locale, initialCountry = "de", refreshVersion = 0 }) {
       const approvalLeader = approvalCountry?.series?.leader?.at(-1);
       const approvalGovernment = approvalCountry?.series?.government?.at(-1);
       const watchAreaName = item.type === "approval" ? (initialCountry === "uk" ? "UK" : initialCountry === "es" ? "España" : "Deutschland") : region.name === "Deutschland" ? "Bundestag" : region.name;
-      return <article key={item.id} data-watch-id={item.id} className={`watch-card watch-card-${layout} watch-card-${item.type} ${draggingId === item.id ? "is-dragging" : ""}`} role={!editMode ? "link" : undefined} tabIndex={!editMode ? 0 : undefined} onClick={(event) => { if (!editMode && !event.target.closest("button")) navigateInApp(target); }} onKeyDown={(event) => { if (!editMode && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); navigateInApp(target); } }} draggable={editMode} onDragStart={() => { dragId.current = item.id; setDraggingId(item.id); }} onDragOver={(event) => { event.preventDefault(); reorderItem(dragId.current, item.id); }} onDragEnd={endPointerDrag}>
-        {editMode && <div className="watch-card-editbar"><button className="watch-drag-handle" type="button" onPointerDown={(event) => { dragId.current = item.id; setDraggingId(item.id); event.currentTarget.setPointerCapture?.(event.pointerId); document.documentElement.classList.add("watch-reordering"); }} onPointerMove={pointerMove} onPointerUp={endPointerDrag} onPointerCancel={endPointerDrag}><Icon name="grip" size={20} /><span>{wl("Ziehen", "Drag", "Arrastrar")}</span></button><button className="watch-remove" type="button" onClick={() => removeItem(item.id)} aria-label={wl("Widget entfernen", "Remove widget", "Eliminar widget")}><Icon name="trash" size={18} /></button></div>}
+      return <article key={item.id} data-watch-id={item.id} className={`watch-card watch-card-${layout} watch-card-${item.type} ${draggingId === item.id ? "is-dragging" : ""}`} role={!editMode ? "link" : undefined} tabIndex={!editMode ? 0 : undefined} onClick={(event) => { if (!editMode && !event.target.closest("button")) navigateInApp(target); }} onKeyDown={(event) => { if (!editMode && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); navigateInApp(target); } }} onPointerDown={editMode ? (event) => beginPointerDrag(event, item.id) : undefined} onPointerMove={editMode ? pointerMove : undefined} onPointerUp={editMode ? () => endPointerDrag(true) : undefined} onPointerCancel={editMode ? () => endPointerDrag(false) : undefined} onContextMenu={editMode ? (event) => event.preventDefault() : undefined}>
+        {editMode && <div className="watch-card-editbar"><button className="watch-drag-handle" type="button" aria-label={wl(`Widget ${cardIndex + 1} verschieben. Gedrückt halten und ziehen oder Pfeiltasten verwenden`, `Move widget ${cardIndex + 1}. Press, hold and drag or use arrow keys`, `Mover widget ${cardIndex + 1}. Mantén pulsado y arrastra o usa las flechas`)} onKeyDown={(event) => { if (["ArrowUp", "ArrowLeft", "ArrowDown", "ArrowRight"].includes(event.key)) { event.preventDefault(); keyboardReorder(item.id, ["ArrowUp", "ArrowLeft"].includes(event.key) ? -1 : 1); } else if (event.key === "Escape") endPointerDrag(false); }}><Icon name="grip" size={20} /><span>{wl("Verschieben", "Move", "Mover")}</span></button><button className="watch-remove" type="button" onClick={() => removeItem(item.id)} aria-label={wl("Widget entfernen", "Remove widget", "Eliminar widget")}><Icon name="trash" size={18} /></button></div>}
         <div className="watch-card-top"><span>{region.type === "uk-federal" ? "🇬🇧" : region.type === "spain-federal" ? "🇪🇸" : "🇩🇪"} {watchAreaName}</span>{!editMode && <span className="watch-open-arrow">↗</span>}</div>
         {item.type === "snapshot" && <><div className="watch-snapshot-title"><h3>{watchLatestPollLabel(locale)}</h3></div><div className="watch-snapshot-list">{snapshot?.leaders?.slice(0, layout === "large" ? 5 : 4).map((leader) => { const party = definitions.find((entry) => entry.id === leader.id); const previousLeader = previous?.leaders?.find((entry) => entry.id === leader.id); const leaderDelta = Number.isFinite(previousLeader?.value) ? leader.value - previousLeader.value : null; return <span key={leader.id}><i style={{ background: party?.color }} /><b>{party?.name}</b><strong>{leader.value.toLocaleString(getNumberLocale(locale), { maximumFractionDigits: 1 })}%</strong>{Number.isFinite(leaderDelta) && Math.abs(leaderDelta) >= .1 && <em className={leaderDelta > 0 ? "up" : "down"} title={wl("Seit dem letzten Öffnen", "Since last opened", "Desde la última apertura")}>{leaderDelta > 0 ? "+" : ""}{leaderDelta.toLocaleString(getNumberLocale(locale), { maximumFractionDigits: 1 })}</em>}</span>; })}</div></>}
         {item.type === "party" && <><div className="watch-card-parties"><i style={{ background: names[0]?.color }} /><h3>{names[0]?.name}</h3></div><div className="watch-card-value"><div className="watch-current-value"><small>{watchLatestPollLabel(locale)}</small><strong>{snapshot?.value?.toLocaleString(getNumberLocale(locale), { maximumFractionDigits: 1 })}%</strong></div>{Number.isFinite(delta) && Math.abs(delta) >= .1 && <span className={delta > 0 ? "up" : "down"} title={wl("Seit dem letzten Öffnen", "Since last opened", "Desde la última apertura")} aria-label={`${delta > 0 ? "+" : ""}${delta.toLocaleString(getNumberLocale(locale), { maximumFractionDigits: 1 })} ${wl("Prozentpunkte seit dem letzten Öffnen", "percentage points since last opened", "puntos porcentuales desde la última apertura")}`}>{delta > 0 ? "+" : ""}{delta.toLocaleString(getNumberLocale(locale), { maximumFractionDigits: 1 })} pp</span>}</div><WatchSparkline values={snapshot?.history} color={names[0]?.color} /></>}
