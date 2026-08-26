@@ -1408,16 +1408,22 @@ function useBodyScrollLock(active) {
   }, [active]);
 }
 
+const OPEN_MODAL_STACK = [];
+
 function useModalFocus(active, onClose) {
   const dialogRef = useRef(null);
+  const modalIdRef = useRef(Symbol("modal"));
   const closeRef = useRef(onClose);
   closeRef.current = onClose;
   useEffect(() => {
     if (!active) return undefined;
+    const modalId = modalIdRef.current;
+    OPEN_MODAL_STACK.push(modalId);
     const previouslyFocused = document.activeElement;
     const focusableSelector = 'button:not([disabled]),a[href],input:not([disabled]),select:not([disabled]),textarea:not([disabled]),iframe:not([tabindex="-1"]),[tabindex]:not([tabindex="-1"])';
     window.requestAnimationFrame(() => dialogRef.current?.querySelector(focusableSelector)?.focus());
     const handleKeyDown = (event) => {
+      if (OPEN_MODAL_STACK.at(-1) !== modalId) return;
       if (event.key === "Escape") {
         event.preventDefault();
         closeRef.current?.();
@@ -1444,6 +1450,8 @@ function useModalFocus(active, onClose) {
     document.addEventListener("keydown", handleKeyDown);
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
+      const stackIndex = OPEN_MODAL_STACK.lastIndexOf(modalId);
+      if (stackIndex >= 0) OPEN_MODAL_STACK.splice(stackIndex, 1);
       previouslyFocused?.focus?.();
     };
   }, [active]);
@@ -1766,6 +1774,85 @@ function formatDataAge(date, locale) {
   return days === 0 ? "The data is from today" : `The data is ${days} ${days === 1 ? "day" : "days"} old`;
 }
 
+function calendarDaysAgo(date) {
+  const datePart = String(date ?? "").slice(0, 10);
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(datePart);
+  if (!match) return 0;
+  const sourceDay = Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+  const now = new Date();
+  const today = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+  return Math.max(0, Math.round((today - sourceDay) / DAY));
+}
+
+function formatCurrentRecency(date, locale, kind = "published") {
+  const hasTime = /T\d{2}:\d{2}/.test(String(date ?? ""));
+  const elapsedHours = hasTime ? Math.max(0, Math.floor((Date.now() - parseDate(date)) / (60 * 60 * 1000))) : null;
+  const days = calendarDaysAgo(date);
+
+  if (locale === "es") {
+    if (hasTime && elapsedHours < 24) return kind === "published" ? `Publicado hace ${elapsedHours} ${elapsedHours === 1 ? "hora" : "horas"}` : kind === "fieldwork" ? `Trabajo de campo finalizado hace ${elapsedHours} ${elapsedHours === 1 ? "hora" : "horas"}` : `Datos actualizados hace ${elapsedHours} ${elapsedHours === 1 ? "hora" : "horas"}`;
+    if (kind === "published") return days === 0 ? "Publicado hoy" : days === 1 ? "Publicado ayer" : `Publicado hace ${days} días`;
+    if (kind === "fieldwork") return days === 0 ? "Trabajo de campo finalizado hoy" : days === 1 ? "Trabajo de campo finalizado ayer" : `Trabajo de campo finalizado hace ${days} días`;
+    return days === 0 ? "Datos hasta hoy" : days === 1 ? "Datos hasta ayer" : `Datos hasta hace ${days} días`;
+  }
+  if (locale === "de") {
+    if (hasTime && elapsedHours < 24) return kind === "published" ? `Vor ${elapsedHours} ${elapsedHours === 1 ? "Stunde" : "Stunden"} veröffentlicht` : kind === "fieldwork" ? `Befragung vor ${elapsedHours} ${elapsedHours === 1 ? "Stunde" : "Stunden"} beendet` : `Vor ${elapsedHours} ${elapsedHours === 1 ? "Stunde" : "Stunden"} aktualisiert`;
+    if (kind === "published") return days === 0 ? "Heute veröffentlicht" : days === 1 ? "Gestern veröffentlicht" : `Vor ${days} Tagen veröffentlicht`;
+    if (kind === "fieldwork") return days === 0 ? "Befragung heute beendet" : days === 1 ? "Befragung gestern beendet" : `Befragung vor ${days} Tagen beendet`;
+    return days === 0 ? "Datenstand heute" : days === 1 ? "Datenstand gestern" : `Datenstand vor ${days} Tagen`;
+  }
+  if (hasTime && elapsedHours < 24) return kind === "published" ? `Published ${elapsedHours} ${elapsedHours === 1 ? "hour" : "hours"} ago` : kind === "fieldwork" ? `Fieldwork ended ${elapsedHours} ${elapsedHours === 1 ? "hour" : "hours"} ago` : `Updated ${elapsedHours} ${elapsedHours === 1 ? "hour" : "hours"} ago`;
+  if (kind === "published") return days === 0 ? "Published today" : days === 1 ? "Published yesterday" : `Published ${days} days ago`;
+  if (kind === "fieldwork") return days === 0 ? "Fieldwork ended today" : days === 1 ? "Fieldwork ended yesterday" : `Fieldwork ended ${days} days ago`;
+  return days === 0 ? "Data through today" : days === 1 ? "Data through yesterday" : `Data through ${days} days ago`;
+}
+
+function currentPollRecencyKind(region, current) {
+  if (region.type === "uk-federal" && current.synthetic) return "dataThrough";
+  if (["uk-federal", "spain-federal"].includes(region.type)) return "fieldwork";
+  return "published";
+}
+
+function currentPollDetails(locale, current, statusLabel, recencyKind) {
+  const exactDate = formatDate(current.date, locale, { year: true });
+  const [fieldworkStart, fieldworkEnd] = current.fieldwork ?? [];
+  const institute = statusLabel && !/trend|tendencia/i.test(statusLabel) ? statusLabel : null;
+  const sample = Number.isFinite(current.sample)
+    ? current.sample.toLocaleString(getNumberLocale(locale))
+    : null;
+  const method = current.method && !/^(standard\b|published national voting-intention poll\b)/i.test(current.method)
+    ? current.method
+    : null;
+  const fieldworkRange = fieldworkStart && fieldworkEnd
+    ? fieldworkStart === fieldworkEnd
+      ? formatDate(fieldworkEnd, locale, { year: true })
+      : `${formatDate(fieldworkStart, locale, { year: true })} – ${formatDate(fieldworkEnd, locale, { year: true })}`
+    : null;
+
+  if (locale === "es") {
+    if (recencyKind === "dataThrough") return `El último punto de la tendencia incluye datos hasta el ${exactDate}. Es una media ponderada de 14 días, no una encuesta individual.`;
+    const first = recencyKind === "published"
+      ? `La encuesta${institute ? ` de ${institute}` : ""} se publicó el ${exactDate}.`
+      : `La encuesta${institute ? ` de ${institute}` : ""} terminó su trabajo de campo el ${exactDate}.`;
+    const details = [fieldworkRange ? `Trabajo de campo: ${fieldworkRange}` : null, sample ? `muestra: ${sample} personas` : null, method ? `método: ${method}` : null].filter(Boolean).join("; ");
+    return details ? `${first} ${details}.` : first;
+  }
+  if (locale === "de") {
+    if (recencyKind === "dataThrough") return `Der jüngste Trendpunkt berücksichtigt Daten bis zum ${exactDate}. Er ist ein gewichteter 14-Tage-Durchschnitt und keine einzelne Umfrage.`;
+    const first = recencyKind === "published"
+      ? `Die Umfrage${institute ? ` von ${institute}` : ""} wurde am ${exactDate} veröffentlicht.`
+      : `Die Befragung${institute ? ` von ${institute}` : ""} endete am ${exactDate}.`;
+    const details = [fieldworkRange ? `Befragungszeitraum: ${fieldworkRange}` : null, sample ? `Stichprobe: ${sample} Personen` : null, method ? `Methode: ${method}` : null].filter(Boolean).join("; ");
+    return details ? `${first} ${details}.` : first;
+  }
+  if (recencyKind === "dataThrough") return `The latest trend point includes data through ${exactDate}. It is a weighted 14-day average, not an individual poll.`;
+  const first = recencyKind === "published"
+    ? `The poll${institute ? ` by ${institute}` : ""} was published on ${exactDate}.`
+    : `Fieldwork for the poll${institute ? ` by ${institute}` : ""} ended on ${exactDate}.`;
+  const details = [fieldworkRange ? `Fieldwork: ${fieldworkRange}` : null, sample ? `sample: ${sample} people` : null, method ? `method: ${method}` : null].filter(Boolean).join("; ");
+  return details ? `${first} ${details}.` : first;
+}
+
 function averageAtDate(polls, pollsterIds, date, partyIds) {
   const target = parseDate(date);
   const cutoff = target - (45 * DAY);
@@ -1808,7 +1895,16 @@ function latestPollAtOrBefore(polls, pollsterIds, date, partyIds) {
   const results = Object.fromEntries(partyIds
     .map((partyId) => [partyId, latest.results?.[partyId]])
     .filter(([, value]) => Number.isFinite(value)));
-  return { results, pollsterCount: 1, pollster: latest.pollster, date: latest.date };
+  return {
+    results,
+    pollsterCount: 1,
+    pollster: latest.pollster,
+    date: latest.date,
+    fieldwork: latest.fieldwork ?? null,
+    sample: latest.sample ?? null,
+    method: latest.method ?? null,
+    synthetic: Boolean(latest.synthetic),
+  };
 }
 
 function makeAverageSeries(polls, pollsterIds, dates, partyIds) {
@@ -2110,18 +2206,19 @@ function mainChartInfo(locale, regionType, mode, weightedUk = false) {
   };
 }
 
-function snapshotInfo(locale, weightedUk = false) {
+function snapshotInfo(locale, recencyKind = "published") {
+  const weightedUk = recencyKind === "dataThrough";
   if (locale === "es") return {
     title: "Qué muestra la medición actual",
-    paragraphs: [weightedUk ? "Para Reino Unido se muestra la última medición de la media de 14 días ponderada por calidad de UK Election Data Vault." : "Cada barra muestra la encuesta publicada más recientemente entre los institutos seleccionados, sin mezclarla con encuestas anteriores.", "La cifra de cambio se compara con la última encuesta disponible en la fecha situada al menos siete días antes; por eso el intervalo puede ser algo mayor."],
+    paragraphs: [weightedUk ? "Para Reino Unido se muestra la última medición de la media de 14 días ponderada por calidad de UK Election Data Vault." : recencyKind === "fieldwork" ? "Cada barra muestra la encuesta seleccionada cuyo trabajo de campo terminó más recientemente. No se mezcla con encuestas anteriores." : "Cada barra muestra la encuesta publicada más recientemente entre los institutos seleccionados, sin mezclarla con encuestas anteriores.", "La cifra de cambio se compara con la última encuesta disponible en la fecha situada al menos siete días antes; por eso el intervalo puede ser algo mayor."],
   };
   if (locale === "de") return {
     title: "Was zeigt der aktuelle Stand?",
-    paragraphs: [weightedUk ? "Für das Vereinigte Königreich wird der jüngste Messpunkt des qualitätsgewichteten 14-Tage-Trends des UK Election Data Vault gezeigt." : "Jeder Balken zeigt die zuletzt veröffentlichte Umfrage der ausgewählten Institute. Ältere Umfragen werden hier nicht eingemittelt.", "Die Veränderung vergleicht sie mit der letzten verfügbaren Umfrage am oder vor dem Stichtag vor sieben Tagen. Der tatsächliche Abstand kann deshalb etwas größer sein."],
+    paragraphs: [weightedUk ? "Für das Vereinigte Königreich wird der jüngste Messpunkt des qualitätsgewichteten 14-Tage-Trends des UK Election Data Vault gezeigt." : recencyKind === "fieldwork" ? "Jeder Balken zeigt die ausgewählte Umfrage mit dem jüngsten Ende der Befragung. Ältere Umfragen werden hier nicht eingemittelt." : "Jeder Balken zeigt die zuletzt veröffentlichte Umfrage der ausgewählten Institute. Ältere Umfragen werden hier nicht eingemittelt.", "Die Veränderung vergleicht sie mit der letzten verfügbaren Umfrage am oder vor dem Stichtag vor sieben Tagen. Der tatsächliche Abstand kann deshalb etwas größer sein."],
   };
   return {
     title: "What does the latest reading show?",
-    paragraphs: [weightedUk ? "For the UK, this is the latest reading of UK Election Data Vault’s quality-weighted 14-day trend." : "Each bar shows the most recently published poll among the selected pollsters. Older polls are not averaged into this snapshot.", "The change compares it with the latest poll available on or before the date seven days earlier, so the actual interval can be slightly longer."],
+    paragraphs: [weightedUk ? "For the UK, this is the latest reading of UK Election Data Vault’s quality-weighted 14-day trend." : recencyKind === "fieldwork" ? "Each bar shows the selected poll with the most recent fieldwork end date. Older polls are not averaged into this snapshot." : "Each bar shows the most recently published poll among the selected pollsters. Older polls are not averaged into this snapshot.", "The change compares it with the latest poll available on or before the date seven days earlier, so the actual interval can be slightly longer."],
   };
 }
 
@@ -2813,7 +2910,9 @@ function ResultsCard({ t, locale, current, previous, date, partyDefinitions = PA
   const [showAll, setShowAll] = useState(false);
   const exportRef = useRef(null);
   const numberLocale = getNumberLocale(locale);
-  const info = snapshotInfo(locale, region.type === "uk-federal" && Boolean(statusLabel));
+  const recencyKind = currentPollRecencyKind(region, current);
+  const info = snapshotInfo(locale, recencyKind);
+  const pollDetails = currentPollDetails(locale, current, statusLabel, recencyKind);
   const rows = partyDefinitions
     .map((party) => ({
       ...party,
@@ -2833,13 +2932,13 @@ function ResultsCard({ t, locale, current, previous, date, partyDefinitions = PA
 
   return (
     <section ref={exportRef} className={`results-card ${region.type === "spain-federal" ? "spain-results-card" : ""}`} aria-labelledby="snapshot-title">
-      <small className="widget-data-age">{formatDataAge(date, locale)}</small>
+      <small className="widget-data-age">{formatCurrentRecency(date, locale, recencyKind)}</small>
       <div className="card-heading">
         <div className="widget-info-heading">
-          <GraphInfoPopover locale={locale} title={info.title} paragraphs={[...info.paragraphs, comparisonLabel]} className="graph-info-compact" dataDate={date} />
+          <GraphInfoPopover locale={locale} title={info.title} paragraphs={[...info.paragraphs, pollDetails, comparisonLabel]} className="graph-info-compact" />
           <div>
-            <p className="section-label">{t.current}</p>
-            <h2 id="snapshot-title" className="snapshot-date" hidden={region.type === "spain-federal"}>{formatDate(date, locale, { year: true })}</h2>
+            {region.type === "spain-federal" && <p id="snapshot-title" className="section-label">{t.current}</p>}
+            <h2 id={region.type === "spain-federal" ? undefined : "snapshot-title"} className="snapshot-date" hidden={region.type === "spain-federal"}>{t.current}</h2>
           </div>
         </div>
         <div className="card-heading-actions"><span className="status-dot"><i /> {statusLabel ?? (locale === "es" ? "Última encuesta" : locale === "de" ? "Letzte Umfrage" : "Latest poll")}</span>{!embed && <><WatchlistStar country={region.type === "uk-federal" ? "uk" : region.type === "spain-federal" ? "es" : "de"} regionSlug={region.slug} regionName={region.name} type="snapshot" partyIds={[]} label={`${region.name} · ${t.current}`} /><WidgetShareTools widget="current-average" elementRef={exportRef} filename={`pollframe-${region.slug}-current-average`} title={t.current} subtitle={region.name} locale={locale} t={t} region={region} selectedPollsters={selectedPollsters} /></>}</div>
@@ -3976,8 +4075,76 @@ function freezeExportStyles(root) {
   });
 }
 
-async function downloadElementPng({ element, filename, title, subtitle, locale, credit = "DAWUM · ODbL 1.0 · de.pollframe.workers.dev" }) {
+const PNG_EXPORT_PRESETS = {
+  content: { width: 1600, height: null, pixelRatio: 2 },
+  landscape: { width: 1920, height: 1080, pixelRatio: 1 },
+  square: { width: 1080, height: 1080, pixelRatio: 1 },
+  portrait: { width: 1080, height: 1350, pixelRatio: 1 },
+  story: { width: 1080, height: 1920, pixelRatio: 1 },
+};
+
+function pngExportCopy(locale) {
+  if (locale === "de") return {
+    title: "PNG exportieren",
+    intro: "Wähle den Zuschnitt passend zum späteren Einsatz. Pollframe passt die vollständige ausgewählte Grafik in das Bild ein.",
+    content: "Vollständiger Inhalt",
+    contentMeta: "automatische Höhe · 3200 px breit",
+    landscape: "Breitbild",
+    landscapeMeta: "16:9 · 1920 × 1080",
+    square: "Quadrat",
+    squareMeta: "1:1 · 1080 × 1080",
+    portrait: "Feed-Hochformat",
+    portraitMeta: "4:5 · 1080 × 1350",
+    story: "Story",
+    storyMeta: "9:16 · 1080 × 1920",
+    download: "PNG herunterladen",
+    share: "Teilen / in Fotos sichern",
+    preparing: "PNG wird erstellt …",
+    ready: "PNG ist bereit.",
+    shared: "Systemmenü geöffnet.",
+    failed: "Der PNG-Export ist fehlgeschlagen.",
+    shareHelp: "Auf iPhone und iPad kannst du im Systemmenü „Bild sichern“ wählen; auf unterstützten Macs kannst du es dort teilen oder zu Fotos hinzufügen.",
+  };
+  if (locale === "es") return {
+    title: "Exportar PNG",
+    intro: "Elige el formato según dónde quieras publicar la imagen. Pollframe encaja el gráfico seleccionado completo.",
+    content: "Contenido completo", contentMeta: "altura automática · 3200 px de ancho",
+    landscape: "Horizontal", landscapeMeta: "16:9 · 1920 × 1080",
+    square: "Cuadrado", squareMeta: "1:1 · 1080 × 1080",
+    portrait: "Vertical para feed", portraitMeta: "4:5 · 1080 × 1350",
+    story: "Historia", storyMeta: "9:16 · 1080 × 1920",
+    download: "Descargar PNG", share: "Compartir / guardar en Fotos",
+    preparing: "Creando PNG…", ready: "El PNG está listo.", shared: "Menú del sistema abierto.", failed: "No se pudo exportar el PNG.",
+    shareHelp: "En iPhone y iPad, el menú del sistema permite guardar la imagen en Fotos; en los Mac compatibles puedes compartirla o añadirla a Fotos.",
+  };
+  return {
+    title: "Export PNG",
+    intro: "Choose a crop for where the image will be used. Pollframe fits the complete selected graphic into the image.",
+    content: "Full content", contentMeta: "automatic height · 3200 px wide",
+    landscape: "Landscape", landscapeMeta: "16:9 · 1920 × 1080",
+    square: "Square", squareMeta: "1:1 · 1080 × 1080",
+    portrait: "Feed portrait", portraitMeta: "4:5 · 1080 × 1350",
+    story: "Story", storyMeta: "9:16 · 1080 × 1920",
+    download: "Download PNG", share: "Share / save to Photos",
+    preparing: "Creating PNG…", ready: "PNG ready.", shared: "System share sheet opened.", failed: "PNG export failed.",
+    shareHelp: "On iPhone and iPad, choose Save Image in the system share sheet. Supported Macs can share it or add it to Photos there.",
+  };
+}
+
+function triggerBlobDownload(blob, filename) {
+  const objectUrl = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.download = filename;
+  link.href = objectUrl;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(objectUrl), 30_000);
+}
+
+async function renderElementPng({ element, filename, title, subtitle, locale, credit = "DAWUM · ODbL 1.0 · de.pollframe.workers.dev", preset = "content" }) {
   if (!element) throw new Error("Missing export element");
+  const format = PNG_EXPORT_PRESETS[preset] ?? PNG_EXPORT_PRESETS.content;
   if (document.fonts?.ready) await document.fonts.ready;
   const host = document.createElement("div");
   host.className = "png-export-host";
@@ -4018,7 +4185,11 @@ async function downloadElementPng({ element, filename, title, subtitle, locale, 
   try {
     await new Promise((resolve) => window.requestAnimationFrame(() => window.requestAnimationFrame(resolve)));
     freezeExportStyles(surface);
-    surface.style.setProperty("width", "1600px");
+    surface.style.setProperty("width", `${format.width}px`);
+    if (format.height) {
+      surface.classList.add("is-fixed-format");
+      surface.style.setProperty("height", `${format.height}px`);
+    }
     clone.style.setProperty("width", "100%");
     clone.style.setProperty("max-width", "none");
     clone.querySelectorAll(".chart-wrap, .party-selector").forEach((node) => node.style.setProperty("overflow", "visible"));
@@ -4026,47 +4197,94 @@ async function downloadElementPng({ element, filename, title, subtitle, locale, 
       node.style.setProperty("width", "100%");
       node.style.setProperty("min-width", "0");
     });
+    await new Promise((resolve) => window.requestAnimationFrame(() => window.requestAnimationFrame(resolve)));
+    if (format.height) {
+      const availableHeight = content.clientHeight;
+      const naturalHeight = clone.getBoundingClientRect().height;
+      const scale = naturalHeight > availableHeight ? Math.max(0.46, availableHeight / naturalHeight) : 1;
+      clone.style.setProperty("transform", `scale(${scale})`);
+      clone.style.setProperty("transform-origin", "top center");
+    }
     const { toBlob } = await import("html-to-image");
     const blob = await toBlob(surface, {
-      width: 1600,
-      pixelRatio: 2.5,
+      width: format.width,
+      ...(format.height ? { height: format.height } : {}),
+      pixelRatio: format.pixelRatio,
       cacheBust: true,
       backgroundColor: "#ffffff",
     });
     if (!blob) throw new Error("PNG renderer returned no image");
-    const objectUrl = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.download = `${safeFilenamePart(filename)}-${new Date().toISOString().slice(0, 10)}.png`;
-    link.href = objectUrl;
-    document.body.append(link);
-    link.click();
-    link.remove();
-    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 30_000);
+    return {
+      blob,
+      filename: `${safeFilenamePart(filename)}-${preset}-${new Date().toISOString().slice(0, 10)}.png`,
+    };
   } finally {
     host.remove();
   }
 }
 
-function PngExportButton({ elementRef, filename, title, subtitle, locale, t, credit, className = "secondary-button" }) {
+function PngExportModal({ open, onClose, elementRef, filename, title, subtitle, locale, credit }) {
+  const [preset, setPreset] = useState("content");
   const [status, setStatus] = useState("idle");
-  const exportPng = async () => {
+  const dialogRef = useModalFocus(open, onClose);
+  useBodyScrollLock(open);
+  if (!open) return null;
+  const copy = pngExportCopy(locale);
+  const formats = ["content", "landscape", "square", "portrait", "story"];
+  const nativeShareAvailable = typeof navigator.share === "function" && typeof File === "function";
+  const exportPng = async (action) => {
     if (status === "working") return;
     setStatus("working");
     try {
-      await downloadElementPng({ element: elementRef.current, filename, title, subtitle, locale, credit });
-      setStatus("done");
-      window.setTimeout(() => setStatus("idle"), 2200);
+      const rendered = await renderElementPng({ element: elementRef.current, filename, title, subtitle, locale, credit, preset });
+      if (action === "share" && nativeShareAvailable) {
+        const file = new File([rendered.blob], rendered.filename, { type: "image/png" });
+        if (!navigator.canShare || navigator.canShare({ files: [file] })) {
+          await navigator.share({ files: [file], title });
+          setStatus("shared");
+        } else {
+          triggerBlobDownload(rendered.blob, rendered.filename);
+          setStatus("done");
+        }
+      } else {
+        triggerBlobDownload(rendered.blob, rendered.filename);
+        setStatus("done");
+      }
     } catch (error) {
-      console.error("PNG export failed", error);
-      setStatus("error");
-      window.setTimeout(() => setStatus("idle"), 2600);
+      if (error?.name === "AbortError") setStatus("idle");
+      else {
+        console.error("PNG export failed", error);
+        setStatus("error");
+      }
     }
   };
-  const label = status === "working" ? t.exportPreparing : status === "done" ? t.exportReady : status === "error" ? t.exportError : t.exportPng;
+  const statusText = status === "working" ? copy.preparing : status === "done" ? copy.ready : status === "shared" ? copy.shared : status === "error" ? copy.failed : "";
   return (
-    <button className={`${className} png-export-button`} type="button" onClick={exportPng} disabled={status === "working"} data-export-ignore="true" aria-live="polite">
-      <Icon name={status === "done" ? "check" : "download"} size={17} />{label}
-    </button>
+    <div className="overlay modal-overlay png-options-overlay" onMouseDown={(event) => event.target === event.currentTarget && onClose()} data-export-ignore="true">
+      <section ref={dialogRef} className="png-options-modal" role="dialog" aria-modal="true" aria-labelledby="png-options-title" tabIndex={-1}>
+        <div className="panel-header"><div><span className="section-label">{subtitle}</span><h2 id="png-options-title">{copy.title}</h2></div><button className="icon-button" type="button" onClick={onClose} aria-label={locale === "de" ? "Schließen" : locale === "es" ? "Cerrar" : "Close"}><Icon name="close" /></button></div>
+        <p>{copy.intro}</p>
+        <div className="png-format-grid" role="radiogroup" aria-label={copy.title}>
+          {formats.map((format) => <button key={format} type="button" role="radio" aria-checked={preset === format} className={preset === format ? "selected" : ""} onClick={() => setPreset(format)}><span className={`png-format-shape is-${format}`} aria-hidden="true" /><strong>{copy[format]}</strong><small>{copy[`${format}Meta`]}</small></button>)}
+        </div>
+        <p className="png-share-help">{copy.shareHelp}</p>
+        <div className="png-options-actions">
+          <button className="primary-button" type="button" disabled={status === "working"} onClick={() => exportPng("download")}><Icon name="download" size={17}/>{copy.download}</button>
+          {nativeShareAvailable && <button className="secondary-button" type="button" disabled={status === "working"} onClick={() => exportPng("share")}><Icon name="share" size={17}/>{copy.share}</button>}
+        </div>
+        {statusText && <p className={`png-export-status is-${status}`} role="status">{statusText}</p>}
+      </section>
+    </div>
+  );
+}
+
+function PngExportButton({ elementRef, filename, title, subtitle, locale, t, credit, className = "secondary-button" }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button className={`${className} png-export-button`} type="button" onClick={() => setOpen(true)} data-export-ignore="true"><Icon name="download" size={17} />{t.exportPng}</button>
+      <PngExportModal open={open} onClose={() => setOpen(false)} elementRef={elementRef} filename={filename} title={title} subtitle={subtitle} locale={locale} credit={credit} />
+    </>
   );
 }
 
@@ -4131,7 +4349,10 @@ function WidgetEmbedView({ widget, t, locale, pollData, latestDate, current, pre
   const interactiveParams = new URLSearchParams({ region: region.slug, lang: locale, share: "1" });
   if (selectedPollsters.length) interactiveParams.set("pollsters", selectedPollsters.join(","));
   const currentDate = current.date ?? latestDate;
-  return <main className={`widget-embed-page widget-embed-${widget}`}><header className="embed-header"><div><span className="embed-brand"><BrandMark/>POLLFRAME</span><h1>{heading}</h1></div><time dateTime={currentDate}>{formatDate(currentDate,locale,{year:true})}</time></header>{widget === "current-average" ? <ResultsCard t={t} locale={locale} current={current} previous={previous} date={currentDate} partyDefinitions={partyDefinitions} statusLabel={statusLabel} region={region} embed/> : widget === "tendencies" ? <TendencySection t={t} locale={locale} current={current} baseline={baseline} partyDefinitions={partyDefinitions} region={region} embed/> : <ParliamentProjection t={t} locale={locale} current={current} date={currentDate} region={region} partyDefinitions={partyDefinitions} embed/>}<footer className="embed-footer"><DataAttribution locale={locale} metadata={pollData.metadata}/><a href={`/?${interactiveParams}`} target="_blank" rel="noreferrer">{locale === "de" ? "Interaktiv öffnen" : locale === "es" ? "Abrir interactivo" : "Open interactive"} <Icon name="external" size={13}/></a></footer></main>;
+  const headerDate = widget === "current-average"
+    ? formatCurrentRecency(currentDate, locale, currentPollRecencyKind(region, current))
+    : formatDate(currentDate, locale, { year: true });
+  return <main className={`widget-embed-page widget-embed-${widget}`}><header className="embed-header"><div><span className="embed-brand"><BrandMark/>POLLFRAME</span><h1>{heading}</h1></div><time dateTime={currentDate}>{headerDate}</time></header>{widget === "current-average" ? <ResultsCard t={t} locale={locale} current={current} previous={previous} date={currentDate} partyDefinitions={partyDefinitions} statusLabel={statusLabel} region={region} embed/> : widget === "tendencies" ? <TendencySection t={t} locale={locale} current={current} baseline={baseline} partyDefinitions={partyDefinitions} region={region} embed/> : <ParliamentProjection t={t} locale={locale} current={current} date={currentDate} region={region} partyDefinitions={partyDefinitions} embed/>}<footer className="embed-footer"><DataAttribution locale={locale} metadata={pollData.metadata}/><a href={`/?${interactiveParams}`} target="_blank" rel="noreferrer">{locale === "de" ? "Interaktiv öffnen" : locale === "es" ? "Abrir interactivo" : "Open interactive"} <Icon name="external" size={13}/></a></footer></main>;
 }
 
 function PollTable({ t, locale, pollData, selectedPollsters, selectedParties, partyDefinitions, regionSlug }) {

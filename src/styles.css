@@ -909,6 +909,25 @@ body:has(.graph-info-popover[open]) { overflow: hidden; }
   font-family: inherit;
 }
 
+.png-export-surface.is-fixed-format {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.png-export-surface.is-fixed-format .png-export-content {
+  min-height: 0;
+  flex: 1;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.png-export-surface.is-fixed-format .png-export-clone {
+  flex: 0 0 auto;
+}
+
 .png-export-header,
 .png-export-footer {
   display: flex;
@@ -994,6 +1013,52 @@ body:has(.graph-info-popover[open]) { overflow: hidden; }
   cursor: progress;
   opacity: 0.72;
 }
+
+.png-options-overlay { z-index: 310; }
+.png-options-modal {
+  width: min(760px, 100%);
+  max-height: calc(100dvh - 32px);
+  padding: 24px;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: 0 24px 80px rgb(0 0 0 / .3);
+}
+.png-options-modal > p { margin: .7rem 0 1rem; color: var(--muted); font-size: .75rem; line-height: 1.55; }
+.png-format-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+.png-format-grid > button {
+  min-width: 0;
+  min-height: 128px;
+  padding: 12px 8px 10px;
+  display: grid;
+  grid-template-rows: 52px auto auto;
+  place-items: center;
+  gap: 5px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: var(--surface-soft);
+  color: var(--ink);
+  font: inherit;
+  text-align: center;
+  cursor: pointer;
+}
+.png-format-grid > button.selected { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); background: var(--surface); }
+.png-format-grid strong { font-size: .68rem; line-height: 1.2; }
+.png-format-grid small { color: var(--muted); font-size: .54rem; line-height: 1.25; }
+.png-format-shape { display: block; align-self: center; border: 1.5px solid currentColor; border-radius: 3px; color: var(--faint); background: var(--surface); }
+.png-format-grid > button.selected .png-format-shape { color: var(--ink); background: var(--accent-soft); }
+.png-format-shape.is-content { width: 39px; height: 49px; border-style: dashed; }
+.png-format-shape.is-landscape { width: 50px; height: 28px; }
+.png-format-shape.is-square { width: 39px; height: 39px; }
+.png-format-shape.is-portrait { width: 34px; height: 43px; }
+.png-format-shape.is-story { width: 27px; height: 48px; }
+.png-options-modal .png-share-help { margin: .8rem 0; font-size: .64rem; }
+.png-options-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
+.png-options-actions > button { width: 100%; min-width: 0; min-height: 42px; }
+.png-options-actions > button:only-child { grid-column: 1 / -1; }
+.png-export-status { margin: .7rem 0 0 !important; text-align: center; font-weight: 720; }
+.png-export-status.is-error { color: var(--negative); }
 
 .archive-source-list { width: 100%; margin-top: .35rem; }
 .archive-source-list summary { cursor: pointer; color: var(--muted); font-size: .78rem; font-weight: 720; }
@@ -7442,21 +7507,49 @@ footer nav .footer-action:hover {
     border-radius:0;
     grid-template-columns:1fr;
     grid-template-areas:"header" "options" "toolbar" "preview" "actions";
-    grid-template-rows:auto auto auto minmax(160px,1fr) auto;
+    grid-template-rows:auto auto auto minmax(140px,1fr) auto;
     gap:8px;
+    overflow-x:hidden;
+    overflow-y:auto;
   }
   .embed-modal>.modal-intro,.embed-modal>.code-label,.embed-modal>.embed-privacy { display:none; }
-  .embed-modal>.static-embed-preview { width:100%; height:100%!important; min-height:0; }
-  .embed-options { grid-template-columns:1fr; }
+  .embed-modal>.static-embed-preview { width:100%; height:calc(100% - 12px)!important; min-height:0; align-self:start; }
+  .embed-options { min-width:0; grid-template-columns:1fr; }
+  .embed-options .segmented { width:100%; min-width:0; }
+  .embed-options .segmented button { min-width:0; padding-inline:5px; overflow-wrap:anywhere; }
   .embed-preview-toolbar { justify-content:stretch; }
-  .embed-preview-toolbar button { flex:1; }
+  .embed-preview-toolbar button { min-width:0; flex:1; padding-inline:4px; }
   .embed-live-preview { height:min(44dvh,420px); }
-  .journalist-embed-actions,.approval-share-card .approval-share-actions { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .journalist-embed-actions,.approval-share-card .approval-share-actions { position:relative; z-index:2; grid-template-columns:repeat(2,minmax(0,1fr)); padding-top:2px; background:var(--surface); }
+  .embed-modal>.embed-actions { margin-top:12px; }
+  .journalist-embed-actions > *,.approval-share-card .approval-share-actions > * { min-width:0; overflow-wrap:anywhere; }
   .approval-share-card { height:calc(100% - 4px); min-height:0; max-height:calc(100% - 4px); }
   .approval-main-heading .chart-actions { grid-template-columns:repeat(2,minmax(0,1fr)); max-width:none; }
   .approval-main-heading .chart-actions button { min-height:42px; }
   .event-marker .event-label-text,.approval-event-marker-original .event-label-text { font-size:10.5px; }
   .party-detail-chart .party-inspector { display:none; }
+
+  .png-options-modal {
+    width:100%;
+    max-height:100dvh;
+    min-height:100dvh;
+    padding:calc(16px + env(safe-area-inset-top)) max(14px,env(safe-area-inset-right)) calc(16px + env(safe-area-inset-bottom)) max(14px,env(safe-area-inset-left));
+    border:0;
+    border-radius:0;
+  }
+  .png-format-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .png-format-grid > button { min-height:104px; grid-template-rows:40px auto auto; }
+  .png-format-shape.is-content { width:32px; height:39px; }
+  .png-format-shape.is-landscape { width:43px; height:24px; }
+  .png-format-shape.is-square { width:33px; height:33px; }
+  .png-format-shape.is-portrait { width:28px; height:36px; }
+  .png-format-shape.is-story { width:23px; height:40px; }
+  .png-options-actions { position:sticky; bottom:0; padding-top:8px; background:var(--surface); }
+}
+
+@media (max-width:380px) {
+  .png-options-actions { grid-template-columns:1fr; }
+  .png-format-grid > button { min-height:98px; }
 }
 
 @media (max-width:700px) and (hover:none) and (pointer:coarse) {

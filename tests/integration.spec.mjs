@@ -109,6 +109,27 @@ async function settle(page) {
   await page.evaluate(() => document.fonts?.ready);
 }
 
+async function downloadPng(page, button, format = "content") {
+  await button.click();
+  const modal = page.locator(".png-options-modal");
+  await expect(modal).toBeVisible();
+  await expect(modal.locator(".png-format-grid > button")).toHaveCount(5);
+  const overlap = await modal.evaluate((root) => {
+    const formats = root.querySelector(".png-format-grid")?.getBoundingClientRect();
+    const actions = root.querySelector(".png-options-actions")?.getBoundingClientRect();
+    if (!formats || !actions) return 0;
+    return Math.max(0, Math.min(formats.bottom, actions.bottom) - Math.max(formats.top, actions.top));
+  });
+  expect(overlap, "PNG format choices overlap the export buttons").toBeLessThanOrEqual(1);
+  if (format !== "content") await modal.locator(`.png-format-shape.is-${format}`).locator("..").click();
+  const downloadPromise = page.waitForEvent("download");
+  await modal.getByRole("button", { name: /PNG herunterladen|Download PNG|Descargar PNG/i }).click();
+  const download = await downloadPromise;
+  await modal.getByRole("button", { name: /Schließen|Close|Cerrar/i }).click();
+  await expect(modal).toHaveCount(0);
+  return download;
+}
+
 test.describe("core routes", () => {
   test("overview, navigation and settings are integrated", async ({ page }, testInfo) => {
     const errors = watchRuntime(page);
@@ -155,6 +176,11 @@ test.describe("core routes", () => {
     await expect(page.locator(".series-line")).not.toHaveCount(0);
     await expect(page.locator(".chart-footer .data-attribution")).toContainText("dawum.de");
     await expect(page.locator(".chart-footer .data-attribution")).toContainText("Bundeswahlleiterin");
+    await expect(page.locator(".results-card .widget-data-age")).toContainText(/veröffentlicht/i);
+    await page.locator(".results-card .graph-info-popover summary").click();
+    await expect(page.locator(".results-card .graph-info-card")).toContainText(/wurde am .* veröffentlicht/i);
+    await expect(page.locator(".results-card .graph-info-card")).toContainText(/Befragungszeitraum:/i);
+    await page.locator(".results-card .graph-info-backdrop").click({ position: { x: 5, y: 5 } });
     await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
       "href",
       "https://de.pollframe.workers.dev/?region=bundestag",
@@ -265,18 +291,15 @@ test.describe("core routes", () => {
     const errors = watchRuntime(page);
     await page.goto("/?region=bundestag");
     await settle(page);
-    const downloadPromise = page.waitForEvent("download");
     const chartExportButton = page.locator(".chart-card .png-export-button").first();
-    await chartExportButton.click();
-    const download = await downloadPromise;
+    const download = await downloadPng(page, chartExportButton, "landscape");
     await download.saveAs(testInfo.outputPath("bundestag-export.png"));
-    expect(download.suggestedFilename()).toMatch(/^pollframe-bundestag-all-trend-\d{4}-\d{2}-\d{2}\.png$/);
+    expect(download.suggestedFilename()).toMatch(/^pollframe-bundestag-all-trend-landscape-\d{4}-\d{2}-\d{2}\.png$/);
     const png = await readFile(await download.path());
     expect([...png.subarray(0, 8)]).toEqual([137, 80, 78, 71, 13, 10, 26, 10]);
-    expect(png.readUInt32BE(16)).toBeGreaterThanOrEqual(2200);
-    expect(png.readUInt32BE(20)).toBeGreaterThan(900);
+    expect(png.readUInt32BE(16)).toBe(1920);
+    expect(png.readUInt32BE(20)).toBe(1080);
     await expectPngHasVisibleContent(page, png);
-    await expect(chartExportButton).toContainText(/PNG gespeichert|PNG saved/i);
     expect(errors).toEqual([]);
   });
 
@@ -312,11 +335,9 @@ test.describe("core routes", () => {
     await mapControls.getByRole("radio", { name: /Grüne|Greens/i }).click();
     await expect(page.locator(".intensity-legend")).toBeVisible();
 
-    const mapDownloadPromise = page.waitForEvent("download");
-    await page.getByRole("button", { name: /PNG exportieren|Export PNG/i }).click();
-    const mapDownload = await mapDownloadPromise;
+    const mapDownload = await downloadPng(page, page.getByRole("button", { name: /PNG exportieren|Export PNG/i }));
     await mapDownload.saveAs(testInfo.outputPath("map-export.png"));
-    expect(mapDownload.suggestedFilename()).toMatch(/^pollframe-deutschlandkarte-party-\d{4}-\d{2}-\d{2}\.png$/);
+    expect(mapDownload.suggestedFilename()).toMatch(/^pollframe-deutschlandkarte-party-content-\d{4}-\d{2}-\d{2}\.png$/);
     const mapPng = await readFile(await mapDownload.path());
     expect([...mapPng.subarray(0, 8)]).toEqual([137, 80, 78, 71, 13, 10, 26, 10]);
     expect(mapPng.readUInt32BE(16)).toBeGreaterThanOrEqual(2200);
@@ -533,6 +554,11 @@ test.describe("core routes", () => {
     await expect(page.getByRole("heading", { level: 1, name: /Encuestas de las elecciones generales/i })).toBeVisible();
     await expect(page.locator(".spain-results-card .result-row")).toHaveCount(5);
     await expect(page.locator(".spain-results-card .snapshot-date")).toBeHidden();
+    await expect(page.locator(".spain-results-card .widget-data-age")).toContainText(/Trabajo de campo finalizado/i);
+    await page.locator(".spain-results-card .graph-info-popover summary").click();
+    await expect(page.locator(".spain-results-card .graph-info-card")).toContainText(/terminó su trabajo de campo el/i);
+    await expect(page.locator(".spain-results-card .graph-info-card")).toContainText(/Trabajo de campo:/i);
+    await page.locator(".spain-results-card .graph-info-backdrop").click({ position: { x: 5, y: 5 } });
     if (testInfo.project.name.includes("iphone") || testInfo.project.name.includes("pixel") || testInfo.project.name.includes("galaxy")) {
       await expect(page.locator(".chart-heading > div > p:not(.section-label)")).toBeHidden();
       await expect(page.locator(".tendency-heading .widget-info-heading > div > p")).toBeHidden();
@@ -556,17 +582,13 @@ test.describe("core routes", () => {
     await page.locator(".spain-pulse-section").screenshot({ path: testInfo.outputPath("spain-pulse.png") });
 
     if (testInfo.project.name === "chromium-desktop") {
-      const pngDownloadPromise = page.waitForEvent("download");
-      await page.locator(".chart-card .png-export-button").click();
-      const pngDownload = await pngDownloadPromise;
+      const pngDownload = await downloadPng(page, page.locator(".chart-card .png-export-button"));
       await pngDownload.saveAs(testInfo.outputPath("spain-export.png"));
       const png = await readFile(await pngDownload.path());
       expect(png.readUInt32BE(16)).toBeGreaterThanOrEqual(3000);
       expect(png.readUInt32BE(20)).toBeGreaterThan(900);
       await expectPngHasVisibleContent(page, png);
-      const insightDownloadPromise = page.waitForEvent("download");
-      await page.locator(".spain-pulse-heading .png-export-button").click();
-      const insightDownload = await insightDownloadPromise;
+      const insightDownload = await downloadPng(page, page.locator(".spain-pulse-heading .png-export-button"));
       await insightDownload.saveAs(testInfo.outputPath("spain-pulse-export.png"));
       const insightPng = await readFile(await insightDownload.path());
       expect(insightPng.readUInt32BE(16)).toBeGreaterThanOrEqual(3000);
@@ -702,9 +724,7 @@ test.describe("core routes", () => {
       await expect(page.locator(".uk-result-list")).toContainText("SNP");
     }
     if (testInfo.project.name === "chromium-desktop") {
-      const pngDownloadPromise = page.waitForEvent("download");
-      await page.locator(".chart-actions .png-export-button").click();
-      const pngDownload = await pngDownloadPromise;
+      const pngDownload = await downloadPng(page, page.locator(".chart-actions .png-export-button"));
       await pngDownload.saveAs(testInfo.outputPath("uk-export.png"));
       const png = await readFile(await pngDownload.path());
       await expectPngHasVisibleContent(page, png);
@@ -1393,6 +1413,19 @@ test.describe("core routes", () => {
     const shareButton = page.getByRole("button", { name: /Teilen.*Letzte Umfrage/i });
     await shareButton.click();
     await expect(page.locator(".widget-share-modal")).toBeVisible();
+    const embedSectionOverlaps = await page.locator(".widget-share-modal").evaluate((root) => {
+      const selectors = [".panel-header", ".embed-options", ".embed-preview-toolbar", ".static-embed-preview", ".embed-actions"];
+      const rectangles = selectors.map((selector) => ({ selector, rect: root.querySelector(`:scope > ${selector}`)?.getBoundingClientRect() })).filter((item) => item.rect?.width && item.rect?.height);
+      const collisions = [];
+      for (let left = 0; left < rectangles.length; left += 1) for (let right = left + 1; right < rectangles.length; right += 1) {
+        const a = rectangles[left]; const b = rectangles[right];
+        const x = Math.max(0, Math.min(a.rect.right, b.rect.right) - Math.max(a.rect.left, b.rect.left));
+        const y = Math.max(0, Math.min(a.rect.bottom, b.rect.bottom) - Math.max(a.rect.top, b.rect.top));
+        if (x > 2 && y > 2) collisions.push(`${a.selector}/${b.selector}:${Math.round(x)}x${Math.round(y)}`);
+      }
+      return collisions;
+    });
+    expect(embedSectionOverlaps).toEqual([]);
     await expect(page.locator(".widget-embed-preview iframe")).toHaveAttribute("src", /widget=current-average/);
     await expect(page.locator(".widget-embed-preview iframe")).toHaveAttribute("src", /pollsters=/);
     await expect(page.locator(".code-label code")).toContainText("&amp;");
@@ -1403,15 +1436,12 @@ test.describe("core routes", () => {
     await expect(page.locator(".widget-share-modal")).toHaveCount(0);
     await expect(shareButton).toBeFocused();
 
-    const snapshotDownloadPromise = page.waitForEvent("download");
-    await page.locator(".results-card").getByRole("button", { name: /PNG exportieren|Export PNG/i }).click();
-    const snapshotDownload = await snapshotDownloadPromise;
+    const snapshotDownload = await downloadPng(page, page.locator(".results-card").getByRole("button", { name: /PNG exportieren|Export PNG/i }));
     const snapshotPng = await readFile(await snapshotDownload.path());
     await snapshotDownload.saveAs(testInfo.outputPath("current-average-export.png"));
     expect(snapshotPng.readUInt32BE(16)).toBeGreaterThanOrEqual(3000);
     expect(snapshotPng.readUInt32BE(20)).toBeGreaterThan(900);
     await expectPngHasVisibleContent(page, snapshotPng);
-    await expect(page.locator(".results-card").getByRole("button", { name: /PNG gespeichert|PNG saved/i })).toBeVisible();
 
     await page.goto("/embed.html?embed=1&widget=current-average&region=bundestag&lang=de&theme=dark");
     await settle(page);
