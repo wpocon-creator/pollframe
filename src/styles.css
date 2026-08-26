@@ -27,6 +27,45 @@
   text-rendering: optimizeLegibility;
 }
 
+/* Movement belongs to the shell only: its translate follows the pointer without
+   a transition, while the card inside can lift and settle independently. */
+.watch-card-drag-shell {
+  contain:layout paint style;
+  left:0;
+  pointer-events:none;
+  position:fixed;
+  top:0;
+  transform:translate3d(-100vw,-100vh,0);
+  will-change:transform;
+  z-index:10020;
+}
+.watch-card.watch-card-drag-ghost {
+  background:var(--surface);
+  border:1px solid color-mix(in srgb,var(--accent) 58%,var(--line));
+  border-radius:20px;
+  box-shadow:0 22px 55px rgb(9 18 34/.26),0 4px 14px rgb(9 18 34/.12);
+  height:100%;
+  margin:0;
+  min-height:0;
+  opacity:.98;
+  overflow:hidden;
+  padding:.85rem !important;
+  pointer-events:none;
+  position:relative;
+  transform:scale(1.026);
+  transform-origin:center;
+  transition:transform 150ms cubic-bezier(.2,.78,.2,1),opacity 150ms ease;
+  width:100%;
+  will-change:transform,opacity;
+}
+.watch-card.watch-card-drag-ghost.is-dropping { opacity:.9; transform:scale(1); }
+.watch-card-drag-ghost .watch-card-editbar,
+.watch-card-drag-ghost .watch-card-size-picker { display:none; }
+.watch-card-drag-ghost > .widget-data-age { top:.72rem; }
+@media (max-width:720px) {
+  .watch-card.watch-card-drag-ghost { border-radius:17px; padding:.72rem !important; }
+}
+
 html { scrollbar-gutter: stable; }
 
 /* Spain: designed from the small viewport up. */
@@ -606,14 +645,16 @@ html { scrollbar-gutter: stable; }
 .watch-mini-map-uk { align-items: center; display: flex; justify-content: center; overflow: hidden; pointer-events: none; }
 .watch-mini-map-uk > div, .watch-mini-map-uk svg { height: 100% !important; max-height: 245px; max-width: 100%; width: 100% !important; }
 .watch-map-loading { animation: pulse-loading 1.2s ease-in-out infinite alternate; background: var(--surface-soft); border-radius: 12px; flex: 1; margin-top: .45rem; }
-.watchlist-v3.is-editing .watch-card { cursor: default; padding-bottom: 4rem; padding-top: 3.35rem; }
+.watchlist-v3.is-editing .watch-card { -webkit-touch-callout:none; -webkit-user-select:none; cursor:grab; padding-bottom:4rem; padding-top:3.35rem; user-select:none; }
 .watchlist-v3.is-editing .watch-card:hover { box-shadow: none; transform: none; }
-.watch-card-editbar { align-items: center; background: color-mix(in srgb, var(--surface-soft) 92%, transparent); border-bottom: 1px solid var(--line); display: flex; height: 42px; inset: 0 0 auto; justify-content: space-between; padding: 0 .55rem; position: absolute; z-index: 3; }
-.watch-drag-handle, .watch-remove { align-items: center; background: transparent; border: 0; color: var(--muted); cursor: grab; display: inline-flex; font: inherit; font-size: .62rem; font-weight: 760; gap: .2rem; height: 36px; padding: 0 .35rem; touch-action: none; }
+.watch-card-editbar { align-items: center; background: color-mix(in srgb, var(--surface-soft) 92%, transparent); border-bottom: 1px solid var(--line); display: flex; gap: .25rem; height: 42px; inset: 0 0 auto; justify-content: space-between; padding: 0 .35rem 0 .45rem; position: absolute; z-index: 3; }
+.watch-drag-handle, .watch-remove { align-items: center; background: transparent; border: 0; color: var(--muted); cursor: grab; display: inline-flex; font: inherit; font-size: .62rem; font-weight: 760; gap: .28rem; height: 36px; padding: 0 .35rem; }
+.watch-drag-handle { flex: 1; justify-content: flex-start; min-width: 0; }
 .watch-drag-handle:active { cursor: grabbing; }
-.watchlist-v3 .watch-card.is-dragging { z-index:8; border-color:var(--accent); box-shadow:0 18px 48px rgb(20 35 65/.2); opacity:.72; transform:scale(.985); }
-:root.watch-reordering { cursor:grabbing; user-select:none; }
-:root.watch-reordering .watch-card:not(.is-dragging) { transition:transform .18s ease,border-color .18s ease; }
+.watchlist-v3 .watch-card.is-dragging { background:color-mix(in srgb,var(--accent) 7%,var(--surface)); border-color:color-mix(in srgb,var(--accent) 56%,var(--line)); border-style:dashed; box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent) 16%,transparent); opacity:.18; transform:none; }
+:root.watch-reordering { cursor:grabbing; overscroll-behavior-y:contain; user-select:none; -webkit-user-select:none; }
+:root.watch-reordering body { cursor:grabbing; }
+:root.watch-reordering .watch-card:not(.is-dragging) { will-change:transform; }
 .watch-remove { color: var(--negative); cursor: pointer; }
 .watch-card-size-picker { align-items: center; background: var(--surface); border-top: 1px solid var(--line); bottom: 0; display: flex; gap: .3rem; height: 54px; inset-inline: 0; padding: .4rem .55rem; position: absolute; z-index: 3; }
 .watch-card-approval { padding-top: 2.25rem; }

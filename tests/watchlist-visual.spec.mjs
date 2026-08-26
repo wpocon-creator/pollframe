@@ -30,6 +30,148 @@ const esItems = [
   { id: "es-map", country: "es", regionSlug: "spain-congress", type: "map", partyIds: [], mapMode: "regions", label: "España · Comunidades", layout: "large", createdAt: "2026-08-07T10:08:00.000Z", lastSnapshot: null },
 ];
 
+test("Watchlist mouse reordering lifts, previews and commits only on release", async ({ page }, testInfo) => {
+  test.skip(!testInfo.project.name.endsWith("desktop"), "desktop pointer interaction");
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await page.addInitScript((german) => {
+    const original = window.matchMedia.bind(window);
+    window.matchMedia = (query) => query === "(display-mode: standalone)"
+      ? { matches: true, media: query, onchange: null, addListener() {}, removeListener() {}, addEventListener() {}, removeEventListener() {}, dispatchEvent() { return true; } }
+      : original(query);
+    window.localStorage.setItem("pollframe-watchlist-de-v2", JSON.stringify(german));
+    window.localStorage.setItem("pollframe-notification-intro-de", "seen");
+  }, deItems);
+  await page.goto("/?view=watchlist&country=de");
+  await expect(page.locator(".watch-card")).toHaveCount(deItems.length);
+  await page.getByRole("button", { name: /Bearbeiten|Edit/i }).click();
+
+  const originalOrder = await page.locator(".watchlist-grid > .watch-card").evaluateAll((cards) => cards.map((card) => card.dataset.watchId));
+  const sourceCard = page.locator(".watch-card").nth(1);
+  const sourceBox = await sourceCard.boundingBox();
+  const destinationBox = await page.locator(".watch-card").first().boundingBox();
+  const start = { x: sourceBox.x + sourceBox.width * .62, y: sourceBox.y + sourceBox.height * .54 };
+  const ghost = page.locator("body > .watch-card-drag-shell > .watch-card-drag-ghost");
+
+  // A normal tap and an early movement remain ordinary interactions; only a
+  // deliberate hold unlocks the tile.
+  await page.mouse.move(start.x, start.y);
+  await page.mouse.down();
+  await page.waitForTimeout(70);
+  await page.mouse.up();
+  await expect(ghost).toHaveCount(0);
+  expect(await page.locator(".watchlist-grid > .watch-card").evaluateAll((cards) => cards.map((card) => card.dataset.watchId))).toEqual(originalOrder);
+  await page.mouse.move(start.x, start.y);
+  await page.mouse.down();
+  await page.mouse.move(start.x, start.y + 16);
+  await page.mouse.up();
+  await expect(ghost).toHaveCount(0);
+  expect(await page.locator(".watchlist-grid > .watch-card").evaluateAll((cards) => cards.map((card) => card.dataset.watchId))).toEqual(originalOrder);
+
+  await page.mouse.move(start.x, start.y);
+  await page.mouse.down();
+  await expect(ghost).toBeVisible();
+  await page.mouse.move(destinationBox.x + destinationBox.width / 2, destinationBox.y + 10, { steps: 10 });
+  await expect.poll(() => page.locator(".watchlist-grid > .watch-card").evaluateAll((cards) => cards.map((card) => card.dataset.watchId))).not.toEqual(originalOrder);
+  expect(await page.locator(".watchlist-grid > .watch-card:not(.is-dragging)").evaluateAll((cards) => cards.some((card) => card.getAnimations().some((animation) => animation.id === "watchlist-reorder")))).toBe(true);
+  await page.waitForTimeout(120);
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem("pollframe-watchlist-de-v2")).map((item) => item.id))).toEqual(originalOrder);
+  const ghostBox = await ghost.boundingBox();
+  expect(Math.abs((ghostBox.x + ghostBox.width / 2) - (destinationBox.x + destinationBox.width / 2))).toBeLessThan(35);
+
+  await page.mouse.up();
+  await expect(ghost).toHaveCount(0);
+  const committedOrder = await page.locator(".watchlist-grid > .watch-card").evaluateAll((cards) => cards.map((card) => card.dataset.watchId));
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem("pollframe-watchlist-de-v2")).map((item) => item.id))).toEqual(committedOrder);
+
+  const firstHandle = page.locator(".watch-card").first().locator(".watch-drag-handle");
+  await firstHandle.focus();
+  await firstHandle.press("ArrowDown");
+  await expect.poll(() => page.locator(".watchlist-grid > .watch-card").evaluateAll((cards) => cards.map((card) => card.dataset.watchId))).not.toEqual(committedOrder);
+  await expect(page.locator('[aria-live="polite"][aria-atomic="true"]')).toContainText(/Position|position|posición/i);
+});
+
+test("Watchlist touch drag follows the finger and commits on touch release", async ({ page, context }, testInfo) => {
+  test.skip(!testInfo.project.name.includes("chromium") && !["pixel-5", "galaxy-s9"].includes(testInfo.project.name), "Chromium touch protocol test");
+  await page.addInitScript((german) => {
+    const original = window.matchMedia.bind(window);
+    window.matchMedia = (query) => query === "(display-mode: standalone)"
+      ? { matches: true, media: query, onchange: null, addListener() {}, removeListener() {}, addEventListener() {}, removeEventListener() {}, dispatchEvent() { return true; } }
+      : original(query);
+    window.localStorage.setItem("pollframe-watchlist-de-v2", JSON.stringify(german));
+    window.localStorage.setItem("pollframe-notification-intro-de", "seen");
+  }, deItems);
+  await page.goto("/?view=watchlist&country=de");
+  await expect(page.locator(".watch-card")).toHaveCount(deItems.length);
+  await page.getByRole("button", { name: /Bearbeiten|Edit/i }).click();
+  const originalOrder = await page.locator(".watchlist-grid > .watch-card").evaluateAll((cards) => cards.map((card) => card.dataset.watchId));
+  const cdp = await context.newCDPSession(page);
+
+  // A quick touch and a finger that starts scrolling before the hold delay must
+  // never unlock or reorder a widget.
+  let sourceBox = await page.locator(".watch-card").nth(1).boundingBox();
+  let start = { x: sourceBox.x + sourceBox.width * .62, y: sourceBox.y + sourceBox.height * .54 };
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ ...start, id: 1, radiusX: 6, radiusY: 6, force: .5 }] });
+  await page.waitForTimeout(70);
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+  await expect(page.locator("body > .watch-card-drag-shell")).toHaveCount(0);
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ ...start, id: 2, radiusX: 6, radiusY: 6, force: .5 }] });
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x: start.x, y: start.y + 18, id: 2, radiusX: 6, radiusY: 6, force: .5 }] });
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+  await expect(page.locator("body > .watch-card-drag-shell")).toHaveCount(0);
+  expect(await page.locator(".watchlist-grid > .watch-card").evaluateAll((cards) => cards.map((card) => card.dataset.watchId))).toEqual(originalOrder);
+
+  sourceBox = await page.locator(".watch-card").nth(1).boundingBox();
+  const destinationBox = await page.locator(".watch-card").first().boundingBox();
+  start = { x: sourceBox.x + sourceBox.width * .62, y: sourceBox.y + sourceBox.height * .54 };
+  const finish = { x: destinationBox.x + destinationBox.width / 2, y: destinationBox.y + 10 };
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ ...start, id: 1, radiusX: 6, radiusY: 6, force: .5 }] });
+  await expect(page.locator("body > .watch-card-drag-shell > .watch-card-drag-ghost")).toBeVisible();
+  for (let step = 1; step <= 8; step += 1) {
+    const progress = step / 8;
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x: start.x + (finish.x - start.x) * progress, y: start.y + (finish.y - start.y) * progress, id: 1, radiusX: 6, radiusY: 6, force: .5 }] });
+  }
+  await expect.poll(() => page.locator(".watchlist-grid > .watch-card").evaluateAll((cards) => cards.map((card) => card.dataset.watchId))).not.toEqual(originalOrder);
+  await page.waitForTimeout(120);
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem("pollframe-watchlist-de-v2")).map((item) => item.id))).toEqual(originalOrder);
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+  await expect(page.locator("body > .watch-card-drag-shell > .watch-card-drag-ghost")).toHaveCount(0);
+  const committedOrder = await page.locator(".watchlist-grid > .watch-card").evaluateAll((cards) => cards.map((card) => card.dataset.watchId));
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem("pollframe-watchlist-de-v2")).map((item) => item.id))).toEqual(committedOrder);
+});
+
+test("Watchlist accepts a calm sideways insertion on desktop", async ({ page }, testInfo) => {
+  test.skip(!testInfo.project.name.endsWith("desktop"), "desktop grid interaction");
+  await page.addInitScript((german) => {
+    const original = window.matchMedia.bind(window);
+    window.matchMedia = (query) => query === "(display-mode: standalone)"
+      ? { matches: true, media: query, onchange: null, addListener() {}, removeListener() {}, addEventListener() {}, removeEventListener() {}, dispatchEvent() { return true; } }
+      : original(query);
+    window.localStorage.setItem("pollframe-watchlist-de-v2", JSON.stringify(german));
+    window.localStorage.setItem("pollframe-notification-intro-de", "seen");
+  }, deItems);
+  await page.goto("/?view=watchlist&country=de");
+  await expect(page.locator(".watch-card")).toHaveCount(deItems.length);
+  await page.getByRole("button", { name: /Bearbeiten|Edit/i }).click();
+  const source = page.locator('[data-watch-id="de-saxony-left"]');
+  const target = page.locator('[data-watch-id="de-green"]');
+  const sourceBox = await source.boundingBox();
+  const targetBox = await target.boundingBox();
+  const start = { x: sourceBox.x + sourceBox.width * .55, y: sourceBox.y + sourceBox.height * .55 };
+  const finish = { x: targetBox.x + 8, y: targetBox.y + targetBox.height * .52 };
+  await page.mouse.move(start.x, start.y);
+  await page.mouse.down();
+  await expect(page.locator("body > .watch-card-drag-shell")).toBeVisible();
+  await page.mouse.move(finish.x, finish.y, { steps: 12 });
+  await expect.poll(async () => {
+    const order = await page.locator(".watchlist-grid > .watch-card").evaluateAll((cards) => cards.map((card) => card.dataset.watchId));
+    return order.indexOf("de-saxony-left") < order.indexOf("de-green");
+  }).toBe(true);
+  const shellBox = await page.locator("body > .watch-card-drag-shell").boundingBox();
+  expect(Math.abs((shellBox.x + sourceBox.width * .45) - finish.x)).toBeLessThan(35);
+  await page.mouse.up();
+  await expect(page.locator("body > .watch-card-drag-shell")).toHaveCount(0);
+});
+
 test("captures installed Watchlist layouts for visual review", async ({ page }, testInfo) => {
   test.skip(!phoneProjects.has(testInfo.project.name), "phone visual review only");
   await page.addInitScript(({ german, uk, spanish }) => {
@@ -75,9 +217,20 @@ test("captures installed Watchlist layouts for visual review", async ({ page }, 
   await page.screenshot({ path: testInfo.outputPath("watchlist-de-full.png"), fullPage: true });
   await page.getByRole("button", { name: /Bearbeiten|Edit/i }).click();
   await expect(page.locator(".watch-card-editbar")).toHaveCount(deItems.length);
-  const beforeOrder = await page.locator(".watch-card").evaluateAll((cards) => cards.map((card) => card.dataset.watchId));
-  await page.locator(".watch-card").nth(1).dragTo(page.locator(".watch-card").first());
-  await expect.poll(() => page.locator(".watch-card").evaluateAll((cards) => cards.map((card) => card.dataset.watchId))).not.toEqual(beforeOrder);
+  const beforeOrder = await page.locator(".watchlist-grid > .watch-card").evaluateAll((cards) => cards.map((card) => card.dataset.watchId));
+  const sourceBox = await page.locator(".watch-card").nth(1).boundingBox();
+  const destinationBox = await page.locator(".watch-card").first().boundingBox();
+  await page.mouse.move(sourceBox.x + sourceBox.width * .62, sourceBox.y + sourceBox.height * .54);
+  await page.mouse.down();
+  await expect(page.locator("body > .watch-card-drag-shell > .watch-card-drag-ghost")).toBeVisible();
+  await page.mouse.move(destinationBox.x + destinationBox.width / 2, destinationBox.y + 8, { steps: 8 });
+  await expect.poll(() => page.locator(".watchlist-grid > .watch-card").evaluateAll((cards) => cards.map((card) => card.dataset.watchId))).not.toEqual(beforeOrder);
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem("pollframe-watchlist-de-v2")).map((item) => item.id))).toEqual(beforeOrder);
+  await page.screenshot({ path: testInfo.outputPath("watchlist-dragging.png"), fullPage: false });
+  await page.mouse.up();
+  await expect(page.locator("body > .watch-card-drag-shell > .watch-card-drag-ghost")).toHaveCount(0);
+  const committedOrder = await page.locator(".watchlist-grid > .watch-card").evaluateAll((cards) => cards.map((card) => card.dataset.watchId));
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem("pollframe-watchlist-de-v2")).map((item) => item.id))).toEqual(committedOrder);
   await page.screenshot({ path: testInfo.outputPath("watchlist-edit-mode.png"), fullPage: false });
   await page.getByRole("button", { name: /Fertig|Done/i }).click();
 
