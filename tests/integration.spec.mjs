@@ -137,7 +137,8 @@ test.describe("core routes", () => {
     await settle(page);
     await expect(page.getByRole("heading", { level: 1, name: /Deutschland im Überblick|Germany at a glance/i })).toBeVisible();
     await expect(page.locator('.site-header .brand')).toHaveAttribute("href", "/");
-    await expect(page.locator(".header-report-button")).toHaveCount(0);
+    await expect(page.locator(".header-report-button")).toHaveAttribute("href", /page=bug-report.*from=/);
+    await expect(page.locator(".header-report-button")).toHaveAttribute("aria-label", /Problem melden|Report issue/i);
     await expect(page.locator("footer .report-bug-link")).toHaveAttribute("href", /page=bug-report.*from=/);
     await expect(page.getByRole("link", { name: /Bundestagswahl|Federal election/i })).toBeVisible();
     await expect(page.getByRole("link", { name: /Europawahl in Deutschland|European election in Germany/i })).toHaveCount(0);
@@ -1178,6 +1179,11 @@ test.describe("core routes", () => {
     await expect(page.locator(".bug-contact-separate")).toHaveCount(0);
 
     await page.goto("/?page=bug-reports");
+    await settle(page);
+    await expect(page.getByLabel("Dashboard key")).toHaveCount(0);
+    await expect(page.getByRole("heading", { level: 1, name: /Deutschland im Überblick|Germany at a glance/i })).toBeVisible();
+
+    await page.goto("/pf-ops/3f592c524cff69071b258ce63776e793/reports");
     await settle(page);
     await page.getByLabel("Dashboard key").fill("test-key");
     await page.getByRole("button", { name: "Open dashboard" }).click();

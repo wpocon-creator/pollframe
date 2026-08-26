@@ -100,6 +100,8 @@ requireCondition(
   "frontend contains a non-HTTPS external URL",
 );
 requireCondition(source.includes('const EMBED_PATH = "/embed.html"'), "dedicated embed entry is not enforced");
+requireCondition(/const BUG_REPORT_DASHBOARD_PATH = "\/pf-ops\/[a-f0-9]{32}\/reports"/.test(source), "internal bug-report dashboard lacks a non-obvious path");
+requireCondition(!source.includes('query.get("page") === "bug-reports"'), "internal bug-report dashboard is still exposed through the predictable page query");
 requireCondition(source.includes('sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"'), "generated embeds are not sandboxed");
 requireCondition(source.includes('referrerpolicy="no-referrer"'), "generated embeds do not suppress referrers");
 requireCondition(!/sandbox="[^"]*allow-(?:forms|top-navigation|downloads)[^"]*"/.test(frontendSource), "generated embed sandbox grants an unnecessary high-risk capability");
@@ -143,7 +145,7 @@ for (const reference of actionReferences) {
 requireCondition(workflows.includes("npm ci --ignore-scripts"), "workflow install scripts are not disabled");
 requireCondition(workflows.includes("npm audit --audit-level=low"), "workflow dependency audit is missing");
 requireCondition(workflows.includes("set -euo pipefail"), "workflow shell hardening is missing");
-requireCondition(qualityWorkflow.includes("tests/accessibility.spec.mjs") && qualityWorkflow.includes("tests/integration.spec.mjs") && qualityWorkflow.includes("tests/mobile-layout.spec.mjs"), "pull requests do not run accessibility, core and mobile regression gates");
+requireCondition(qualityWorkflow.includes("tests/accessibility.spec.mjs") && qualityWorkflow.includes("tests/integration.spec.mjs") && qualityWorkflow.includes("tests/mobile-layout.spec.mjs") && qualityWorkflow.includes("tests/layout-audit.spec.mjs"), "pull requests do not run accessibility, core, mobile and global-layout regression gates");
 requireCondition(qualityWorkflow.includes("chromium firefox webkit"), "quality gate does not install all supported browser engines");
 requireCondition(workflow.includes("npm run data:review"), "scheduled updates do not pause on unapproved large data movements");
 
@@ -189,6 +191,7 @@ requireCondition(
   wranglerConfig.durable_objects?.bindings?.some((binding) => binding.name === "BUG_REPORT_STORE" && binding.class_name === "BugReportStore"),
   "private bug-report Durable Object binding is missing",
 );
+requireCondition(workerSource.includes("await authorised(request, env)") && workerSource.includes('request.headers.get("x-pollframe-admin-key")'), "private bug-report reads are not protected by the server-side admin key");
 requireCondition(
   wranglerConfig.migrations?.some((migration) => migration.new_sqlite_classes?.includes("BugReportStore")),
   "bug-report Durable Object migration is missing",
