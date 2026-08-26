@@ -30,7 +30,7 @@
 /* Movement belongs to the shell only: its translate follows the pointer without
    a transition, while the card inside can lift and settle independently. */
 .watch-card-drag-shell {
-  contain:layout paint style;
+  contain:layout style;
   left:0;
   pointer-events:none;
   position:fixed;
