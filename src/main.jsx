@@ -5516,6 +5516,20 @@ function OverviewInfoWidget({ href, eyebrow, title, text, stats, accent }) {
   );
 }
 
+let approvalOverviewRequest;
+
+function loadApprovalOverview() {
+  if (!approvalOverviewRequest) {
+    approvalOverviewRequest = fetch("/data/approval.json")
+      .then((response) => response.ok ? response.json() : Promise.reject(new Error(`HTTP ${response.status}`)))
+      .catch((error) => {
+        approvalOverviewRequest = undefined;
+        throw error;
+      });
+  }
+  return approvalOverviewRequest;
+}
+
 function ApprovalOverviewEntry({ country, locale }) {
   const [approval, setApproval] = useState(null);
   useEffect(() => {
@@ -5523,19 +5537,24 @@ function ApprovalOverviewEntry({ country, locale }) {
     let pageIsLeaving = false;
     const markPageLeaving = () => { pageIsLeaving = true; };
     const markPageActive = () => { pageIsLeaving = false; };
+    const stopWatchingPage = () => {
+      window.removeEventListener("beforeunload", markPageLeaving);
+      window.removeEventListener("pagehide", markPageLeaving);
+      window.removeEventListener("pageshow", markPageActive);
+    };
+    window.addEventListener("beforeunload", markPageLeaving);
     window.addEventListener("pagehide", markPageLeaving);
     window.addEventListener("pageshow", markPageActive);
-    fetch("/data/approval.json")
-      .then((response) => response.ok ? response.json() : Promise.reject(new Error(`HTTP ${response.status}`)))
+    loadApprovalOverview()
       .then((payload) => { if (active) setApproval(payload.countries?.[country] ?? null); })
-      .catch((error) => { if (active && !pageIsLeaving) console.error("Approval overview data failed", error); });
+      .catch((error) => { if (active && !pageIsLeaving) console.error("Approval overview data failed", error); })
+      .finally(stopWatchingPage);
     // This small shared file is useful across countries and safe to cache. Let
     // an in-flight request finish when the SPA changes country, but never update
     // the component after it has unmounted.
     return () => {
       active = false;
-      window.removeEventListener("pagehide", markPageLeaving);
-      window.removeEventListener("pageshow", markPageActive);
+      stopWatchingPage();
     };
   }, [country]);
   const isGerman = locale === "de";

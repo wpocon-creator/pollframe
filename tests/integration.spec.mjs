@@ -851,10 +851,17 @@ test.describe("core routes", () => {
 
   test("an explicitly selected German interface language survives country changes", async ({ page }) => {
     const errors = watchRuntime(page);
+    let approvalRequestCount = 0;
+    page.on("request", (request) => {
+      if (new URL(request.url()).pathname === "/data/approval.json") approvalRequestCount += 1;
+    });
     await page.goto("/");
     await page.evaluate(() => localStorage.setItem("opinion-poll-locale", "de"));
     await page.reload();
     await settle(page);
+    await expect(page.getByRole("heading", { level: 1, name: "Deutschland im Überblick" })).toBeVisible();
+    const approvalRequestsBeforeCountrySwitch = approvalRequestCount;
+    expect(approvalRequestsBeforeCountrySwitch).toBeGreaterThanOrEqual(1);
     await page.getByRole("button", { name: "Land auswählen" }).click();
     await page.getByRole("link", { name: /Spanien.*Kongress/i }).click();
     await settle(page);
@@ -863,6 +870,7 @@ test.describe("core routes", () => {
     await page.getByRole("link", { name: /Vereinigtes Königreich.*Westminster/i }).click();
     await settle(page);
     await expect(page.getByRole("heading", { level: 1, name: "Vereinigtes Königreich im Überblick" })).toBeVisible();
+    expect(approvalRequestCount).toBe(approvalRequestsBeforeCountrySwitch);
     expect(errors).toEqual([]);
   });
 

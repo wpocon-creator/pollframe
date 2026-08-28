@@ -437,6 +437,22 @@ export function SpainMiniMap({ geojson }) {
   return <svg className="watch-mini-map watch-mini-map-es" viewBox="0 0 710 470" aria-hidden="true">{features.map((feature) => <path key={feature.properties?.acom_code} d={coordinatesToPath(feature.geometry.coordinates)} />)}</svg>;
 }
 
+let spainMapAssetsRequest;
+
+function loadSpainMapAssets() {
+  if (!spainMapAssetsRequest) {
+    spainMapAssetsRequest = Promise.all([
+      "/data/spain-autonomies.geojson",
+      "/data/spain-regions.json",
+    ].map((url) => fetch(url).then((response) => response.ok ? response.json() : Promise.reject(new Error(`HTTP ${response.status}`)))))
+      .catch((error) => {
+        spainMapAssetsRequest = undefined;
+        throw error;
+      });
+  }
+  return spainMapAssetsRequest;
+}
+
 function SpainMap({ locale, formatDate }) {
   const text = language(locale);
   const [map, setMap] = useState(null);
@@ -447,17 +463,32 @@ function SpainMap({ locale, formatDate }) {
   const [showPointerAdvice, setShowPointerAdvice] = useState(() => navigator.maxTouchPoints === 0 && window.matchMedia("(hover: hover) and (pointer: fine)").matches);
   useEffect(() => {
     let active = true;
-    Promise.all(["/data/spain-autonomies.geojson", "/data/spain-regions.json"].map((url) => fetch(url).then((response) => response.ok ? response.json() : Promise.reject(new Error(`HTTP ${response.status}`)))))
+    let pageIsLeaving = false;
+    const markPageLeaving = () => { pageIsLeaving = true; };
+    const markPageActive = () => { pageIsLeaving = false; };
+    const stopWatchingPage = () => {
+      window.removeEventListener("beforeunload", markPageLeaving);
+      window.removeEventListener("pagehide", markPageLeaving);
+      window.removeEventListener("pageshow", markPageActive);
+    };
+    window.addEventListener("beforeunload", markPageLeaving);
+    window.addEventListener("pagehide", markPageLeaving);
+    window.addEventListener("pageshow", markPageActive);
+    loadSpainMapAssets()
       .then(([geometry, regions]) => {
         if (!active) return;
         setMap(geometry);
         setRegionData(regions);
       })
-      .catch((error) => { if (active) console.error(error); });
+      .catch((error) => { if (active && !pageIsLeaving) console.error("Spain map data failed", error); })
+      .finally(stopWatchingPage);
     // These are small same-origin static assets. Let them populate the browser
     // cache when the route changes; WebKit can surface aborting them as a false
     // access-control page error even when the rejection itself is handled.
-    return () => { active = false; };
+    return () => {
+      active = false;
+      stopWatchingPage();
+    };
   }, []);
   useEffect(() => {
     const media = window.matchMedia("(hover: hover) and (pointer: fine)");
