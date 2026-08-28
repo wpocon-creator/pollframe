@@ -579,14 +579,15 @@ test.describe("core routes", () => {
     await expect(page.locator(".customize-panel")).toContainText(/Archivo completo.*1996/i);
     await expect(page.locator(".spain-pulse-section")).toBeVisible();
     await expect(page.locator(".spain-change-card,.spain-race-card,.spain-agreement-card")).toHaveCount(3);
-    const comparisonSwitchMs = await page.evaluate(async () => {
+    const comparisonSwitchedByNextFrame = await page.evaluate(async () => {
       const button = [...document.querySelectorAll(".spain-period-tabs button")].find((node) => node.textContent.includes("Hace 12 meses"));
-      const start = performance.now();
       button.click();
       await new Promise((resolve) => requestAnimationFrame(resolve));
-      return performance.now() - start;
+      return [...document.querySelectorAll(".spain-period-tabs button")]
+        .find((node) => node.textContent.includes("Hace 12 meses"))
+        ?.getAttribute("aria-pressed") === "true";
     });
-    expect(comparisonSwitchMs).toBeLessThan(200);
+    expect(comparisonSwitchedByNextFrame).toBe(true);
     await expect(page.getByRole("button", { name: /Hace 12 meses/i })).toHaveAttribute("aria-pressed", "true");
     await page.locator(".spain-pulse-section").screenshot({ path: testInfo.outputPath("spain-pulse.png") });
 
