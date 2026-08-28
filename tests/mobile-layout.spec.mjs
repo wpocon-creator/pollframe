@@ -131,7 +131,9 @@ test.describe("mobile layout geometry", () => {
     const info = page.locator(".chart-heading .graph-info-popover").first();
     await info.scrollIntoViewIfNeeded();
     await info.locator("summary").click();
-    const infoGeometry = await page.locator(".graph-info-card:visible").evaluate((card) => {
+    const visibleInfoCard = page.locator(".graph-info-card:visible");
+    await visibleInfoCard.evaluate((card) => Promise.all(card.getAnimations().map((animation) => animation.finished.catch(() => undefined))));
+    const infoGeometry = await visibleInfoCard.evaluate((card) => {
       const cardRect = card.getBoundingClientRect();
       const backdropRect = document.querySelector(".graph-info-popover[open] .graph-info-backdrop").getBoundingClientRect();
       return {
