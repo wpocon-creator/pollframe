@@ -11,6 +11,9 @@ const PRESETS = {
   story: { width: 1080, height: 1920, pixelRatio: 1 },
 };
 
+const EXPORT_BACKGROUNDS = { light: "#ffffff", dark: "#1a1d20" };
+const EXPORT_MAX_SCALE = { chart: 1.18, approval: 1.18, map: 1.2, widget: 1.42, insight: 1.36 };
+
 const PROFILES = {
   chart: { formats: ["content", "landscape", "square"], recommended: "landscape" },
   approval: { formats: ["content", "landscape", "square"], recommended: "landscape" },
@@ -45,6 +48,7 @@ function copyFor(locale) {
     portrait: "Feed-Hochformat", portraitMeta: "4:5 · 1080 × 1350",
     story: "Story", storyMeta: "9:16 · 1080 × 1920",
     recommended: "Empfohlen",
+    appearance: "Darstellung", light: "Hell", dark: "Dunkel",
     download: "PNG herunterladen",
     save: "Bild sichern oder teilen",
     preparing: "PNG wird erstellt …",
@@ -67,7 +71,7 @@ function copyFor(locale) {
     square: "Cuadrado", squareMeta: "1:1 · 1080 × 1080",
     portrait: "Vertical para feed", portraitMeta: "4:5 · 1080 × 1350",
     story: "Historia", storyMeta: "9:16 · 1080 × 1920",
-    recommended: "Recomendado", download: "Descargar PNG", save: "Guardar o compartir imagen",
+    recommended: "Recomendado", appearance: "Apariencia", light: "Claro", dark: "Oscuro", download: "Descargar PNG", save: "Guardar o compartir imagen",
     preparing: "Creando PNG…", ready: "La descarga ha comenzado.", shared: "Se abrió el menú del sistema.", failed: "No se pudo exportar el PNG.", close: "Cerrar",
     chartNote: "En las series temporales, el formato horizontal mantiene los ejes y rótulos más legibles.",
     approvalNote: "El formato horizontal está optimizado para artículos y presentaciones de esta serie histórica.",
@@ -84,7 +88,7 @@ function copyFor(locale) {
     square: "Square", squareMeta: "1:1 · 1080 × 1080",
     portrait: "Feed portrait", portraitMeta: "4:5 · 1080 × 1350",
     story: "Story", storyMeta: "9:16 · 1080 × 1920",
-    recommended: "Recommended", download: "Download PNG", save: "Save or share image",
+    recommended: "Recommended", appearance: "Appearance", light: "Light", dark: "Dark", download: "Download PNG", save: "Save or share image",
     preparing: "Creating PNG…", ready: "The download has started.", shared: "The system share sheet opened.", failed: "PNG export failed.", close: "Close",
     chartNote: "For time series, landscape keeps axes and labels most readable.",
     approvalNote: "Landscape is optimised for articles and presentations using this historical series.",
@@ -114,12 +118,117 @@ function freezeExportStyles(root) {
 }
 
 function cleanExportClone(clone) {
-  clone.querySelectorAll("[data-export-ignore], .interactive-event-layer, .event-dot, .event-dot-hit, .event-anchor, .chart-hover-card, .event-hover-card, .chart-scroll-hint, .event-key, .chart-footer").forEach((node) => node.remove());
+  clone.querySelectorAll("[data-export-ignore], .interactive-event-layer, .event-dot, .event-dot-hit, .event-anchor, .chart-hover-card, .event-hover-card, .chart-scroll-hint, .event-key, .chart-footer, .approval-source-footer").forEach((node) => node.remove());
   clone.querySelectorAll("[id]").forEach((node) => node.removeAttribute("id"));
   clone.querySelectorAll("path.series-halo,path.series-line,path.average-series-halo,path.average-series-line").forEach((path) => path.setAttribute("fill", "none"));
   clone.setAttribute("aria-hidden", "true");
   clone.setAttribute("inert", "");
   return clone;
+}
+
+function preferredExportTheme() {
+  const selected = document.documentElement.dataset.theme;
+  if (selected === "light" || selected === "dark") return selected;
+  return window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+}
+
+function exportCloneWidth(format, profile, preset) {
+  const horizontalPadding = format.height ? 80 : 104;
+  const available = Math.max(320, format.width - horizontalPadding);
+  if (["widget", "insight"].includes(profile)) {
+    const compactWidth = preset === "portrait" ? 760 : preset === "square" ? 820 : 900;
+    return Math.min(available, compactWidth);
+  }
+  if (profile === "map" && preset === "square") return Math.min(available, 960);
+  return available;
+}
+
+function prepareExportClone(clone, { format, preset, profile }) {
+  clone.dataset.pngPreset = preset;
+  clone.dataset.pngProfile = profile;
+  clone.style.setProperty("width", `${exportCloneWidth(format, profile, preset)}px`);
+  clone.style.setProperty("max-width", "none");
+  clone.style.setProperty("margin", "0");
+  clone.querySelectorAll(".chart-wrap, .party-selector, .party-detail-chart").forEach((node) => node.style.setProperty("overflow", "visible"));
+  clone.querySelectorAll(".poll-chart, .approval-poll-chart").forEach((node) => {
+    node.style.setProperty("width", "100%");
+    node.style.setProperty("min-width", "0");
+    node.style.setProperty("max-height", "none");
+    node.style.setProperty("height", "auto");
+  });
+  return clone;
+}
+
+function constrainedCanvas() {
+  const ua = navigator.userAgent ?? "";
+  const ios = /iP(?:hone|ad|od)/.test(ua) || navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1;
+  const coarse = window.matchMedia?.("(pointer: coarse)").matches;
+  return ios ? { maxArea: 3_800_000, maxDimension: 4096 } : coarse ? { maxArea: 7_500_000, maxDimension: 6144 } : { maxArea: 18_000_000, maxDimension: 8192 };
+}
+
+function safePixelRatio(width, height, desiredRatio) {
+  const { maxArea, maxDimension } = constrainedCanvas();
+  return Math.max(.45, Math.min(
+    desiredRatio,
+    Math.sqrt(maxArea / Math.max(1, width * height)),
+    maxDimension / Math.max(1, width),
+    maxDimension / Math.max(1, height),
+  ));
+}
+
+async function blobHasVisibleContent(blob, backgroundColor) {
+  const objectUrl = URL.createObjectURL(blob);
+  try {
+    const image = await new Promise((resolve, reject) => {
+      const candidate = new Image();
+      candidate.onload = () => resolve(candidate);
+      candidate.onerror = reject;
+      candidate.src = objectUrl;
+    });
+    if (!image.naturalWidth || !image.naturalHeight) return false;
+    const canvas = document.createElement("canvas");
+    canvas.width = 64;
+    canvas.height = 64;
+    const context = canvas.getContext("2d", { willReadFrequently: true });
+    if (!context) return blob.size > 12_000;
+    context.drawImage(image, 0, 0, canvas.width, canvas.height);
+    const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+    const background = backgroundColor === EXPORT_BACKGROUNDS.dark ? [26, 29, 32] : [255, 255, 255];
+    let visible = 0;
+    let changed = 0;
+    for (let index = 0; index < pixels.length; index += 4) {
+      if (pixels[index + 3] > 8) visible += 1;
+      const difference = Math.abs(pixels[index] - background[0]) + Math.abs(pixels[index + 1] - background[1]) + Math.abs(pixels[index + 2] - background[2]);
+      if (pixels[index + 3] > 8 && difference > 28) changed += 1;
+    }
+    return visible > 200 && changed > 12;
+  } catch {
+    // Some older WebKit versions cannot decode an object URL while the share
+    // sheet is being prepared. A normally sized blob remains a safer signal
+    // than rejecting a valid export in that browser.
+    return blob.size > 12_000;
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+}
+
+async function renderSurfaceBlob(surface, { width, height, desiredPixelRatio, backgroundColor }) {
+  const { toBlob } = await import("html-to-image");
+  const firstRatio = safePixelRatio(width, height, desiredPixelRatio);
+  const attempts = [...new Set([firstRatio, Math.max(.45, firstRatio * .68)].map((value) => Math.round(value * 1000) / 1000))];
+  for (const pixelRatio of attempts) {
+    const blob = await toBlob(surface, {
+      width,
+      height,
+      pixelRatio,
+      cacheBust: true,
+      preferredFontFormat: "woff2",
+      skipAutoScale: true,
+      backgroundColor,
+    });
+    if (blob && await blobHasVisibleContent(blob, backgroundColor)) return { blob, pixelRatio };
+  }
+  throw new Error("PNG renderer returned an empty image");
 }
 
 function triggerBlobDownload(blob, filename) {
@@ -133,7 +242,7 @@ function triggerBlobDownload(blob, filename) {
   window.setTimeout(() => URL.revokeObjectURL(objectUrl), 30_000);
 }
 
-export async function renderElementPng({ element, filename, title, subtitle, locale = "en-GB", credit = "Pollframe", preset = "content", profile = "chart" }) {
+export async function renderElementPng({ element, filename, title, subtitle, locale = "en-GB", credit = "Pollframe", preset = "content", profile = "chart", theme = "light" }) {
   if (!element) throw new Error("Missing export element");
   const format = PRESETS[preset] ?? PRESETS.content;
   if (document.fonts?.ready) await document.fonts.ready;
@@ -147,6 +256,8 @@ export async function renderElementPng({ element, filename, title, subtitle, loc
   const surface = document.createElement("section");
   surface.className = "png-export-surface";
   surface.dataset.exportProfile = profile;
+  surface.dataset.exportPreset = preset;
+  surface.dataset.exportTheme = theme;
   surface.dir = "ltr";
   surface.lang = locale === "de" ? "de" : locale === "es" ? "es" : "en";
   const header = document.createElement("header");
@@ -165,7 +276,7 @@ export async function renderElementPng({ element, filename, title, subtitle, loc
   header.append(identity, date);
   const content = document.createElement("div");
   content.className = "png-export-content";
-  const clone = cleanExportClone(element.cloneNode(true));
+  const clone = prepareExportClone(cleanExportClone(element.cloneNode(true)), { format, preset, profile });
   clone.classList.add("png-export-clone");
   content.append(clone);
   const footer = document.createElement("footer");
@@ -184,36 +295,31 @@ export async function renderElementPng({ element, filename, title, subtitle, loc
       surface.classList.add("is-fixed-format");
       surface.style.setProperty("height", `${format.height}px`);
     }
-    clone.style.setProperty("width", "100%");
-    clone.style.setProperty("max-width", "none");
-    clone.querySelectorAll(".chart-wrap, .party-selector").forEach((node) => node.style.setProperty("overflow", "visible"));
-    clone.querySelectorAll(".poll-chart").forEach((node) => {
-      node.style.setProperty("width", "100%");
-      node.style.setProperty("min-width", "0");
-      // Mobile page CSS caps the live SVG at 390px. Keeping that cap in a
-      // 1080/1920px export made the same chart tiny when exported on a phone.
-      node.style.setProperty("max-height", "none");
-      node.style.setProperty("height", "auto");
-    });
     await new Promise((resolve) => window.requestAnimationFrame(() => window.requestAnimationFrame(resolve)));
-    freezeExportStyles(surface);
     if (format.height) {
+      clone.style.setProperty("transform", "none");
       const availableHeight = content.clientHeight;
-      const naturalHeight = clone.getBoundingClientRect().height;
-      const scale = naturalHeight > availableHeight ? Math.max(0.42, availableHeight / naturalHeight) : 1;
+      const availableWidth = content.clientWidth;
+      const natural = clone.getBoundingClientRect();
+      const scale = Math.max(.38, Math.min(
+        availableWidth / Math.max(1, natural.width),
+        availableHeight / Math.max(1, natural.height),
+        EXPORT_MAX_SCALE[profile] ?? 1.2,
+      ));
       clone.style.setProperty("transform", `scale(${scale})`);
       clone.style.setProperty("transform-origin", "center center");
     }
-    const { toBlob } = await import("html-to-image");
-    const blob = await toBlob(surface, {
-      width: format.width,
-      ...(format.height ? { height: format.height } : {}),
-      pixelRatio: format.pixelRatio,
-      cacheBust: true,
-      backgroundColor: "#ffffff",
-    });
-    if (!blob) throw new Error("PNG renderer returned no image");
-    return { blob, width: format.width * format.pixelRatio, height: format.height ? format.height * format.pixelRatio : null, filename: `${safeFilenamePart(filename)}-${preset}-${new Date().toISOString().slice(0, 10)}.png` };
+    await new Promise((resolve) => window.requestAnimationFrame(() => window.requestAnimationFrame(resolve)));
+    freezeExportStyles(surface);
+    const logicalHeight = format.height ?? Math.ceil(surface.getBoundingClientRect().height);
+    const backgroundColor = EXPORT_BACKGROUNDS[theme] ?? EXPORT_BACKGROUNDS.light;
+    const rendered = await renderSurfaceBlob(surface, { width: format.width, height: logicalHeight, desiredPixelRatio: format.pixelRatio, backgroundColor });
+    return {
+      blob: rendered.blob,
+      width: Math.round(format.width * rendered.pixelRatio),
+      height: Math.round(logicalHeight * rendered.pixelRatio),
+      filename: `${safeFilenamePart(filename)}-${preset}-${theme}-${new Date().toISOString().slice(0, 10)}.png`,
+    };
   } finally {
     host.remove();
     window.dispatchEvent(new CustomEvent("pollframe:export-layout", { detail: { wide: false } }));
@@ -251,13 +357,36 @@ function useExportDialog(open, onClose) {
   return dialogRef;
 }
 
-function PngPreview({ element, preset, title, subtitle }) {
+function PngPreview({ element, preset, profile, theme, setTheme, title, subtitle, copy }) {
+  const liveRef = useRef(null);
+  const canvasRef = useRef(null);
   const hostRef = useRef(null);
   const format = PRESETS[preset] ?? PRESETS.content;
   useEffect(() => {
+    const live = liveRef.current;
+    const canvas = canvasRef.current;
+    if (!live || !canvas) return undefined;
+    const fitFrame = () => {
+      const toolbar = live.querySelector(".png-preview-theme");
+      const styles = getComputedStyle(live);
+      const horizontalInset = Number.parseFloat(styles.paddingLeft) + Number.parseFloat(styles.paddingRight);
+      const verticalInset = Number.parseFloat(styles.paddingTop) + Number.parseFloat(styles.paddingBottom);
+      const gap = Number.parseFloat(styles.rowGap) || 0;
+      const ratio = format.height ? format.width / format.height : 4 / 3;
+      const availableWidth = Math.max(120, live.clientWidth - horizontalInset);
+      const availableHeight = Math.max(110, live.clientHeight - verticalInset - (toolbar?.offsetHeight ?? 0) - gap);
+      const width = Math.min(520, availableWidth, availableHeight * ratio);
+      canvas.style.setProperty("width", `${Math.floor(width)}px`);
+    };
+    const frame = requestAnimationFrame(fitFrame);
+    const observer = new ResizeObserver(fitFrame);
+    observer.observe(live);
+    return () => { cancelAnimationFrame(frame); observer.disconnect(); };
+  }, [format.height, format.width, preset]);
+  useEffect(() => {
     const host = hostRef.current;
     if (!host || !element) return undefined;
-    const clone = cleanExportClone(element.cloneNode(true));
+    const clone = prepareExportClone(cleanExportClone(element.cloneNode(true)), { format, preset, profile });
     clone.classList.add("png-preview-clone");
     host.replaceChildren(clone);
     const fit = () => {
@@ -271,26 +400,33 @@ function PngPreview({ element, preset, title, subtitle }) {
     const observer = new ResizeObserver(fit);
     observer.observe(host);
     return () => { cancelAnimationFrame(frame); observer.disconnect(); clone.remove(); };
-  }, [element, preset]);
+  }, [element, preset, profile, theme]);
   const ratio = format.height ? `${format.width} / ${format.height}` : "4 / 3";
-  return <div className="png-live-preview"><div className="png-preview-canvas" style={{ aspectRatio: ratio }}><header><strong>↗ POLLFRAME</strong><small>{subtitle}</small></header><div ref={hostRef} className="png-preview-content" /><footer>{title}</footer></div></div>;
+  return <div ref={liveRef} className="png-live-preview">
+    <div className="png-preview-theme" role="radiogroup" aria-label={copy.appearance}>
+      <span>{copy.appearance}</span>
+      {["light", "dark"].map((value) => <button key={value} type="button" role="radio" aria-checked={theme === value} className={theme === value ? "selected" : ""} onClick={() => setTheme(value)}>{copy[value]}</button>)}
+    </div>
+    <div ref={canvasRef} className="png-preview-canvas" data-export-theme={theme} data-export-profile={profile} data-export-preset={preset} style={{ aspectRatio: ratio }}><header><strong>POLLFRAME</strong><small>{subtitle}</small></header><div ref={hostRef} className="png-preview-content" /><footer>{title}</footer></div>
+  </div>;
 }
 
 export function PngExportModal({ open, onClose, elementRef, filename, title, subtitle, locale = "en-GB", credit, profile = "chart" }) {
   const config = PROFILES[profile] ?? PROFILES.chart;
-  const [preset, setPreset] = useState(config.formats[0]);
+  const [preset, setPreset] = useState(config.recommended);
+  const [theme, setTheme] = useState("light");
   const [status, setStatus] = useState("idle");
   const copy = copyFor(locale);
   const dialogRef = useExportDialog(open, onClose);
   const nativeShareAvailable = typeof navigator.share === "function" && typeof File === "function";
   const touchShare = nativeShareAvailable && typeof matchMedia === "function" && matchMedia("(pointer: coarse)").matches;
-  useEffect(() => { if (open) { setPreset(config.formats[0]); setStatus("idle"); trackAggregateEvent("png_dialog_opened"); } }, [open, profile]);
+  useEffect(() => { if (open) { setPreset(config.recommended); setTheme(preferredExportTheme()); setStatus("idle"); trackAggregateEvent("png_dialog_opened"); } }, [open, profile, config.recommended]);
   const note = copy[`${profile}Note`] ?? copy.chartNote;
   const exportPng = async (action) => {
     if (status === "working") return;
     setStatus("working");
     try {
-      const rendered = await renderElementPng({ element: elementRef.current, filename, title, subtitle, locale, credit, preset, profile });
+      const rendered = await renderElementPng({ element: elementRef.current, filename, title, subtitle, locale, credit, preset, profile, theme });
       if (action === "share" && nativeShareAvailable) {
         const file = new File([rendered.blob], rendered.filename, { type: "image/png" });
         if (!navigator.canShare || navigator.canShare({ files: [file] })) {
@@ -321,7 +457,7 @@ export function PngExportModal({ open, onClose, elementRef, filename, title, sub
               {config.formats.map((format) => <button key={format} type="button" role="radio" aria-checked={preset === format} className={preset === format ? "selected" : ""} onClick={() => { setPreset(format); setStatus("idle"); }}><span className={`png-format-shape is-${format}`} aria-hidden="true" /><span><strong>{copy[format]}{format === config.recommended && <em>{copy.recommended}</em>}</strong><small>{copy[`${format}Meta`]}</small></span></button>)}
             </div>
           </div>
-          <PngPreview element={elementRef.current} preset={preset} title={title} subtitle={subtitle} />
+          <PngPreview element={elementRef.current} preset={preset} profile={profile} theme={theme} setTheme={(value) => { setTheme(value); setStatus("idle"); }} title={title} subtitle={subtitle} copy={copy} />
         </div>
         {touchShare && <p className="png-share-help">{copy.systemHelp}</p>}
         <div className="png-options-actions">

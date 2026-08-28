@@ -1559,7 +1559,6 @@ function BrandMark({ className = "" }) {
         strokeLinejoin="round"
         strokeWidth="2.35"
       />
-      <circle className="brand-mark-point" cx="17.8" cy="18.9" r="1.45" fill="currentColor" />
     </svg>
   );
 }
