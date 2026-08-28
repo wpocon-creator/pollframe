@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { PartyInfoButton, regionalSpainPartyProfile } from "./party-profiles.jsx";
 import { useDismissOnlyDetails } from "./pollframe-ui.jsx";
-import { requestWasAborted } from "./network.js";
 
 export const SPAIN_PARTY_DEFINITIONS = [
   { id: "405", slug: "podemos-up", name: "Podemos / UP", color: "#6d3b87" },
@@ -447,11 +446,18 @@ function SpainMap({ locale, formatDate }) {
   const [partyId, setPartyId] = useState("pp");
   const [showPointerAdvice, setShowPointerAdvice] = useState(() => navigator.maxTouchPoints === 0 && window.matchMedia("(hover: hover) and (pointer: fine)").matches);
   useEffect(() => {
-    const controller = new AbortController();
-    Promise.all(["/data/spain-autonomies.geojson", "/data/spain-regions.json"].map((url) => fetch(url, { signal: controller.signal }).then((response) => response.ok ? response.json() : Promise.reject(new Error(`HTTP ${response.status}`)))))
-      .then(([geometry, regions]) => { setMap(geometry); setRegionData(regions); })
-      .catch((error) => { if (!requestWasAborted(error, controller.signal)) console.error(error); });
-    return () => controller.abort();
+    let active = true;
+    Promise.all(["/data/spain-autonomies.geojson", "/data/spain-regions.json"].map((url) => fetch(url).then((response) => response.ok ? response.json() : Promise.reject(new Error(`HTTP ${response.status}`)))))
+      .then(([geometry, regions]) => {
+        if (!active) return;
+        setMap(geometry);
+        setRegionData(regions);
+      })
+      .catch((error) => { if (active) console.error(error); });
+    // These are small same-origin static assets. Let them populate the browser
+    // cache when the route changes; WebKit can surface aborting them as a false
+    // access-control page error even when the rejection itself is handled.
+    return () => { active = false; };
   }, []);
   useEffect(() => {
     const media = window.matchMedia("(hover: hover) and (pointer: fine)");
