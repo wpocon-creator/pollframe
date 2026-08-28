@@ -7895,6 +7895,17 @@ footer nav .footer-action:hover {
   }
 }
 
+@media (max-height:520px) and (max-width:960px) {
+  .approval-event-card {
+    position:fixed;
+    z-index:180;
+    inset:auto max(10px,env(safe-area-inset-right)) max(10px,env(safe-area-inset-bottom)) auto;
+    width:min(390px,calc(100vw - 20px));
+    max-height:calc(100dvh - max(20px,env(safe-area-inset-top) + env(safe-area-inset-bottom)));
+    overflow:auto;
+  }
+}
+
 /* The Watchlist composer is a real app screen on phones. Keeping the header,
    scroll area and action bar separate prevents notched iPhones from exposing
    the page behind the top and bottom safe areas. */
@@ -8045,4 +8056,57 @@ footer nav .footer-action:hover {
   .spain-issues-page .spain-economy-panel { padding-bottom:.7rem; }
   .spain-country-overview:not(.spain-issues-page) .spain-overview-grid { margin-bottom:.25rem; }
   .spain-country-overview:not(.spain-issues-page) .spain-polling-entry { min-height:0; padding:.72rem .85rem; }
+}
+
+/* Short landscape phones keep the publishing workflow on one screen. The
+   preview receives the flexible space; controls remain reachable without a
+   second page-level scrollbar. */
+@media (max-height:520px) and (min-width:681px) and (max-width:960px) {
+  .embed-modal:not(.png-options-modal) {
+    position:relative;
+    width:calc(100% - 24px);
+    height:calc(100dvh - 24px);
+    max-height:calc(100dvh - 24px);
+    padding:16px 20px;
+    grid-template-columns:minmax(0,1.2fr) minmax(270px,.8fr);
+    grid-template-areas:
+      "header header"
+      "toolbar options"
+      "preview code"
+      "preview actions";
+    grid-template-rows:auto auto minmax(0,1fr) auto;
+    gap:7px 14px;
+  }
+  .embed-modal:not(.png-options-modal)>.modal-intro,
+  .embed-modal:not(.png-options-modal)>.embed-privacy { display:none; }
+  .embed-modal:not(.png-options-modal)>.static-embed-preview {
+    width:100%;
+    height:100%!important;
+    min-height:0;
+  }
+  .embed-modal:not(.png-options-modal)>.code-label { min-height:0; }
+  .embed-modal:not(.png-options-modal)>.code-label code { padding:8px 10px; }
+  .embed-modal:not(.png-options-modal)>.embed-actions {
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:6px;
+    margin:0;
+  }
+  .embed-modal:not(.png-options-modal)>.embed-actions>* {
+    min-width:0;
+    min-height:38px;
+    padding-inline:6px;
+    font-size:.58rem;
+    line-height:1.15;
+  }
+  .embed-modal:not(.png-options-modal)>.embed-copy-error {
+    position:absolute;
+    right:20px;
+    bottom:10px;
+    left:calc(60% + 7px);
+    z-index:2;
+    margin:0;
+    padding:5px 7px;
+    border-radius:6px;
+    background:var(--surface);
+  }
 }
