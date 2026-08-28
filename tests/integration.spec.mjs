@@ -964,12 +964,14 @@ test.describe("core routes", () => {
     await expect(menu).toHaveCSS("overscroll-behavior-y", "contain");
     if (!testInfo.project.use.hasTouch) {
       await menu.hover();
-      const pageScrollBefore = await page.evaluate(() => scrollY);
-      // Dispatch to the menu itself so this checks Pollframe's wheel containment
-      // rather than the CI browser's occasionally stale pointer hit-test.
-      await menu.dispatchEvent("wheel", { deltaY: 500, deltaMode: 0 });
-      await expect.poll(() => menu.evaluate((node) => node.scrollTop)).toBeGreaterThan(0);
-      expect(await page.evaluate(() => scrollY)).toBe(pageScrollBefore);
+      const wheelResult = await menu.evaluate((node) => {
+        const event = new WheelEvent("wheel", { bubbles: true, cancelable: true, deltaY: 500, deltaMode: 0 });
+        const dispatched = node.dispatchEvent(event);
+        return { defaultPrevented: event.defaultPrevented, dispatched, scrollTop: node.scrollTop };
+      });
+      expect(wheelResult.defaultPrevented).toBe(true);
+      expect(wheelResult.dispatched).toBe(false);
+      expect(wheelResult.scrollTop).toBeGreaterThan(0);
     }
     if (testInfo.project.use.hasTouch) await page.touchscreen.tap(8, 200);
     else await page.locator(".chart-heading h2").click();
@@ -1355,7 +1357,10 @@ test.describe("core routes", () => {
     await page.locator(".approval-poll-chart .grid-line").last().click({ force: true });
     await expect(page.locator(".approval-event-card")).toHaveCount(0);
 
-    await page.getByRole("button", { name: "Customise chart" }).click();
+    const customizeButton = page.getByRole("button", { name: "Customise chart" });
+    await customizeButton.evaluate((button) => button.scrollIntoView({ block: "center", behavior: "instant" }));
+    await customizeButton.click();
+    await expect(customizeButton).toHaveAttribute("aria-expanded", "true");
     await expect(page.locator(".approval-customize-panel .select-control").filter({ hasText: "Events" })).toHaveCount(0);
     await expect(page.locator(".approval-customize-panel .multi-select")).toHaveCount(1);
     await expect(page.locator(".approval-event-marker-original .event-label-text")).toHaveCount(keyMarkerCount);
@@ -1372,7 +1377,8 @@ test.describe("core routes", () => {
     await expect(page.locator(".approval-series.answer-net").first()).toBeVisible();
     await expect(page.locator(".approval-poll-chart .zero-line")).toHaveCount(1);
     await expect(page.locator(".approval-line-legend .axis-range-note")).toContainText("pp");
-    await page.getByRole("button", { name: "Customise chart" }).click();
+    await customizeButton.click();
+    await expect(customizeButton).toHaveAttribute("aria-expanded", "false");
 
     await page.locator(".approval-info > summary").click();
     await expect(page.locator(".approval-info-card")).toContainText("Original question");
