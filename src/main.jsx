@@ -5519,12 +5519,15 @@ function OverviewInfoWidget({ href, eyebrow, title, text, stats, accent }) {
 function ApprovalOverviewEntry({ country, locale }) {
   const [approval, setApproval] = useState(null);
   useEffect(() => {
-    const controller = new AbortController();
-    fetch("/data/approval.json", { signal: controller.signal })
+    let active = true;
+    fetch("/data/approval.json")
       .then((response) => response.ok ? response.json() : Promise.reject(new Error(`HTTP ${response.status}`)))
-      .then((payload) => setApproval(payload.countries?.[country] ?? null))
-      .catch((error) => { if (!requestWasAborted(error, controller.signal)) console.error("Approval overview data failed", error); });
-    return () => controller.abort();
+      .then((payload) => { if (active) setApproval(payload.countries?.[country] ?? null); })
+      .catch((error) => { if (active) console.error("Approval overview data failed", error); });
+    // This small shared file is useful across countries and safe to cache. Let
+    // an in-flight request finish when the SPA changes country, but never update
+    // the component after it has unmounted.
+    return () => { active = false; };
   }, [country]);
   const isGerman = locale === "de";
   const isSpanish = locale === "es";
