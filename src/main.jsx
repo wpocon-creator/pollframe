@@ -7,6 +7,7 @@ import { Icon, MultiSelect, SelectControl, StaticEmbedPreview } from "./pollfram
 import { PartyInfoButton, PartyInfoModalHost } from "./party-profiles.jsx";
 import { includeHistoricalEvent, isPrimaryElectionEvent, rankHistoricalEvents } from "./event-selection.js";
 import { trackAggregateEvent, trackAggregateEventOnce } from "./aggregateAnalytics.js";
+import { requestWasAborted } from "./network.js";
 import { PngExportButton } from "./png-export.jsx";
 import "@fontsource-variable/inter/wght.css";
 const ApprovalPage = lazy(() => import("./approval.jsx").then((module) => ({ default: module.ApprovalPage })));
@@ -5522,7 +5523,7 @@ function ApprovalOverviewEntry({ country, locale }) {
     fetch("/data/approval.json", { signal: controller.signal })
       .then((response) => response.ok ? response.json() : Promise.reject(new Error(`HTTP ${response.status}`)))
       .then((payload) => setApproval(payload.countries?.[country] ?? null))
-      .catch((error) => { if (error.name !== "AbortError") console.error("Approval overview data failed", error); });
+      .catch((error) => { if (!requestWasAborted(error, controller.signal)) console.error("Approval overview data failed", error); });
     return () => controller.abort();
   }, [country]);
   const isGerman = locale === "de";
@@ -6229,7 +6230,7 @@ function WatchlistPage({ locale, initialCountry = "de", refreshVersion = 0 }) {
     Promise.all(missing.map((slug) => fetch(`/data/${slug}.json`, { signal: controller.signal }).then((response) => {
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       return response.json();
-    }).then((data) => [slug, data]))).then((entries) => setDatasets((current) => ({ ...current, ...Object.fromEntries(entries) }))).catch((error) => { if (error.name !== "AbortError") console.error("Watchlist data failed", error); });
+    }).then((data) => [slug, data]))).then((entries) => setDatasets((current) => ({ ...current, ...Object.fromEntries(entries) }))).catch((error) => { if (!requestWasAborted(error, controller.signal)) console.error("Watchlist data failed", error); });
     return () => controller.abort();
   }, [pollingSlugs, datasets]);
 
@@ -6239,7 +6240,7 @@ function WatchlistPage({ locale, initialCountry = "de", refreshVersion = 0 }) {
     Promise.all(pollingSlugs.map((slug) => fetch(`/data/${slug}.json`, { signal: controller.signal, cache: "no-cache" }).then((response) => {
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       return response.json();
-    }).then((data) => [slug, data]))).then((entries) => setDatasets((current) => ({ ...current, ...Object.fromEntries(entries) }))).catch((error) => { if (error.name !== "AbortError") console.error("Watchlist refresh failed", error); });
+    }).then((data) => [slug, data]))).then((entries) => setDatasets((current) => ({ ...current, ...Object.fromEntries(entries) }))).catch((error) => { if (!requestWasAborted(error, controller.signal)) console.error("Watchlist refresh failed", error); });
     return () => controller.abort();
   }, [refreshVersion]);
 
@@ -6265,21 +6266,21 @@ function WatchlistPage({ locale, initialCountry = "de", refreshVersion = 0 }) {
     fetch(initialCountry === "uk" ? "/uk-summary.json" : "/spain-summary.json", { signal: controller.signal })
       .then((response) => response.json())
       .then((summary) => setMapAssets((current) => ({ ...current, summary })))
-      .catch((error) => { if (error.name !== "AbortError") console.error("Watchlist summary data failed", error); });
+      .catch((error) => { if (!requestWasAborted(error, controller.signal)) console.error("Watchlist summary data failed", error); });
     return () => controller.abort();
   }, [needsSummary, mapAssets.summary, initialCountry]);
 
   useEffect(() => {
     if (!needsApproval || mapAssets.approval) return undefined;
     const controller = new AbortController();
-    fetch("/data/approval.json", { signal: controller.signal }).then((response) => response.json()).then((approval) => setMapAssets((current) => ({ ...current, approval }))).catch((error) => { if (error.name !== "AbortError") console.error("Approval widget data failed", error); });
+    fetch("/data/approval.json", { signal: controller.signal }).then((response) => response.json()).then((approval) => setMapAssets((current) => ({ ...current, approval }))).catch((error) => { if (!requestWasAborted(error, controller.signal)) console.error("Approval widget data failed", error); });
     return () => controller.abort();
   }, [needsApproval, mapAssets.approval]);
 
   useEffect(() => {
     if (!needsRegions || mapAssets.regions || initialCountry !== "es") return undefined;
     const controller = new AbortController();
-    fetch("/data/spain-regions.json", { signal: controller.signal }).then((response) => response.json()).then((regionsData) => setMapAssets((current) => ({ ...current, regions: regionsData }))).catch((error) => { if (error.name !== "AbortError") console.error("Regional Watchlist data failed", error); });
+    fetch("/data/spain-regions.json", { signal: controller.signal }).then((response) => response.json()).then((regionsData) => setMapAssets((current) => ({ ...current, regions: regionsData }))).catch((error) => { if (!requestWasAborted(error, controller.signal)) console.error("Regional Watchlist data failed", error); });
     return () => controller.abort();
   }, [needsRegions, mapAssets.regions, initialCountry]);
 
@@ -7934,7 +7935,7 @@ function RegionalApp() {
       fetch("/data/approval.json", { signal: controller.signal })
         .then((response) => response.ok ? response.json() : Promise.reject(new Error(`HTTP ${response.status}`)))
         .then(setSummary)
-        .catch((error) => { if (error.name !== "AbortError") setLoadError(true); });
+        .catch((error) => { if (!requestWasAborted(error, controller.signal)) setLoadError(true); });
       return () => controller.abort();
     }
     if (countryIndexPage) {
@@ -7952,7 +7953,7 @@ function RegionalApp() {
           return response.json();
         }),
       ]).then(([germany, uk, spain]) => setSummary({ germany, uk, spain })).catch((error) => {
-        if (error.name !== "AbortError") setLoadError(true);
+        if (!requestWasAborted(error, controller.signal)) setLoadError(true);
       });
       return () => controller.abort();
     }
@@ -7967,7 +7968,7 @@ function RegionalApp() {
           return response.json();
         }),
       ]).then(([uk, constituencies]) => setSummary({ uk, constituencies })).catch((error) => {
-        if (error.name !== "AbortError") setLoadError(true);
+        if (!requestWasAborted(error, controller.signal)) setLoadError(true);
       });
       return () => controller.abort();
     }
@@ -7982,7 +7983,7 @@ function RegionalApp() {
           return response.json();
         }),
       ]).then(([germany, federalPolling]) => setSummary({ ...germany, federalPolling })).catch((error) => {
-        if (error.name !== "AbortError") setLoadError(true);
+        if (!requestWasAborted(error, controller.signal)) setLoadError(true);
       });
       return () => controller.abort();
     }
@@ -7990,7 +7991,7 @@ function RegionalApp() {
       Promise.all([
         fetch("/spain-summary.json", { signal: controller.signal }).then((response) => response.ok ? response.json() : Promise.reject(new Error(`HTTP ${response.status}`))),
         spainRegionPage ? fetch("/data/spain-regions.json", { signal: controller.signal }).then((response) => response.ok ? response.json() : Promise.reject(new Error(`HTTP ${response.status}`))) : Promise.resolve(null),
-      ]).then(([spain, regions]) => setSummary(regions ? { ...spain, regions } : spain)).catch((error) => { if (error.name !== "AbortError") setLoadError(true); });
+      ]).then(([spain, regions]) => setSummary(regions ? { ...spain, regions } : spain)).catch((error) => { if (!requestWasAborted(error, controller.signal)) setLoadError(true); });
       return () => controller.abort();
     }
     const target = ukCountryPage
@@ -8023,7 +8024,7 @@ function RegionalApp() {
         setSelectedPartyDetail(definitions.find((party) => party.slug === partySlug) ?? null);
       })
       .catch((error) => {
-        if (error.name !== "AbortError") setLoadError(true);
+        if (!requestWasAborted(error, controller.signal)) setLoadError(true);
       });
     return () => controller.abort();
   }, [embedMode, legalPage, privacyPage, licencesPage, editorialStandardsPage, contactPage, watchlistPage, approvalPage, isOverview, germanyCountryPage, germanyStateMapPage, countryIndexPage, ukConstituencyPage, ukCountryPage, spainCountryPage, spainIssuesPage, spainRegionPage, spainRegionArea, region, pwa.dataRefreshVersion]);
@@ -8048,7 +8049,7 @@ function RegionalApp() {
         };
       }))
       .catch((error) => {
-        if (error.name !== "AbortError") console.error("UK poll archive failed to load", error);
+        if (!requestWasAborted(error, controller.signal)) console.error("UK poll archive failed to load", error);
       });
     return () => controller.abort();
   }, [region, pollData, customizeOpen, selectedPollsters]);

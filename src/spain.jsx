@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { PartyInfoButton, regionalSpainPartyProfile } from "./party-profiles.jsx";
 import { useDismissOnlyDetails } from "./pollframe-ui.jsx";
+import { requestWasAborted } from "./network.js";
 
 export const SPAIN_PARTY_DEFINITIONS = [
   { id: "405", slug: "podemos-up", name: "Podemos / UP", color: "#6d3b87" },
@@ -448,7 +449,8 @@ function SpainMap({ locale, formatDate }) {
   useEffect(() => {
     const controller = new AbortController();
     Promise.all(["/data/spain-autonomies.geojson", "/data/spain-regions.json"].map((url) => fetch(url, { signal: controller.signal }).then((response) => response.ok ? response.json() : Promise.reject(new Error(`HTTP ${response.status}`)))))
-      .then(([geometry, regions]) => { setMap(geometry); setRegionData(regions); }).catch((error) => { if (error.name !== "AbortError") console.error(error); });
+      .then(([geometry, regions]) => { setMap(geometry); setRegionData(regions); })
+      .catch((error) => { if (!requestWasAborted(error, controller.signal)) console.error(error); });
     return () => controller.abort();
   }, []);
   useEffect(() => {
