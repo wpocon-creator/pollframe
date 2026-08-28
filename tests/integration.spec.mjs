@@ -7,10 +7,19 @@ test.use({ serviceWorkers: "block" });
 
 function watchRuntime(page) {
   const errors = [];
+  let fullNavigationInProgress = false;
+  page.on("request", (request) => {
+    if (request.isNavigationRequest() && request.frame() === page.mainFrame()) fullNavigationInProgress = true;
+  });
+  page.on("load", () => { fullNavigationInProgress = false; });
   const localAnalyticsNoise = (value) => page.url().startsWith("http://127.0.0.1") && (
     value.includes("cloudflareinsights.com/cdn-cgi/rum")
     || value.includes("Access-Control-Allow-Origin")
     || value === "Failed to load resource: net::ERR_FAILED"
+    // WebKit reports cancelled outgoing fetches generically while page.goto or
+    // reload replaces the document. Assertions on the new document still catch
+    // real load failures; SPA navigation errors remain visible to this watcher.
+    || (fullNavigationInProgress && value === "TypeError: Load failed")
   );
   page.on("pageerror", (error) => {
     if (!localAnalyticsNoise(error.message)) errors.push(`pageerror: ${error.message}`);
