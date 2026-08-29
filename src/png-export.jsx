@@ -12,15 +12,18 @@ const PRESETS = {
 };
 
 const EXPORT_BACKGROUNDS = { light: "#ffffff", dark: "#1a1d20" };
-const EXPORT_MAX_SCALE = { chart: 1.2, approval: 1.22, map: 1.25, "current-poll": 1.34, "party-grid": 1.34, "seat-grid": 1.26, issues: 1.34, insight: 1.36 };
+const EXPORT_MAX_SCALE = { chart: 1.2, approval: 1.22, "approval-current": 1.34, "party-history": 1.26, map: 1.25, "current-poll": 1.34, "party-grid": 1.34, "seat-grid": 1.26, constituency: 1.3, issues: 1.34, insight: 1.36 };
 
 const PROFILES = {
   chart: { formats: ["landscape", "square"], recommended: "landscape", copyKey: "chart" },
   approval: { formats: ["landscape", "square"], recommended: "landscape", copyKey: "approval" },
+  "approval-current": { formats: ["landscape", "square"], recommended: "square", copyKey: "approvalCurrent" },
+  "party-history": { formats: ["landscape", "square"], recommended: "landscape", copyKey: "partyHistory" },
   map: { formats: ["landscape"], recommended: "landscape", copyKey: "map" },
   "current-poll": { formats: ["landscape", "square", "portrait"], recommended: "landscape", copyKey: "currentPoll" },
   "party-grid": { formats: ["landscape", "square", "portrait"], recommended: "square", copyKey: "partyGrid" },
-  "seat-grid": { formats: ["landscape", "portrait"], recommended: "landscape", copyKey: "seatGrid" },
+  "seat-grid": { formats: ["landscape", "square", "portrait"], recommended: "landscape", copyKey: "seatGrid" },
+  constituency: { formats: ["landscape", "square", "portrait"], recommended: "square", copyKey: "constituency" },
   issues: { formats: ["landscape", "square", "portrait"], recommended: "square", copyKey: "issues" },
   insight: { formats: ["square", "portrait"], recommended: "portrait", copyKey: "insight" },
 };
@@ -67,20 +70,31 @@ function copyFor(locale) {
     close: "Schließen",
     chartNote: "Für Zeitreihen bleiben Achsen und Beschriftungen im Breitbild am besten lesbar.",
     approvalNote: "Für die historische Zufriedenheitsgrafik ist Breitbild für Artikel und Präsentationen optimiert.",
+    approvalCurrentNote: "Der aktuelle Stand ordnet Kennzahlen und Antwortverhältnis für jedes Format neu an.",
+    partyHistoryNote: "Die einzelne Parteireihe nutzt in beiden Formaten eine vollständige Zeitachse mit lesbaren Kennzahlen.",
     mapNote: "Für Karten bewahrt Breitbild die geografischen Formen und Legenden am klarsten.",
     currentPollNote: "Querformat und Quadrat nutzen kurze Balken; im Hochformat werden die Werte zu Säulen.",
     partyGridNote: "Die Parteikarten werden für jedes Format neu angeordnet, statt nur in einen anderen Rahmen gesetzt.",
-    seatGridNote: "Querformat zeigt Sitz- und Koalitionslisten nebeneinander, Hochformat untereinander.",
+    seatGridNote: "Querformat und Quadrat zeigen Sitze und Koalitionen nebeneinander; Hochformat ordnet sie untereinander an.",
+    constituencyNote: "Wahlkreissieger und amtliche Stimmenanteile werden für jedes Format neu angeordnet.",
     issuesNote: "Querformat und Quadrat nutzen Rangbalken; im Hochformat werden die Themen als Säulen gesetzt.",
     insightNote: "Für längere Listen und Einordnungen nutzt das Hochformat den Platz am besten.",
     currentPollLandscape: "Balken · Querformat", currentPollLandscapeMeta: "16:9 · kurze Vergleichsbalken",
     currentPollSquare: "Kompakte Balken", currentPollSquareMeta: "1:1 · für Social Posts",
     currentPollPortrait: "Säulen · Hochformat", currentPollPortraitMeta: "4:5 · vertikales Diagramm",
+    approvalCurrentLandscape: "Aktueller Stand · breit", approvalCurrentLandscapeMeta: "16:9 · Kennzahlen nebeneinander",
+    approvalCurrentSquare: "Aktueller Stand · quadratisch", approvalCurrentSquareMeta: "1:1 · kompakte Karte",
+    partyHistoryLandscape: "Parteiverlauf · breit", partyHistoryLandscapeMeta: "16:9 · vollständige Zeitachse",
+    partyHistorySquare: "Parteiverlauf · quadratisch", partyHistorySquareMeta: "1:1 · kompakter Verlauf",
     partyGridLandscape: "Parteikarten · breit", partyGridLandscapeMeta: "16:9 · vier Karten je Reihe",
     partyGridSquare: "Parteikarten · quadratisch", partyGridSquareMeta: "1:1 · zwei Karten je Reihe",
     partyGridPortrait: "Parteikarten · hochkant", partyGridPortraitMeta: "4:5 · vertikale Übersicht",
     seatGridLandscape: "Sitze · Querformat", seatGridLandscapeMeta: "16:9 · Listen nebeneinander",
+    seatGridSquare: "Sitze · quadratisch", seatGridSquareMeta: "1:1 · kompakte Doppelliste",
     seatGridPortrait: "Sitze · Hochformat", seatGridPortraitMeta: "4:5 · Listen untereinander",
+    constituencyLandscape: "Wahlkreis · breit", constituencyLandscapeMeta: "16:9 · Ergebnis in zwei Spalten",
+    constituencySquare: "Wahlkreis · quadratisch", constituencySquareMeta: "1:1 · kompakte Ergebnisgrafik",
+    constituencyPortrait: "Wahlkreis · hochkant", constituencyPortraitMeta: "4:5 · vertikale Ergebnisliste",
     issuesLandscape: "Themenbalken · breit", issuesLandscapeMeta: "16:9 · kurze Rangbalken",
     issuesSquare: "Themenbalken · quadratisch", issuesSquareMeta: "1:1 · kompakte Rangliste",
     issuesPortrait: "Themensäulen · hochkant", issuesPortraitMeta: "4:5 · vertikales Diagramm",
@@ -99,20 +113,31 @@ function copyFor(locale) {
     preparing: "Creando PNG…", ready: "La descarga ha comenzado.", shared: "Se abrió el menú del sistema.", failed: "No se pudo exportar el PNG.", close: "Cerrar",
     chartNote: "En las series temporales, el formato horizontal mantiene los ejes y rótulos más legibles.",
     approvalNote: "El formato horizontal está optimizado para artículos y presentaciones de esta serie histórica.",
+    approvalCurrentNote: "El dato actual reorganiza cifras y balance de respuestas para cada formato.",
+    partyHistoryNote: "La serie de un partido conserva un eje temporal completo y cifras legibles en ambos formatos.",
     mapNote: "En los mapas, el formato horizontal conserva mejor las formas y la leyenda.",
     currentPollNote: "Los formatos horizontal y cuadrado usan barras cortas; el vertical convierte los valores en columnas.",
     partyGridNote: "Las tarjetas de partidos se reorganizan para cada formato en lugar de cambiar solo el marco.",
-    seatGridNote: "El horizontal coloca escaños y coaliciones en paralelo; el vertical, uno debajo del otro.",
+    seatGridNote: "El horizontal y el cuadrado colocan escaños y coaliciones en paralelo; el vertical los apila.",
+    constituencyNote: "La candidatura ganadora y los porcentajes oficiales se reorganizan para cada formato.",
     issuesNote: "Los formatos horizontal y cuadrado usan barras; el vertical muestra los temas como columnas.",
     insightNote: "En listas y explicaciones largas, el formato vertical aprovecha mejor el espacio.",
     currentPollLandscape: "Barras · horizontal", currentPollLandscapeMeta: "16:9 · barras comparativas cortas",
     currentPollSquare: "Barras compactas", currentPollSquareMeta: "1:1 · para redes sociales",
     currentPollPortrait: "Columnas · vertical", currentPollPortraitMeta: "4:5 · gráfico vertical",
+    approvalCurrentLandscape: "Valoración · horizontal", approvalCurrentLandscapeMeta: "16:9 · cifras en paralelo",
+    approvalCurrentSquare: "Valoración · cuadrada", approvalCurrentSquareMeta: "1:1 · tarjeta compacta",
+    partyHistoryLandscape: "Evolución · horizontal", partyHistoryLandscapeMeta: "16:9 · eje temporal completo",
+    partyHistorySquare: "Evolución · cuadrada", partyHistorySquareMeta: "1:1 · serie compacta",
     partyGridLandscape: "Tarjetas · horizontal", partyGridLandscapeMeta: "16:9 · cuatro por fila",
     partyGridSquare: "Tarjetas · cuadrado", partyGridSquareMeta: "1:1 · dos por fila",
     partyGridPortrait: "Tarjetas · vertical", partyGridPortraitMeta: "4:5 · resumen vertical",
     seatGridLandscape: "Escaños · horizontal", seatGridLandscapeMeta: "16:9 · listas en paralelo",
+    seatGridSquare: "Escaños · cuadrado", seatGridSquareMeta: "1:1 · doble lista compacta",
     seatGridPortrait: "Escaños · vertical", seatGridPortraitMeta: "4:5 · listas apiladas",
+    constituencyLandscape: "Circunscripción · horizontal", constituencyLandscapeMeta: "16:9 · resultado en dos columnas",
+    constituencySquare: "Circunscripción · cuadrada", constituencySquareMeta: "1:1 · resultado compacto",
+    constituencyPortrait: "Circunscripción · vertical", constituencyPortraitMeta: "4:5 · lista vertical",
     issuesLandscape: "Temas · horizontal", issuesLandscapeMeta: "16:9 · barras cortas",
     issuesSquare: "Temas · cuadrado", issuesSquareMeta: "1:1 · ranking compacto",
     issuesPortrait: "Temas · columnas", issuesPortraitMeta: "4:5 · gráfico vertical",
@@ -131,20 +156,31 @@ function copyFor(locale) {
     preparing: "Creating PNG…", ready: "The download has started.", shared: "The system share sheet opened.", failed: "PNG export failed.", close: "Close",
     chartNote: "For time series, landscape keeps axes and labels most readable.",
     approvalNote: "Landscape is optimised for articles and presentations using this historical series.",
+    approvalCurrentNote: "The latest rating rearranges its figures and response balance for every format.",
+    partyHistoryNote: "The individual party series keeps a complete time axis and readable metrics in both formats.",
     mapNote: "For maps, landscape preserves geographic shapes and legends most clearly.",
     currentPollNote: "Landscape and square use shorter bars; portrait turns the values into columns.",
     partyGridNote: "Party cards are rearranged for every format instead of being placed inside a different frame.",
-    seatGridNote: "Landscape places seat and coalition lists side by side; portrait stacks them.",
+    seatGridNote: "Landscape and square place seat and coalition lists side by side; portrait stacks them.",
+    constituencyNote: "The constituency winner and official vote shares are rearranged for every format.",
     issuesNote: "Landscape and square use ranked bars; portrait displays the issues as columns.",
     insightNote: "For longer lists and explanations, portrait makes the best use of the space.",
     currentPollLandscape: "Bars · landscape", currentPollLandscapeMeta: "16:9 · short comparison bars",
     currentPollSquare: "Compact bars", currentPollSquareMeta: "1:1 · for social posts",
     currentPollPortrait: "Columns · portrait", currentPollPortraitMeta: "4:5 · vertical chart",
+    approvalCurrentLandscape: "Latest rating · wide", approvalCurrentLandscapeMeta: "16:9 · side-by-side figures",
+    approvalCurrentSquare: "Latest rating · square", approvalCurrentSquareMeta: "1:1 · compact card",
+    partyHistoryLandscape: "Party trend · wide", partyHistoryLandscapeMeta: "16:9 · complete time axis",
+    partyHistorySquare: "Party trend · square", partyHistorySquareMeta: "1:1 · compact series",
     partyGridLandscape: "Party cards · wide", partyGridLandscapeMeta: "16:9 · four cards per row",
     partyGridSquare: "Party cards · square", partyGridSquareMeta: "1:1 · two cards per row",
     partyGridPortrait: "Party cards · portrait", partyGridPortraitMeta: "4:5 · vertical overview",
     seatGridLandscape: "Seats · landscape", seatGridLandscapeMeta: "16:9 · lists side by side",
+    seatGridSquare: "Seats · square", seatGridSquareMeta: "1:1 · compact paired lists",
     seatGridPortrait: "Seats · portrait", seatGridPortraitMeta: "4:5 · stacked lists",
+    constituencyLandscape: "Constituency · wide", constituencyLandscapeMeta: "16:9 · two-column result",
+    constituencySquare: "Constituency · square", constituencySquareMeta: "1:1 · compact result graphic",
+    constituencyPortrait: "Constituency · portrait", constituencyPortraitMeta: "4:5 · vertical result list",
     issuesLandscape: "Issue bars · wide", issuesLandscapeMeta: "16:9 · short ranked bars",
     issuesSquare: "Issue bars · square", issuesSquareMeta: "1:1 · compact ranking",
     issuesPortrait: "Issue columns · portrait", issuesPortraitMeta: "4:5 · vertical chart",
@@ -225,7 +261,7 @@ function exportCloneWidth(format, profile, preset) {
     const compactWidth = preset === "landscape" ? 1380 : preset === "portrait" ? 760 : 820;
     return Math.min(available, compactWidth);
   }
-  if (["party-grid", "seat-grid", "insight"].includes(profile)) {
+  if (["approval-current", "party-history", "party-grid", "seat-grid", "constituency", "insight"].includes(profile)) {
     const compactWidth = preset === "landscape" ? 1440 : preset === "portrait" ? 900 : 900;
     return Math.min(available, compactWidth);
   }
@@ -418,6 +454,21 @@ function nextLayoutFrame() {
   return new Promise((resolve) => window.requestAnimationFrame(() => window.requestAnimationFrame(resolve)));
 }
 
+async function waitForProfileLayout(element, profile) {
+  if (profile !== "party-history") {
+    await nextLayoutFrame();
+    return;
+  }
+  // The live party chart deliberately uses a smaller SVG on phones. React can
+  // commit the wide export geometry a frame after the modal updates, so wait
+  // for that viewBox before cloning it for either preview or download.
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    await nextLayoutFrame();
+    const width = element?.querySelector(".party-detail-chart svg")?.viewBox?.baseVal?.width ?? 0;
+    if (width >= 900) return;
+  }
+}
+
 async function fitExportSurfaceContent({ content, clone, format, profile }) {
   await nextLayoutFrame();
   if (format.height) {
@@ -441,7 +492,7 @@ export async function renderElementPng({ element, filename, title, subtitle, loc
   // the stable wide geometry on every device so a phone download contains the
   // same labels and resolution as a desktop download.
   window.dispatchEvent(new CustomEvent("pollframe:export-layout", { detail: { wide: true } }));
-  await nextLayoutFrame();
+  await waitForProfileLayout(element, profile);
   const host = document.createElement("div");
   host.className = "png-export-host";
   const built = createExportSurface({ element, title, subtitle, locale, credit, preset, profile, theme });
@@ -532,7 +583,7 @@ function PngPreview({ element, preset, profile, theme, setTheme, title, subtitle
     const renderPreview = async () => {
       window.dispatchEvent(new CustomEvent("pollframe:export-layout", { detail: { wide: true } }));
       if (document.fonts?.ready) await document.fonts.ready;
-      await nextLayoutFrame();
+      await waitForProfileLayout(element, profile);
       if (cancelled) return;
       const built = createExportSurface({ element, title, subtitle, locale, credit, preset, profile, theme });
       surface = built.surface;
@@ -640,10 +691,4 @@ export function PngExportModal({ open, onClose, elementRef, filename, title, sub
     </div>
   ) : null;
   return modal ? createPortal(modal, document.body) : null;
-}
-
-export function PngExportButton({ elementRef, filename, title, subtitle, locale, label, credit, profile = "chart", className = "secondary-button" }) {
-  const [open, setOpen] = useState(false);
-  const buttonLabel = label ?? (locale === "de" ? "PNG exportieren" : locale === "es" ? "Exportar PNG" : "Export PNG");
-  return <><button className={`${className} png-export-button`} type="button" onClick={() => setOpen(true)} data-export-ignore="true"><Icon name="download" size={17} />{buttonLabel}</button><PngExportModal open={open} onClose={() => setOpen(false)} elementRef={elementRef} filename={filename} title={title} subtitle={subtitle} locale={locale} credit={credit} profile={profile} /></>;
 }

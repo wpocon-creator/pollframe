@@ -1,4 +1,4 @@
-const VERSION = "pollframe-app-v27";
+const VERSION = "pollframe-app-v28";
 const SHELL_CACHE = `${VERSION}-shell`;
 const RUNTIME_CACHE = `${VERSION}-runtime`;
 const DATA_CACHE = `${VERSION}-data`;

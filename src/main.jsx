@@ -8,7 +8,7 @@ import { PartyInfoButton, PartyInfoModalHost } from "./party-profiles.jsx";
 import { includeHistoricalEvent, isPrimaryElectionEvent, rankHistoricalEvents } from "./event-selection.js";
 import { trackAggregateEvent, trackAggregateEventOnce } from "./aggregateAnalytics.js";
 import { requestWasAborted } from "./network.js";
-import { PngExportButton } from "./png-export.jsx";
+import { PngExportButton } from "./png-export-button.jsx";
 import "@fontsource-variable/inter/wght.css";
 const ApprovalPage = lazy(() => import("./approval.jsx").then((module) => ({ default: module.ApprovalPage })));
 import {
@@ -3102,6 +3102,36 @@ function standardPollingSnapshot(pollData, partyDefinitions = PARTY_DEFINITIONS)
   return latestPollAtOrBefore(pollData.polls, pollsters, latestDate, ids);
 }
 
+function ConstituencyResultCard({ selected, locale, onChange = null, embed = false }) {
+  const isGerman = locale === "de";
+  const exportRef = useRef(null);
+  const rows = Object.entries(selected.results).map(([id, result]) => ({
+    id,
+    share: result.share,
+    votes: result.votes,
+    party: UK_MAP_PARTY_DEFINITIONS.find((party) => party.id === id) ?? { name: "Other", color: "#737b84" },
+  })).sort((a, b) => b.share - a.share);
+  const winner = UK_MAP_PARTY_DEFINITIONS.find((party) => party.id === selected.winner?.partyId) ?? UK_PARTY_DEFINITIONS.find((party) => party.id === selected.winner?.partyId);
+  const region = REGION_META.find((entry) => entry.slug === "uk-westminster");
+  const title = isGerman ? `Wahlergebnis 2024 · ${selected.name}` : `2024 election result · ${selected.name}`;
+  const shareUrl = `${window.location.origin}/?view=uk-constituencies&seat=${encodeURIComponent(selected.slug)}&lang=${encodeURIComponent(locale)}`;
+  const credit = "UK Parliament · Open Parliament Licence v3.0 · Pollframe";
+  return <section ref={exportRef} className={`constituency-detail constituency-result-card ${embed ? "is-embed" : ""}`} aria-labelledby="constituency-result-title">
+    <div className="constituency-title"><div><p className="section-label">{selected.country}{selected.region !== selected.country ? ` · ${selected.region}` : ""}</p><h2 id="constituency-result-title">{selected.name}</h2><small>{selected.code} · {selected.electorate.toLocaleString(getNumberLocale(locale))} {isGerman ? "Wahlberechtigte 2024" : "electors in 2024"}</small></div>{!embed && <div className="constituency-title-actions" data-export-ignore="true"><WidgetShareTools widget="constituency" elementRef={exportRef} filename={`pollframe-${selected.slug}-2024`} title={title} subtitle={selected.country} locale={locale} t={copy[locale]} region={region} extraEmbedParams={{ view: "uk-constituencies", seat: selected.slug }} shareHref={shareUrl} credit={credit} height={880} />{onChange && <button className="secondary-button" type="button" onClick={onChange}>{isGerman ? "Andere suchen" : "Find another"}</button>}</div>}</div>
+    <div className="constituency-columns official-only"><article><p className="section-label uk-historical-label">{isGerman ? "Amtliches Wahlergebnis · 4. Juli 2024" : "Official election result · 4 July 2024"}</p><h3><i style={{ background: winner?.color }} />{winner ? <PartyInfoButton party={winner} /> : "Other"}</h3><strong>{selected.winner.candidate}</strong><span>{isGerman ? "Vorsprung vor Platz zwei" : "Lead over second place"}: {selected.winner.majority.toLocaleString(getNumberLocale(locale))} {isGerman ? "Stimmen" : "votes"}</span><a href={selected.sourceUrl} target="_blank" rel="noreferrer">{isGerman ? "Quelle beim UK Parliament" : "Source at UK Parliament"}<Icon name="external" size={14} /></a></article></div>
+    <div className="constituency-chart-heading"><strong>{isGerman ? "Amtliche Stimmenanteile der Wahl 2024" : "Official vote shares at the 2024 election"}</strong><small>{selected.validVotes.toLocaleString(getNumberLocale(locale))} {isGerman ? "gültige Stimmen" : "valid votes"}</small></div>
+    <div className="constituency-result-list" aria-label={isGerman ? "Amtliche Stimmenanteile 2024" : "Official 2024 vote shares"}>{rows.map((row) => <div key={row.id}><PartyInfoButton party={row.party} includeDot /><div><i style={{ width: `${row.share}%`, background: row.party.color }} /></div><strong>{row.share.toLocaleString(getNumberLocale(locale), { maximumFractionDigits: 1 })}%</strong></div>)}</div>
+    <p className="projection-method"><Icon name="info" size={15} />{isGerman ? "Diese Ansicht enthält keine Hochrechnung und keine Schätzung für heute. Gezeigt werden ausschließlich die vom UK Parliament veröffentlichten Ergebnisse der Unterhauswahl 2024." : "This view contains no projection or estimate for today. It shows only the 2024 general-election results published by the UK Parliament."}</p>
+  </section>;
+}
+
+function ConstituencyEmbedView({ locale, constituencyData, slug }) {
+  const selected = constituencyData.constituencies.find((seat) => seat.slug === slug);
+  if (!selected) return <div className="embed-loading">{locale === "de" ? "Wahlkreis nicht gefunden" : "Constituency not found"}</div>;
+  const shareUrl = `/?view=uk-constituencies&seat=${encodeURIComponent(selected.slug)}&lang=${encodeURIComponent(locale)}`;
+  return <main className="widget-embed-page widget-embed-constituency"><header className="embed-header"><div><span className="embed-brand"><BrandMark/>POLLFRAME</span><h1>{locale === "de" ? "Wahlkreisergebnis 2024" : "2024 constituency result"}</h1></div><span>UK Parliament</span></header><ConstituencyResultCard selected={selected} locale={locale} embed/><footer className="embed-footer"><span>UK Parliament · Open Parliament Licence v3.0</span><a href={shareUrl} target="_blank" rel="noreferrer">{locale === "de" ? "Interaktiv öffnen" : "Open interactive"} <Icon name="external" size={13}/></a></footer></main>;
+}
+
 function UKConstituencyPage({ locale, constituencyData }) {
   const isGerman = locale === "de";
   const query = new URLSearchParams(window.location.search);
@@ -3266,13 +3296,6 @@ function UKConstituencyPage({ locale, constituencyData }) {
       setIsSearching(false);
     }
   };
-  const rows = selected ? Object.entries(selected.results).map(([id, result]) => ({
-    id,
-    share: result.share,
-    votes: result.votes,
-    party: UK_MAP_PARTY_DEFINITIONS.find((party) => party.id === id) ?? { name: "Other", color: "#737b84" },
-  })).sort((a, b) => b.share - a.share) : [];
-  const winner = UK_MAP_PARTY_DEFINITIONS.find((party) => party.id === selected?.winner?.partyId) ?? UK_PARTY_DEFINITIONS.find((party) => party.id === selected?.winner?.partyId);
   useEffect(() => {
     updatePageMetadata({
       title: selected ? `${selected.name} · Wahlergebnis 2024 · Pollframe` : (isGerman ? "Britische Wahlkreisergebnisse 2024 · Pollframe" : "UK constituency results 2024 · Pollframe"),
@@ -3296,13 +3319,7 @@ function UKConstituencyPage({ locale, constituencyData }) {
         {selected && <div className="selected-constituency" aria-live="polite"><span><Icon name="check" size={16} /><small>{isGerman ? "Ausgewählter Wahlkreis" : "Selected constituency"}</small><strong>{selected.name}</strong></span><button type="button" onClick={() => { setSearch(""); setSearchStatus(""); setRemoteMatches([]); setSearchOpen(false); window.requestAnimationFrame(() => searchInputRef.current?.focus()); }}>{isGerman ? "Ändern" : "Change"}</button></div>}
       </section>
 
-      {selected ? <section className="constituency-detail">
-        <div className="constituency-title"><div><p className="section-label">{selected.country}{selected.region !== selected.country ? ` · ${selected.region}` : ""}</p><h2>{selected.name}</h2><small>{selected.code} · {selected.electorate.toLocaleString(getNumberLocale(locale))} {isGerman ? "Wahlberechtigte 2024" : "electors in 2024"}</small></div><button className="secondary-button" type="button" onClick={() => { setSearch(""); setSearchStatus(""); setRemoteMatches([]); setSearchOpen(false); window.requestAnimationFrame(() => searchInputRef.current?.focus()); }}>{isGerman ? "Andere suchen" : "Find another"}</button></div>
-        <div className="constituency-columns official-only"><article><p className="section-label uk-historical-label">{isGerman ? "Amtliches Wahlergebnis · 4. Juli 2024" : "Official election result · 4 July 2024"}</p><h3><i style={{ background: winner?.color }} />{winner ? <PartyInfoButton party={winner} /> : "Other"}</h3><strong>{selected.winner.candidate}</strong><span>{isGerman ? "Vorsprung vor Platz zwei" : "Lead over second place"}: {selected.winner.majority.toLocaleString(getNumberLocale(locale))} {isGerman ? "Stimmen" : "votes"}</span><a href={selected.sourceUrl} target="_blank" rel="noreferrer">{isGerman ? "Quelle beim UK Parliament" : "Source at UK Parliament"}<Icon name="external" size={14} /></a></article></div>
-        <div className="constituency-chart-heading"><strong>{isGerman ? "Amtliche Stimmenanteile der Wahl 2024" : "Official vote shares at the 2024 election"}</strong><small>{selected.validVotes.toLocaleString(getNumberLocale(locale))} {isGerman ? "gültige Stimmen" : "valid votes"}</small></div>
-        <div className="constituency-result-list" aria-label={isGerman ? "Amtliche Stimmenanteile 2024" : "Official 2024 vote shares"}>{rows.map((row) => <div key={row.id}><PartyInfoButton party={row.party} includeDot /><div><i style={{ width: `${row.share}%`, background: row.party.color }} /></div><strong>{row.share.toLocaleString(getNumberLocale(locale), { maximumFractionDigits: 1 })}%</strong></div>)}</div>
-        <p className="projection-method"><Icon name="info" size={15} />{isGerman ? "Diese Ansicht enthält keine Hochrechnung und keine Schätzung für heute. Gezeigt werden ausschließlich die vom UK Parliament veröffentlichten Ergebnisse der Unterhauswahl 2024." : "This view contains no projection or estimate for today. It shows only the 2024 general-election results published by the UK Parliament."}</p>
-      </section> : <section className="battleground-list"><div><p className="section-label">{isGerman ? "Knappste Ergebnisse 2024" : "Closest results in 2024"}</p><h2>{isGerman ? "Wahlkreise zum Erkunden" : "Constituencies to explore"}</h2></div><div>{closeResults.map(({ constituency, margin }) => <button type="button" key={constituency.code} onClick={() => selectSeat(constituency.slug)}><span><strong>{constituency.name}</strong><small>{constituency.country}</small></span><b>{margin.toLocaleString(getNumberLocale(locale), { maximumFractionDigits: 1 })} pp</b></button>)}</div></section>}
+      {selected ? <ConstituencyResultCard selected={selected} locale={locale} onChange={() => { setSearch(""); setSearchStatus(""); setRemoteMatches([]); setSearchOpen(false); window.requestAnimationFrame(() => searchInputRef.current?.focus()); }} /> : <section className="battleground-list"><div><p className="section-label">{isGerman ? "Knappste Ergebnisse 2024" : "Closest results in 2024"}</p><h2>{isGerman ? "Wahlkreise zum Erkunden" : "Constituencies to explore"}</h2></div><div>{closeResults.map(({ constituency, margin }) => <button type="button" key={constituency.code} onClick={() => selectSeat(constituency.slug)}><span><strong>{constituency.name}</strong><small>{constituency.country}</small></span><b>{margin.toLocaleString(getNumberLocale(locale), { maximumFractionDigits: 1 })} pp</b></button>)}</div></section>}
       <p className="constituency-source">
         {isGerman ? "Quelle: UK Parliament. " : "Source: UK Parliament. "}
         Contains Parliamentary information licensed under the <a href="https://www.parliament.uk/site-information/copyright/open-parliament-licence/" target="_blank" rel="noreferrer">Open Parliament Licence v3.0</a>.
@@ -3438,12 +3455,14 @@ function ParliamentProjection({
           <h3 id="projection-title">{projectionTitle}</h3>
           <p>{t.projectionIntro}</p>
         </div>
-        <div className="majority-badge">
-          <span>{t.majority}</span>
-          <strong>{majority}</strong>
-          <small>{t.seats}</small>
+        <div className="projection-heading-side">
+          <div className="majority-badge">
+            <span>{t.majority}</span>
+            <strong>{majority}</strong>
+            <small>{t.seats}</small>
+          </div>
+          {!embed && <WidgetShareTools widget="modelled-seats" elementRef={exportRef} filename={`pollframe-${region.slug}-modelled-seats`} title={projectionTitle} subtitle={region.name} locale={locale} t={t} region={region} selectedPollsters={selectedPollsters} />}
         </div>
-        {!embed && <WidgetShareTools widget="modelled-seats" elementRef={exportRef} filename={`pollframe-${region.slug}-modelled-seats`} title={projectionTitle} subtitle={region.name} locale={locale} t={t} region={region} selectedPollsters={selectedPollsters} />}
       </div>
 
       <div className="projection-summary">
@@ -3529,15 +3548,20 @@ function PartyDetailModal({
   partyDefinitions = PARTY_DEFINITIONS,
   termStart = CURRENT_TERM_START,
   archiveStart = ARCHIVE_START,
+  region = REGION_META[0],
+  embed = false,
+  initialPeriod = "year",
 }) {
-  const [period, setPeriod] = useState("year");
+  const [period, setPeriod] = useState(initialPeriod);
   const [hoveredIndex, setHoveredIndex] = useState(null);
   const [compactChart, setCompactChart] = useState(() => window.matchMedia("(max-width: 700px)").matches);
+  const [wideExport, setWideExport] = useState(false);
+  const exportRef = useRef(null);
   const pointerFrameRef = useRef(0);
   const pendingPointerRef = useRef(null);
-  const dialogRef = useModalFocus(Boolean(party), onClose);
-  useBodyScrollLock(Boolean(party));
-  useEffect(() => setPeriod("year"), [party?.id]);
+  const dialogRef = useModalFocus(Boolean(party) && !embed, onClose);
+  useBodyScrollLock(Boolean(party) && !embed);
+  useEffect(() => setPeriod(initialPeriod), [party?.id, initialPeriod]);
   useEffect(() => () => {
     if (pointerFrameRef.current) window.cancelAnimationFrame(pointerFrameRef.current);
   }, []);
@@ -3546,6 +3570,11 @@ function PartyDetailModal({
     const update = () => setCompactChart(query.matches);
     query.addEventListener?.("change", update);
     return () => query.removeEventListener?.("change", update);
+  }, []);
+  useEffect(() => {
+    const update = (event) => setWideExport(Boolean(event.detail?.wide));
+    window.addEventListener("pollframe:export-layout", update);
+    return () => window.removeEventListener("pollframe:export-layout", update);
   }, []);
 
   const endTime = parseDate(latestDate);
@@ -3570,9 +3599,10 @@ function PartyDetailModal({
     ? `${value.toLocaleString(numberLocale, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`
     : "–";
 
-  const width = compactChart ? 430 : 920;
-  const height = compactChart ? 300 : 350;
-  const margin = compactChart
+  const useWideChart = embed || wideExport || !compactChart;
+  const width = useWideChart ? 920 : 430;
+  const height = useWideChart ? 350 : 300;
+  const margin = !useWideChart
     ? { top: 28, right: 14, bottom: 44, left: 42 }
     : { top: 28, right: 30, bottom: 48, left: 48 };
   const innerW = width - margin.left - margin.right;
@@ -3582,15 +3612,16 @@ function PartyDetailModal({
   const span = Math.max(chartMax - chartMin, 1);
   const x = (date) => margin.left + ((parseDate(date) - parseDate(startDate)) / Math.max(endTime - parseDate(startDate), 1)) * innerW;
   const y = (value) => margin.top + innerH - ((value - chartMin) / span) * innerH;
-  const chartPoints = useMemo(
-    () => series.map((point) => ({ date: point.date, x: x(point.date), y: y(point.value) })),
-    [series, startDate, endTime, chartMin, span],
-  );
-  const path = useMemo(() => continuousSmoothPath(chartPoints), [chartPoints]);
+  // Exporting on a phone switches this chart from the compact to the wide
+  // coordinate system. These points must therefore be recomputed with every
+  // geometry change; memoising only by data left the path at 430 px while the
+  // final marker correctly moved to the 920 px viewBox.
+  const chartPoints = series.map((point) => ({ date: point.date, x: x(point.date), y: y(point.value) }));
+  const path = continuousSmoothPath(chartPoints);
   const areaPath = path
     ? `${path} L ${chartPoints.at(-1).x.toFixed(1)} ${height - margin.bottom} L ${chartPoints[0].x.toFixed(1)} ${height - margin.bottom} Z`
     : "";
-  const tickCount = compactChart ? 3 : 4;
+  const tickCount = useWideChart ? 4 : 3;
   const tickDates = useMemo(
     () => Array.from({ length: tickCount }, (_, index) => toIso(parseDate(startDate) + ((endTime - parseDate(startDate)) * index / (tickCount - 1)))),
     [startDate, endTime, tickCount],
@@ -3618,9 +3649,11 @@ function PartyDetailModal({
     });
   };
 
-  return (
-    <div className="overlay modal-overlay" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
-      <section ref={dialogRef} className="party-modal" role="dialog" aria-modal="true" aria-labelledby="party-detail-title" tabIndex={-1}>
+  const shareUrl = new URL(window.location.href);
+  shareUrl.searchParams.set("party", party.slug);
+  shareUrl.searchParams.set("partyPeriod", period);
+  const panel = (
+      <section ref={(node) => { dialogRef.current = node; exportRef.current = node; }} className={`party-modal party-history-export ${embed ? "party-history-embed-card" : ""}`} role={embed ? "region" : "dialog"} aria-modal={embed ? undefined : "true"} aria-labelledby="party-detail-title" tabIndex={embed ? undefined : -1}>
         <div className="party-modal-header">
           <div className="party-modal-title-row widget-info-heading">
             <GraphInfoPopover locale={locale} title={graphInfo.title} paragraphs={graphInfo.paragraphs} className="graph-info-compact" />
@@ -3630,10 +3663,13 @@ function PartyDetailModal({
               <p>{t.partyDetailIntro}</p>
             </div>
           </div>
-          <button className="icon-button" onClick={onClose} aria-label={t.close}><Icon name="close" /></button>
+          <div className="party-modal-actions" data-export-ignore="true">
+            {!embed && <WidgetShareTools widget="party-history" elementRef={exportRef} filename={`pollframe-${region.slug}-${party.slug}-${period}`} title={t.partyDetailTitle(party.name)} subtitle={region.name} locale={locale} t={t} region={region} selectedPollsters={selectedPollsters} extraEmbedParams={{ party: party.slug, period }} shareHref={shareUrl.toString()} height={760} />}
+            {!embed && <button className="icon-button" onClick={onClose} aria-label={t.close}><Icon name="close" /></button>}
+          </div>
         </div>
 
-        <div className="party-periods" aria-label={t.timeRange}>
+        {!embed && <div className="party-periods" aria-label={t.timeRange} data-export-ignore="true">
           {[
             ["month", t.oneMonth],
             ["three", t.threeMonths],
@@ -3646,7 +3682,7 @@ function PartyDetailModal({
           ].map(([id, label]) => (
             <button key={id} className={period === id ? "selected" : ""} type="button" aria-pressed={period === id} onClick={() => setPeriod(id)}>{label}</button>
           ))}
-        </div>
+        </div>}
 
         {series.length > 1 ? (
           <>
@@ -3659,7 +3695,7 @@ function PartyDetailModal({
             </div>
             <div className="party-detail-chart">
               <svg
-                className={compactChart ? "compact" : undefined}
+                className={!useWideChart ? "compact" : undefined}
                 viewBox={`0 0 ${width} ${height}`}
                 role="img"
                 aria-label={t.partyDetailTitle(party.name)}
@@ -3721,8 +3757,9 @@ function PartyDetailModal({
           <p className="party-no-data">{t.notEnoughData}</p>
         )}
       </section>
-    </div>
   );
+  if (embed) return <main className="widget-embed-page widget-embed-party-history"><header className="embed-header"><div><span className="embed-brand"><BrandMark/>POLLFRAME</span><h1>{t.partyDetailTitle(party.name)}</h1></div><span>{region.name}</span></header>{panel}<footer className="embed-footer"><DataAttribution locale={locale} metadata={{ sourceLabel: region.type === "uk-federal" ? "UK Election Data Vault" : region.type === "spain-federal" ? "Electograph" : "DAWUM", sourceUrl: region.type === "uk-federal" ? "https://electiondatavault.co.uk/" : region.type === "spain-federal" ? "https://electograph.com/" : DATA_SOURCE_URL, license: region.type === "federal" || region.type === "state" ? "ODbL 1.0" : undefined }}/><a href={shareUrl.toString()} target="_blank" rel="noreferrer">{locale === "de" ? "Interaktiv öffnen" : locale === "es" ? "Abrir interactivo" : "Open interactive"} <Icon name="external" size={13}/></a></footer></main>;
+  return <div className="overlay modal-overlay" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>{panel}</div>;
 }
 
 function AppInstallSettings({ pwa, t }) {
@@ -4301,13 +4338,32 @@ function widgetPngProfile(widget) {
   if (widget === "current-average") return "current-poll";
   if (widget === "tendencies") return "party-grid";
   if (widget === "modelled-seats") return "seat-grid";
+  if (widget === "party-history") return "party-history";
+  if (widget === "constituency") return "constituency";
   return "insight";
 }
 
-function WidgetShareModal({ open, onClose, widget, elementRef, filename, title, subtitle, locale, t, region, selectedPollsters = [] }) {
+function WidgetShareModal({
+  open,
+  onClose,
+  widget,
+  elementRef,
+  filename,
+  title,
+  subtitle,
+  locale,
+  t,
+  region,
+  selectedPollsters = [],
+  extraEmbedParams = {},
+  shareHref = null,
+  credit: creditOverride = null,
+  profile: profileOverride = null,
+  height: requestedHeight = null,
+}) {
   // A fixed, content-tested height keeps publisher embeds free of nested scrollbars.
   // The tendency cards need a little more room at the narrowest supported width.
-  const embedHeight = widget === "modelled-seats" ? 1272 : widget === "tendencies" ? 1216 : 620;
+  const embedHeight = requestedHeight ?? (widget === "modelled-seats" ? 1272 : widget === "tendencies" ? 1216 : widget === "party-history" ? 760 : widget === "constituency" ? 880 : 620);
   const [embedTheme, setEmbedTheme] = useState("light");
   const [previewWidth, setPreviewWidth] = useState("article");
   const [copied, setCopied] = useState("");
@@ -4317,18 +4373,22 @@ function WidgetShareModal({ open, onClose, widget, elementRef, filename, title, 
   useEffect(() => { if (open) trackAggregateEvent("share_dialog_opened"); }, [open]);
   if (!open) return null;
   const params = new URLSearchParams({ embed: "1", widget, region: region.slug, lang: locale, theme: embedTheme });
+  Object.entries(extraEmbedParams).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") params.set(key, String(value));
+  });
+  if (extraEmbedParams.view === "uk-constituencies") params.delete("region");
   if (selectedPollsters.length) params.set("pollsters", selectedPollsters.join(","));
   const embedUrl = `${window.location.origin}/embed.html?${params}`;
-  const targetId = widget === "current-average" ? "snapshot-title" : widget === "tendencies" ? "tendency-title" : "projection-title";
+  const targetId = widget === "current-average" ? "snapshot-title" : widget === "tendencies" ? "tendency-title" : widget === "party-history" ? "party-detail-title" : widget === "constituency" ? "constituency-result-title" : "projection-title";
   const shareParams = new URLSearchParams({ region: region.slug, lang: locale, share: "1" });
   if (selectedPollsters.length) shareParams.set("pollsters", selectedPollsters.join(","));
-  const shareUrl = `${window.location.origin}/?${shareParams}#${targetId}`;
+  const shareUrl = shareHref ?? `${window.location.origin}/?${shareParams}#${targetId}`;
   const labels = journalistLabels(locale);
-  const credit = region.type === "uk-federal"
+  const credit = creditOverride ?? (region.type === "uk-federal"
     ? "UK Election Data Vault · Free commercial reuse · Pollframe"
     : region.type === "spain-federal"
       ? "Electograph · Pollframe"
-      : "DAWUM · ODbL 1.0 · Pollframe";
+      : "DAWUM · ODbL 1.0 · Pollframe");
   const code = iframeMarkup({ src: embedUrl, title, height: embedHeight });
   const sourceNote = `${title} — ${subtitle}. ${credit}. ${shareUrl}`;
   const copy = async (value, kind) => {
@@ -4352,20 +4412,29 @@ function WidgetShareModal({ open, onClose, widget, elementRef, filename, title, 
         <div className="embed-preview-toolbar" aria-label={t.embedPreview}>{[["wide",labels.wide],["article",labels.article],["phone",labels.phone]].map(([value,label])=><button key={value} type="button" className={previewWidth===value?"selected":""} aria-pressed={previewWidth===value} onClick={()=>setPreviewWidth(value)}>{label}</button>)}</div>
         <StaticEmbedPreview src={embedUrl} title={`${title} · ${t.embedPreview}`} height={embedHeight} previewWidth={previewWidth} targetHeight={360} className="widget-embed-preview" />
         <label className="code-label">{t.embedPreview}<code>{code}</code></label>
-        <div className="embed-actions journalist-embed-actions"><button className="secondary-button" type="button" onClick={()=>copy(shareUrl,"link")}><Icon name="share" size={16}/>{copied==="link"?t.linkCopied:t.copyLink}</button><button className="primary-button" type="button" onClick={()=>copy(code,"code")}><Icon name="code" size={16}/>{copied==="code"?t.copied:t.copyCode}</button><PngExportButton elementRef={elementRef} filename={filename} title={title} subtitle={subtitle} locale={locale} label={t.exportPng} credit={credit} profile={widgetPngProfile(widget)}/><button className="secondary-button" type="button" onClick={()=>copy(sourceNote,"credit")}><Icon name="check" size={16}/>{copied==="credit"?labels.creditCopied:labels.copyCredit}</button><a className="secondary-button" href={reportBugHref(shareUrl)}><Icon name="info" size={16}/>{labels.reportBug}</a></div>
+        <div className="embed-actions journalist-embed-actions"><button className="secondary-button" type="button" onClick={()=>copy(shareUrl,"link")}><Icon name="share" size={16}/>{copied==="link"?t.linkCopied:t.copyLink}</button><button className="primary-button" type="button" onClick={()=>copy(code,"code")}><Icon name="code" size={16}/>{copied==="code"?t.copied:t.copyCode}</button><PngExportButton elementRef={elementRef} filename={filename} title={title} subtitle={subtitle} locale={locale} label={t.exportPng} credit={credit} profile={profileOverride ?? widgetPngProfile(widget)}/><button className="secondary-button" type="button" onClick={()=>copy(sourceNote,"credit")}><Icon name="check" size={16}/>{copied==="credit"?labels.creditCopied:labels.copyCredit}</button><a className="secondary-button" href={reportBugHref(shareUrl)}><Icon name="info" size={16}/>{labels.reportBug}</a></div>
         {copyError && <p className="embed-copy-error" role="status">{labels.copyFailed}</p>}
       </section>
     </div>
   );
 }
 
-function WidgetShareTools({ widget, elementRef, filename, title, subtitle, locale, t, region, selectedPollsters = [] }) {
+function WidgetShareTools({ widget, elementRef, filename, title, subtitle, locale, t, region, selectedPollsters = [], extraEmbedParams = {}, shareHref = null, credit = null, profile = null, height = null, className = "" }) {
   const [open, setOpen] = useState(false);
-  const credit = region.type === "uk-federal" ? "UK Election Data Vault · Free commercial reuse · Pollframe" : region.type === "spain-federal" ? "Electograph · Pollframe" : "DAWUM · ODbL 1.0 · Pollframe";
-  return <div className="widget-share-tools" data-export-ignore="true"><button className="widget-share-trigger" type="button" onClick={()=>setOpen(true)} aria-label={`${t.share}: ${title}`} title={t.share}><Icon name="share" size={15}/></button><PngExportButton elementRef={elementRef} filename={filename} title={title} subtitle={subtitle} locale={locale} label={t.exportPng} credit={credit} profile={widgetPngProfile(widget)} className="widget-share-trigger widget-png-trigger"/><WidgetShareModal open={open} onClose={()=>setOpen(false)} widget={widget} elementRef={elementRef} filename={filename} title={title} subtitle={subtitle} locale={locale} t={t} region={region} selectedPollsters={selectedPollsters}/></div>;
+  const resolvedCredit = credit ?? (region.type === "uk-federal" ? "UK Election Data Vault · Free commercial reuse · Pollframe" : region.type === "spain-federal" ? "Electograph · Pollframe" : "DAWUM · ODbL 1.0 · Pollframe");
+  return <div className={`widget-share-tools ${className}`.trim()} data-export-ignore="true"><button className="widget-share-trigger" type="button" onClick={()=>setOpen(true)} aria-label={`${t.share}: ${title}`} title={t.share}><Icon name="share" size={15}/></button><PngExportButton elementRef={elementRef} filename={filename} title={title} subtitle={subtitle} locale={locale} label={t.exportPng} credit={resolvedCredit} profile={profile ?? widgetPngProfile(widget)} className="widget-share-trigger widget-png-trigger"/><WidgetShareModal open={open} onClose={()=>setOpen(false)} widget={widget} elementRef={elementRef} filename={filename} title={title} subtitle={subtitle} locale={locale} t={t} region={region} selectedPollsters={selectedPollsters} extraEmbedParams={extraEmbedParams} shareHref={shareHref} credit={resolvedCredit} profile={profile} height={height}/></div>;
 }
 
 function WidgetEmbedView({ widget, t, locale, pollData, latestDate, current, previous, baseline, region, partyDefinitions, selectedPollsters = [] }) {
+  if (widget === "party-history") {
+    const params = new URLSearchParams(window.location.search);
+    const party = partyDefinitions.find((entry) => entry.slug === params.get("party"));
+    const period = ["month", "three", "six", "ytd", "year", "two", "five", "all"].includes(params.get("period")) ? params.get("period") : "year";
+    if (!party) return <div className="embed-loading">{locale === "de" ? "Partei nicht gefunden" : locale === "es" ? "No se encontró el partido" : "Party not found"}</div>;
+    const electionDates = region.type === "state" ? STATE_ELECTION_DATES[region.slug] ?? [] : region.type === "uk-federal" ? UK_ELECTION_DATES : region.type === "spain-federal" ? ["2023-07-23"] : [];
+    const termStart = electionDates.filter((date) => date <= latestDate).at(-1) ?? pollData.polls[0]?.date ?? ARCHIVE_START;
+    return <PartyDetailModal party={party} onClose={() => {}} t={t} locale={locale} polls={pollData.polls} selectedPollsters={selectedPollsters} latestDate={latestDate} partyDefinitions={partyDefinitions} termStart={termStart} archiveStart={pollData.polls[0]?.date ?? ARCHIVE_START} region={region} embed initialPeriod={period} />;
+  }
   const statusLabel = region.type === "uk-federal" && pollData.metadata?.weightedAveragePollsterId
     ? (locale === "de" ? "Gewichteter 14-Tage-Trend" : locale === "es" ? "Tendencia ponderada de 14 días" : "Weighted 14-day trend")
     : pollData.pollsters?.[current.pollster] ?? null;
@@ -7730,14 +7799,15 @@ function RegionalApp() {
   const approvalCountry = "de";
   const countryIndexPage = isContentRoute && !embedMode && query.get("view") === "countries";
   const requestedWatchlistPage = isContentRoute && !embedMode && !approvalPage && !countryIndexPage && query.get("view") === "watchlist";
-  const ukConstituencyPage = isContentRoute && !embedMode && !approvalPage && !countryIndexPage && !requestedWatchlistPage && query.get("view") === "uk-constituencies";
+  const ukConstituencyRoute = isContentRoute && !approvalPage && !countryIndexPage && !requestedWatchlistPage && query.get("view") === "uk-constituencies";
+  const ukConstituencyPage = ukConstituencyRoute && !embedMode;
   const requestedUkCountryPage = isContentRoute && !embedMode && !approvalPage && !countryIndexPage && !ukConstituencyPage && requestedCountry === "uk";
   const requestedSpainCountryPage = isContentRoute && !embedMode && !approvalPage && !countryIndexPage && !ukConstituencyPage && requestedCountry === "es";
   const spainIssuesPage = requestedSpainCountryPage && query.get("view") === "spain-issues";
   const retiredUkIssuesRoute = requestedUkCountryPage && query.get("view") === "uk-issues";
   const spainRegionPage = requestedSpainCountryPage && query.get("view") === "spain-region";
   const spainRegionArea = spainRegionPage ? query.get("area") : null;
-  const isUKContext = (requestedWatchlistPage && requestedCountry === "uk") || ukConstituencyPage || requestedUkCountryPage || region?.type === "uk-federal";
+  const isUKContext = (requestedWatchlistPage && requestedCountry === "uk") || ukConstituencyRoute || requestedUkCountryPage || region?.type === "uk-federal";
   const isSpainContext = (requestedWatchlistPage && requestedCountry === "es") || requestedSpainCountryPage || region?.type === "spain-federal";
   const activeCountry = isUKContext ? "uk" : isSpainContext ? "es" : "de";
   const pwa = usePwaLifecycle({ disabled: embedMode, country: activeCountry });
@@ -7994,7 +8064,7 @@ function RegionalApp() {
       });
       return () => controller.abort();
     }
-    if (ukConstituencyPage) {
+    if (ukConstituencyRoute) {
       Promise.all([
         fetch("/uk-summary.json", { signal: controller.signal }).then((response) => {
           if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -8064,7 +8134,7 @@ function RegionalApp() {
         if (!requestWasAborted(error, controller.signal)) setLoadError(true);
       });
     return () => controller.abort();
-  }, [embedMode, legalPage, privacyPage, licencesPage, editorialStandardsPage, contactPage, watchlistPage, approvalPage, isOverview, germanyCountryPage, germanyStateMapPage, countryIndexPage, ukConstituencyPage, ukCountryPage, spainCountryPage, spainIssuesPage, spainRegionPage, spainRegionArea, region, pwa.dataRefreshVersion]);
+  }, [embedMode, legalPage, privacyPage, licencesPage, editorialStandardsPage, contactPage, watchlistPage, approvalPage, isOverview, germanyCountryPage, germanyStateMapPage, countryIndexPage, ukConstituencyRoute, ukCountryPage, spainCountryPage, spainIssuesPage, spainRegionPage, spainRegionArea, region, pwa.dataRefreshVersion]);
 
   useEffect(() => {
     if (region?.type !== "uk-federal" || !pollData || pollData.metadata?.rawPollsLoaded) return undefined;
@@ -8386,10 +8456,16 @@ function RegionalApp() {
       : <div className="embed-loading">{loadError ? t.error : t.loading}</div>;
   }
 
+  if (embedMode && ukConstituencyRoute) {
+    return summary?.constituencies
+      ? <ConstituencyEmbedView locale={locale} constituencyData={summary.constituencies} slug={query.get("seat")} />
+      : <div className="embed-loading">{loadError ? t.error : t.loading}</div>;
+  }
+
   if (embedMode && !isOverview) {
     if (!pollData || !latestDate) return <div className="embed-loading">{loadError ? t.error : t.loading}</div>;
     const widget = query.get("widget");
-    if (["current-average", "modelled-seats", "tendencies"].includes(widget)) {
+    if (["current-average", "modelled-seats", "tendencies", "party-history"].includes(widget)) {
       return <WidgetEmbedView widget={widget} t={t} locale={locale} pollData={pollData} latestDate={latestDate} current={current} previous={previous} baseline={tendencyBaseline} region={region} partyDefinitions={activePartyDefinitions} selectedPollsters={selectedPollsters} />;
     }
     return (
@@ -8869,6 +8945,8 @@ function RegionalApp() {
           partyDefinitions={activePartyDefinitions}
           termStart={termStart}
           archiveStart={archiveStart}
+          region={region}
+          initialPeriod={["month", "three", "six", "ytd", "year", "two", "five", "all"].includes(query.get("partyPeriod")) ? query.get("partyPeriod") : "year"}
         />
       )}
       <PartyInfoModalHost locale={locale} />

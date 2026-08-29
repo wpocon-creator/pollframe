@@ -1396,7 +1396,7 @@ test.describe("core routes", () => {
     await page.locator(".approval-info-card").screenshot({ path: testInfo.outputPath("approval-info-prose.png") });
     await page.locator(".approval-info-card header button").click();
 
-    await page.getByRole("button", { name: "Share & embed" }).click();
+    await page.getByRole("button", { name: "Share & embed", exact: true }).click();
     const preview = page.frameLocator(".approval-embed-preview iframe");
     await expect(preview.getByRole("heading", { name: /Chancellor: Satisfaction over time/ })).toBeVisible();
     await expect(preview.locator(".approval-series .series-line").first()).toBeVisible();
