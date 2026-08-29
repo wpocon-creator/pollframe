@@ -203,6 +203,10 @@ test.describe("PNG export chooser", () => {
     await downloadPngSample(page, page.locator(".results-card .widget-png-trigger"), ["landscape", "square", "portrait"], testInfo.outputPath("current-square-bars.png"), [1080, 1080], "square");
     await downloadPngSample(page, page.locator(".results-card .widget-png-trigger"), ["landscape", "square", "portrait"], testInfo.outputPath("current-portrait-columns.png"), [1080, 1350], "portrait");
     await downloadPngSample(page, page.locator(".tendency-section .widget-png-trigger"), ["landscape", "square", "portrait"], testInfo.outputPath("party-cards-square.png"), [1080, 1080], "square");
+    await downloadPngSample(page, page.locator(".projection-section .widget-png-trigger"), ["landscape", "square", "portrait"], testInfo.outputPath("modelled-seats-square.png"), [1080, 1080], "square");
+    await page.locator(".tendency-card").first().click();
+    await downloadPngSample(page, page.locator(".party-modal .widget-png-trigger"), ["landscape", "square"], testInfo.outputPath("party-history-square.png"), [1080, 1080], "square");
+    await page.locator(".party-modal>.party-modal-header .icon-button").click();
 
     await page.goto("/?view=map&lang=de");
     await settle(page);
@@ -221,6 +225,7 @@ test.describe("PNG export chooser", () => {
     await page.goto("/?view=approval&country=de&lang=de");
     await settle(page);
     await downloadPngSample(page, page.locator(".approval-main-chart .png-export-button"), ["landscape", "square"], testInfo.outputPath("approval-landscape.png"), [1920, 1080]);
+    await downloadPngSample(page, page.locator(".approval-current-government .widget-png-trigger"), ["landscape", "square"], testInfo.outputPath("approval-government-square.png"), [1080, 1080], "square");
 
     await page.goto("/?region=spain-congress&lang=es");
     await settle(page);
@@ -230,5 +235,9 @@ test.describe("PNG export chooser", () => {
     await settle(page);
     await downloadPngSample(page, page.locator(".spain-concern-panel .png-export-button").first(), ["landscape", "square", "portrait"], testInfo.outputPath("spain-issues-square.png"), [1080, 1080], "square");
     await downloadPngSample(page, page.locator(".spain-concern-panel .png-export-button").first(), ["landscape", "square", "portrait"], testInfo.outputPath("spain-issues-portrait-columns.png"), [1080, 1350], "portrait");
+
+    await page.goto("/?view=uk-constituencies&seat=bristol-central&lang=en-GB");
+    await settle(page);
+    await downloadPngSample(page, page.locator(".constituency-result-card .widget-png-trigger"), ["landscape", "square", "portrait"], testInfo.outputPath("constituency-square.png"), [1080, 1080], "square");
   });
 });

@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Icon, MultiSelect, SelectControl, StaticEmbedPreview } from "./pollframe-ui.jsx";
 import { includeHistoricalEvent, isPrimaryElectionEvent, rankHistoricalEvents } from "./event-selection.js";
-import { PngExportButton } from "./png-export.jsx";
+import { PngExportButton } from "./png-export-button.jsx";
 import { trackAggregateEvent } from "./aggregateAnalytics.js";
 
 const DAY = 86_400_000;
@@ -303,8 +303,11 @@ function InfoDialog({ data, countries, metric, locale }) {
   );
 }
 
-function CurrentApprovalCard({ data, country, metric, locale }) {
+function CurrentApprovalCard({ data, country, metric, locale, embed = false }) {
   const text = textFor(locale);
+  const exportRef = useRef(null);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [shareTheme, setShareTheme] = useState("light");
   const item = data.countries[country];
   const series = item.series[metric];
   const latest = series.at(-1);
@@ -319,12 +322,16 @@ function CurrentApprovalCard({ data, country, metric, locale }) {
     ["negative", latest.negative],
     ["net", net],
   ].filter(([, value]) => Number.isFinite(value));
+  const subject = metric === "government" ? text.government : leaderLabel(country, text);
+  const title = `${subject}: ${text.current}`;
+  const publicUrl = `${window.location.origin}/?view=approval&country=${country}&metric=${metric}&lang=${locale}#approval-current-${metric}`;
+  const embedUrl = `${window.location.origin}/embed.html?view=approval&country=${country}&widget=current-approval&metric=${metric}&lang=${locale}&theme=${shareTheme}`;
   return (
-    <aside className={`approval-current-card ${ended ? "is-archive" : ""}`} aria-labelledby="approval-current-title">
+    <aside ref={exportRef} id={`approval-current-${metric}`} className={`approval-current-card approval-current-${metric} ${ended ? "is-archive" : ""}`} aria-labelledby={`approval-current-${metric}-title`}>
       <small className="widget-data-age">{ended ? text.archiveSeries : text.age(age)}</small>
       <header>
-        <div><p className="section-label">{text.current} · {metric === "government" ? text.government : leaderLabel(country, text)}</p><h2 id="approval-current-title">{latest.leader}</h2></div>
-        <span className={`approval-series-status ${ended || age > 120 || supersededLeader ? "stale" : "live"}`}>{ended ? text.archiveSeries : age > 120 || supersededLeader ? text.staleSeries : text.currentSeries}</span>
+        <div><p className="section-label">{text.current} · {subject}</p><h2 id={`approval-current-${metric}-title`}>{metric === "government" ? countryName(country, locale) : latest.leader}</h2></div>
+        <div className="approval-current-header-side"><span className={`approval-series-status ${ended || age > 120 || supersededLeader ? "stale" : "live"}`}>{ended ? text.archiveSeries : age > 120 || supersededLeader ? text.staleSeries : text.currentSeries}</span>{!embed && <div className="approval-current-tools" data-export-ignore="true"><button className="widget-share-trigger" type="button" onClick={() => setShareOpen(true)} aria-label={`${text.share}: ${title}`} title={text.share}><Icon name="share" size={15}/></button><PngExportButton elementRef={exportRef} filename={`pollframe-${country}-${metric}-current`} title={title} subtitle={countryName(country, locale)} locale={locale} label={text.png} credit={`${item.source.label} · Pollframe`} profile="approval-current" className="widget-share-trigger widget-png-trigger"/></div>}</div>
       </header>
       {supersededLeader && <p className="approval-current-caveat">{text.noCurrentLeaderRating(currentOfficeholder)}</p>}
       <div className="approval-current-values">
@@ -332,8 +339,64 @@ function CurrentApprovalCard({ data, country, metric, locale }) {
       </div>
       <div className="approval-response-bar" aria-hidden="true"><i className="positive" style={{ width: `${(latest.positive / Math.max(1, answered)) * 100}%` }} /><i className="negative" style={{ width: `${(latest.negative / Math.max(1, answered)) * 100}%` }} /></div>
       <footer><span>{text.published}: <time dateTime={latest.date}>{formatDate(latest.date, locale)}</time></span><a href={item.source.href} target="_blank" rel="noreferrer">{item.source.label} ↗</a></footer>
+      <ApprovalSnapshotShareDialog open={shareOpen} onClose={() => setShareOpen(false)} url={publicUrl} embedUrl={embedUrl} elementRef={exportRef} data={data} country={country} metric={metric} locale={locale} theme={shareTheme} setTheme={setShareTheme} title={title} />
     </aside>
   );
+}
+
+function ApprovalSnapshotShareDialog({ open, onClose, url, embedUrl, elementRef, data, country, metric, locale, theme, setTheme, title }) {
+  const text = textFor(locale);
+  const [copied, setCopied] = useState("");
+  const [previewWidth, setPreviewWidth] = useState("article");
+  const [copyError, setCopyError] = useState(false);
+  const dialogRef = useDialogFocus(open, onClose);
+  useEffect(() => { if (open) trackAggregateEvent("share_dialog_opened"); }, [open]);
+  useEffect(() => {
+    if (!open) return undefined;
+    const htmlOverflow = document.documentElement.style.overflow;
+    const bodyOverflow = document.body.style.overflow;
+    document.documentElement.style.overflow = "hidden";
+    document.body.style.overflow = "hidden";
+    return () => { document.documentElement.style.overflow = htmlOverflow; document.body.style.overflow = bodyOverflow; };
+  }, [open]);
+  if (!open) return null;
+  const labels = locale === "de"
+    ? { wide: "Breit", article: "Artikel", phone: "Handy", code: "Embed-Code", credit: "Quellenhinweis kopieren", creditDone: "Quellenhinweis kopiert", bug: "Problem melden", copyFailed: "Kopieren fehlgeschlagen" }
+    : locale === "es"
+      ? { wide: "Ancho", article: "Artículo", phone: "Móvil", code: "Código de inserción", credit: "Copiar cita de fuente", creditDone: "Cita copiada", bug: "Informar", copyFailed: "No se pudo copiar" }
+      : { wide: "Wide", article: "Article", phone: "Phone", code: "Embed code", credit: "Copy source note", creditDone: "Source note copied", bug: "Report issue", copyFailed: "Copy failed" };
+  const height = 560;
+  const code = `<iframe src="${htmlAttribute(embedUrl)}" title="${htmlAttribute(title)}" width="100%" height="${height}" loading="lazy" style="border:0;display:block;width:100%;max-width:100%" referrerpolicy="no-referrer" sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"></iframe>`;
+  const source = data.countries[country].source;
+  const sourceNote = `${title}. ${source.label}: ${source.href}. Pollframe: ${url}`;
+  const copy = async (value, kind) => {
+    setCopyError(false);
+    try {
+      await copyText(value);
+      setCopied(kind);
+      if (kind === "link") trackAggregateEvent("share_link_copied");
+      if (kind === "embed") trackAggregateEvent("embed_code_copied");
+      if (kind === "credit") trackAggregateEvent("source_note_copied");
+      window.setTimeout(() => setCopied(""), 1800);
+    } catch { setCopyError(true); window.setTimeout(() => setCopyError(false), 2400); }
+  };
+  return <div className="overlay modal-overlay approval-share-modal" role="presentation" data-export-ignore="true" onMouseDown={(event) => event.target === event.currentTarget && onClose()}><section ref={dialogRef} className="embed-modal approval-share-card approval-snapshot-share-card" role="dialog" aria-modal="true" aria-labelledby="approval-snapshot-share-title" tabIndex={-1}>
+    <div className="panel-header"><div><span className="section-label">{countryName(country, locale)}</span><h2 id="approval-snapshot-share-title">{text.share}</h2></div><button className="icon-button" type="button" onClick={onClose} aria-label={text.closeEditor}><Icon name="close" /></button></div>
+    <p className="modal-intro">{locale === "de" ? "Der aktuelle Stand bleibt im Embed kompakt, responsiv und mit Originalquelle gekennzeichnet." : locale === "es" ? "El dato actual conserva un diseño compacto y adaptable, con la fuente original identificada." : "The latest rating stays compact and responsive in the embed, with its original source identified."}</p>
+    <div className="embed-options embed-options-single"><div><span>{text.appearance}</span><div className="segmented">{[["light",text.light],["dark",text.dark],["system",text.system]].map(([value,label]) => <button key={value} className={theme===value?"selected":""} type="button" aria-pressed={theme===value} onClick={() => setTheme(value)}>{label}</button>)}</div></div></div>
+    <div className="embed-preview-toolbar" aria-label={text.preview}>{[["wide",labels.wide],["article",labels.article],["phone",labels.phone]].map(([value,label]) => <button key={value} type="button" className={previewWidth===value?"selected":""} aria-pressed={previewWidth===value} onClick={() => setPreviewWidth(value)}>{label}</button>)}</div>
+    <StaticEmbedPreview src={embedUrl} title={title} height={height} previewWidth={previewWidth} targetHeight={330} className="approval-embed-preview" />
+    <label className="code-label">{labels.code}<code>{code}</code></label>
+    <div className="embed-actions approval-share-actions"><button className="secondary-button" type="button" onClick={() => copy(url,"link")}><Icon name="share" size={16}/>{copied==="link"?text.copied:text.copyLink}</button><button className="primary-button" type="button" onClick={() => copy(code,"embed")}><Icon name="code" size={16}/>{copied==="embed"?text.copied:text.copyEmbed}</button><PngExportButton elementRef={elementRef} filename={`pollframe-${country}-${metric}-current`} title={title} subtitle={countryName(country, locale)} locale={locale} label={text.png} credit={`${source.label} · Pollframe`} profile="approval-current"/><button className="secondary-button" type="button" onClick={() => copy(sourceNote,"credit")}><Icon name="check" size={16}/>{copied==="credit"?labels.creditDone:labels.credit}</button><a className="secondary-button" href={`/?page=bug-report&from=${encodeURIComponent(url)}`}><Icon name="info" size={16}/>{labels.bug}</a></div>
+    {copyError && <p className="embed-copy-error" role="status">{labels.copyFailed}</p>}
+  </section></div>;
+}
+
+function ApprovalSnapshotEmbed({ data, country, metric, locale }) {
+  const text = textFor(locale);
+  const item = data.countries[country];
+  const shareUrl = `/?view=approval&country=${country}&metric=${metric}&lang=${locale}#approval-current-${metric}`;
+  return <main className="widget-embed-page approval-snapshot-embed"><header className="embed-header"><div><strong>↗ POLLFRAME</strong><h1>{metric === "government" ? text.government : leaderLabel(country, text)} · {text.current}</h1></div><span>{countryName(country, locale)}</span></header><CurrentApprovalCard data={data} country={country} metric={metric} locale={locale} embed/><footer className="embed-footer"><a href={item.source.href} target="_blank" rel="noreferrer">{item.source.label} ↗</a><a href={shareUrl} target="_blank" rel="noreferrer">{text.open} ↗</a></footer></main>;
 }
 
 function RecentLeaderSnapshot({ country, locale }) {
@@ -823,6 +886,10 @@ export function ApprovalPage({ data, locale, embed = false, eventCatalog = {} })
   const primaryLatest = primarySeries.at(-1);
   const backHref = requestedCountry === "uk" ? "/?country=uk" : "/";
   const graphTitle = compare ? `${text.chartTitle}: ${countryName("de", locale)} · ${countryName("uk", locale)}` : `${metric === "government" ? text.government : leaderLabel(requestedCountry, text)}: ${text.chartTitle}`;
+  if (embed && query.get("widget") === "current-approval") {
+    const snapshotMetric = ["leader", "government"].includes(query.get("metric")) ? query.get("metric") : "leader";
+    return <ApprovalSnapshotEmbed data={data} country={requestedCountry} metric={snapshotMetric} locale={locale} />;
+  }
   const content = (
     <section ref={chartRef} className="chart-card approval-main-chart" aria-labelledby="approval-chart-title">
       <small className="widget-data-age">{endedSeries(countries[0], metric) ? text.archiveSeries : text.age(dataAge(primaryLatest.date))}</small>
@@ -857,7 +924,10 @@ export function ApprovalPage({ data, locale, embed = false, eventCatalog = {} })
         <nav className="region-breadcrumb approval-breadcrumb" aria-label="Navigation"><a href={backHref}>← {text.back}</a><span>/</span><strong>{data.countries[requestedCountry].flag} {countryName(requestedCountry, locale)}</strong></nav>
         <section className="intro-section approval-intro-section">
           <div className="intro-copy"><div className="eyebrow"><span />{text.eyebrow} · {countryName(requestedCountry, locale)}</div><h1>{text.title[requestedCountry]}</h1><p>{text.intro}</p></div>
-          <CurrentApprovalCard data={data} country={requestedCountry} metric={metric} locale={locale} />
+          <div className="approval-current-stack">
+            <CurrentApprovalCard data={data} country={requestedCountry} metric="leader" locale={locale} />
+            <CurrentApprovalCard data={data} country={requestedCountry} metric="government" locale={locale} />
+          </div>
         </section>
         {content}
       </div>

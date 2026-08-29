@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { PartyInfoButton, regionalSpainPartyProfile } from "./party-profiles.jsx";
 import { useDismissOnlyDetails } from "./pollframe-ui.jsx";
-import { PngExportButton } from "./png-export.jsx";
+import { PngExportButton } from "./png-export-button.jsx";
 
 export const SPAIN_PARTY_DEFINITIONS = [
   { id: "405", slug: "podemos-up", name: "Podemos / UP", color: "#6d3b87" },
