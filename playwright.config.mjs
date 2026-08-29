@@ -12,7 +12,11 @@ export default defineConfig({
   expect: { timeout: 10_000 },
   fullyParallel: true,
   forbidOnly: true,
-  retries: 0,
+  // Hosted WebKit occasionally aborts an otherwise healthy same-origin fetch
+  // while the runner is under load. One CI-only retry keeps those transient
+  // engine failures from masking deterministic regressions; local runs still
+  // fail immediately and a real CI regression fails again on its retry.
+  retries: process.env.CI ? 1 : 0,
   workers: 2,
   reporter: [["list"], ["html", { outputFolder: "test-results/report", open: "never" }]],
   use: {
