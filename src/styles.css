@@ -6449,7 +6449,7 @@ footer nav .footer-action:hover {
 .constituency-search-box .primary-button { min-height: 40px; min-width: 92px; }
 .finder-feedback { align-items: start; color: var(--muted); display: grid; font-size: .65rem; gap: .25rem; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); line-height: 1.4; }
 .finder-feedback [role="status"] { color: var(--ink); font-weight: 680; }
-.finder-results { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 16px 36px rgba(18, 22, 28, .15); left: 0; max-height: 360px; overflow: auto; padding: .35rem; position: absolute; right: 0; top: 4.45rem; z-index: 20; }
+.finder-results { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 16px 36px rgba(18, 22, 28, .15); left: 0; max-height: min(360px, var(--finder-results-available-height, 360px)); overscroll-behavior: contain; overflow: auto; padding: .35rem; position: absolute; right: 0; top: 4.45rem; z-index: 20; }
 .finder-results button { align-items: center; background: transparent; border: 0; border-radius: 8px; color: var(--ink); cursor: pointer; display: flex; justify-content: space-between; padding: .65rem; text-align: left; width: 100%; }
 .finder-results button:hover, .finder-results button:focus-visible, .finder-results button[aria-selected="true"] { background: var(--surface-soft); }
 .finder-results button > span:first-child { display: grid; gap: .15rem; }
@@ -6615,7 +6615,7 @@ footer nav .footer-action:hover {
   .constituency-search-box { grid-template-columns: auto minmax(0, 1fr); }
   .constituency-search-box .primary-button { grid-column: 1 / -1; width: 100%; }
   .finder-feedback { grid-template-columns: 1fr; }
-  .finder-results { max-height: min(360px, 42dvh); top: 7.2rem; }
+  .finder-results { max-height: min(360px, 42dvh, var(--finder-results-available-height, 42dvh)); top: 7.2rem; }
   .constituency-title { display: grid; }
   .constituency-result-list > div { grid-template-columns: minmax(0, 1fr) auto; }
   .constituency-result-list > div > div { grid-column: 1 / -1; grid-row: 2; }

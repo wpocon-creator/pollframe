@@ -1,4 +1,4 @@
-import React, { Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
+import React, { Suspense, lazy, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { createRoot } from "react-dom/client";
 import { usePwaLifecycle } from "./pwa.js";
@@ -3144,6 +3144,7 @@ function UKConstituencyPage({ locale, constituencyData }) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const searchInputRef = useRef(null);
+  const suggestionListRef = useRef(null);
   const lookupControllerRef = useRef(null);
   const revealMobileSearch = () => {
     if (!window.matchMedia("(max-width: 600px)").matches) return;
@@ -3162,6 +3163,37 @@ function UKConstituencyPage({ locale, constituencyData }) {
   const selected = constituencyData.constituencies.find((seat) => seat.slug === selectedSlug);
   const localMatches = useMemo(() => rankConstituencies(search, constituencyData.constituencies), [search, constituencyData]);
   const matches = remoteMatches.length ? remoteMatches : localMatches.map(({ seat }) => ({ seat, context: seat.region && seat.region !== seat.country ? `${seat.country} · ${seat.region}` : seat.country }));
+  useLayoutEffect(() => {
+    if (!searchOpen || !matches.length) return undefined;
+    const fitSuggestions = () => {
+      const list = suggestionListRef.current;
+      if (!list) return;
+      const visualViewport = window.visualViewport;
+      let visibleBottom = visualViewport
+        ? visualViewport.offsetTop + visualViewport.height
+        : window.innerHeight;
+      const appNav = document.querySelector(".mobile-app-nav");
+      if (appNav && window.getComputedStyle(appNav).display !== "none") {
+        const navTop = appNav.getBoundingClientRect().top;
+        if (navTop > 0) visibleBottom = Math.min(visibleBottom, navTop);
+      }
+      const availableHeight = Math.max(48, Math.floor(visibleBottom - list.getBoundingClientRect().top - 8));
+      list.style.setProperty("--finder-results-available-height", `${availableHeight}px`);
+    };
+    fitSuggestions();
+    const animationFrame = window.requestAnimationFrame(fitSuggestions);
+    window.addEventListener("resize", fitSuggestions);
+    window.addEventListener("scroll", fitSuggestions, true);
+    window.visualViewport?.addEventListener("resize", fitSuggestions);
+    window.visualViewport?.addEventListener("scroll", fitSuggestions);
+    return () => {
+      window.cancelAnimationFrame(animationFrame);
+      window.removeEventListener("resize", fitSuggestions);
+      window.removeEventListener("scroll", fitSuggestions, true);
+      window.visualViewport?.removeEventListener("resize", fitSuggestions);
+      window.visualViewport?.removeEventListener("scroll", fitSuggestions);
+    };
+  }, [searchOpen, matches.length]);
   const closeResults = useMemo(() => constituencyData.constituencies.map((constituency) => {
     const resultRows = Object.values(constituency.results).sort((a, b) => b.share - a.share);
     return { constituency, margin: (resultRows[0]?.share ?? 0) - (resultRows[1]?.share ?? 0) };
@@ -3313,7 +3345,7 @@ function UKConstituencyPage({ locale, constituencyData }) {
         <form className="finder-field constituency-search-form" onSubmit={findConstituency}>
           <label htmlFor="seat-search">{isGerman ? "Postcode, Ort oder Wahlkreis" : "Postcode, town or constituency"}</label>
           <div className="constituency-search-box"><Icon name="search" size={19} /><input ref={searchInputRef} id="seat-search" type="search" value={search} maxLength={80} onFocus={() => { setSearchOpen(Boolean(search.trim() && matches.length)); revealMobileSearch(); }} onChange={(event) => { setSearch(safeConstituencyQuery(event.target.value)); setRemoteMatches([]); setSearchStatus(""); setSearchOpen(true); }} placeholder={isGerman ? "z. B. SK17 6BE, Buxton oder High Peak" : "e.g. SK17 6BE, Buxton or High Peak"} autoComplete="postal-code" autoCapitalize="words" spellCheck="false" enterKeyHint="search" /><button className="primary-button" type="submit" disabled={isSearching}>{isSearching ? (isGerman ? "Suche …" : "Searching…") : (isGerman ? "Suchen" : "Search")}</button></div>
-          {searchOpen && matches.length > 0 && <div className="finder-results" role="listbox" aria-label={isGerman ? "Suchvorschläge" : "Search suggestions"}>{matches.map(({ seat, context }) => <button key={seat.code} type="button" role="option" aria-selected={seat.slug === selectedSlug} onClick={() => selectSeat(seat.slug)}><span><strong>{seat.name}</strong><small>{context}</small></span><span>→</span></button>)}</div>}
+          {searchOpen && matches.length > 0 && <div ref={suggestionListRef} className="finder-results" role="listbox" aria-label={isGerman ? "Suchvorschläge" : "Search suggestions"}>{matches.map(({ seat, context }) => <button key={seat.code} type="button" role="option" aria-selected={seat.slug === selectedSlug} onClick={() => selectSeat(seat.slug)}><span><strong>{seat.name}</strong><small>{context}</small></span><span>→</span></button>)}</div>}
           <div className="finder-feedback">{searchStatus ? <small role="status">{searchStatus}</small> : <small>{isGerman ? "Auch vollständige Adressen mit enthaltenem Postcode und Postcode-Gebiete wie SK17 funktionieren." : "Full addresses containing a postcode and postcode areas such as SK17 work too."}</small>}<small>{isGerman ? "Erst beim Suchen wird nur der benötigte Postcode oder Ortsbegriff an Postcodes.io übertragen. Pollframe speichert ihn nicht." : "Only after you search is the required postcode or place term sent to Postcodes.io. Pollframe does not store it."}</small></div>
         </form>
         {selected && <div className="selected-constituency" aria-live="polite"><span><Icon name="check" size={16} /><small>{isGerman ? "Ausgewählter Wahlkreis" : "Selected constituency"}</small><strong>{selected.name}</strong></span><button type="button" onClick={() => { setSearch(""); setSearchStatus(""); setRemoteMatches([]); setSearchOpen(false); window.requestAnimationFrame(() => searchInputRef.current?.focus()); }}>{isGerman ? "Ändern" : "Change"}</button></div>}
