@@ -53,6 +53,7 @@ async function auditPngDialog(page, expectedFormats) {
   const modal = page.locator(".png-options-modal");
   await expect(modal).toBeVisible();
   await expect(modal.locator('.png-format-grid [role="radio"]')).toHaveCount(expectedFormats.length);
+  await expect(modal.locator(".png-format-panel")).toHaveCount(expectedFormats.length ? 1 : 0);
   for (const format of expectedFormats) await expect(modal.locator(`.png-format-shape.is-${format}`)).toHaveCount(1);
   const geometry = await modal.evaluate((root) => {
     const viewport = { width: document.documentElement.clientWidth, height: window.innerHeight };
@@ -85,11 +86,12 @@ async function auditPngDialog(page, expectedFormats) {
   return modal;
 }
 
-async function downloadPngSample(page, button, expectedFormats, outputPath, expectedSize) {
+async function downloadPngSample(page, button, expectedFormats, outputPath, expectedSize, selectedFormat = null) {
   await page.evaluate(() => { window.__downloadedPng = null; });
   await button.scrollIntoViewIfNeeded();
   await button.click();
   const modal = await auditPngDialog(page, expectedFormats);
+  if (selectedFormat) await modal.locator(`.png-format-shape.is-${selectedFormat}`).locator("..").click();
   const downloadPromise = page.waitForEvent("download");
   await modal.locator(".png-options-actions .primary-button").click();
   const download = await downloadPromise;
@@ -109,7 +111,7 @@ test.describe("PNG export chooser", () => {
     await page.goto("/?region=bundestag&lang=de");
     await settle(page);
     await page.locator(".chart-card .png-export-button").first().click();
-    const modal = await auditPngDialog(page, ["content", "landscape", "square"]);
+    const modal = await auditPngDialog(page, ["landscape", "square"]);
     await expect(modal.locator('.png-format-shape.is-landscape').locator("..")).toHaveAttribute("aria-checked", "true");
     await modal.locator(".png-format-shape.is-landscape").locator("..").click();
     const landscapeRatio = await modal.locator(".png-preview-canvas").evaluate((node) => node.getBoundingClientRect().width / node.getBoundingClientRect().height);
@@ -127,8 +129,11 @@ test.describe("PNG export chooser", () => {
     await modal.getByRole("button", { name: /Schließen|Close|Cerrar/i }).click();
 
     await page.locator(".results-card .widget-png-trigger").click();
-    const widgetModal = await auditPngDialog(page, ["content", "square", "portrait"]);
-    await expect(widgetModal.locator(".png-format-shape.is-landscape")).toHaveCount(0);
+    const widgetModal = await auditPngDialog(page, ["landscape", "square", "portrait"]);
+    await expect(widgetModal.locator(".png-format-shape.is-landscape").locator("..")).toHaveAttribute("aria-checked", "true");
+    await widgetModal.locator(".png-format-shape.is-portrait").locator("..").click();
+    await expect(widgetModal.locator(".png-preview-clone .result-list")).toHaveCSS("display", "grid");
+    await expect(widgetModal.locator(".png-preview-clone .result-bar").first()).toHaveCSS("width", "44px");
     await widgetModal.screenshot({ path: testInfo.outputPath("png-dialog-widget.png") });
   });
 
@@ -138,7 +143,7 @@ test.describe("PNG export chooser", () => {
     await page.goto("/?region=bundestag&lang=de");
     await settle(page);
     await page.locator(".chart-card .png-export-button").first().click();
-    const modal = await auditPngDialog(page, ["content", "landscape", "square"]);
+    const modal = await auditPngDialog(page, ["landscape", "square"]);
     await modal.locator('.png-preview-theme [role="radio"]').filter({ hasText: "Dunkel" }).click();
     await modal.locator(".png-options-actions .primary-button").click();
     const captureName = mobileShare ? "__sharedPng" : "__downloadedPng";
@@ -157,7 +162,7 @@ test.describe("PNG export chooser", () => {
     await page.locator(".results-card .widget-share-trigger:not(.widget-png-trigger)").click();
     await expect(page.locator(".embed-modal:not(.png-options-modal)")).toBeVisible();
     await page.locator(".journalist-embed-actions .png-export-button").click();
-    const modal = await auditPngDialog(page, ["content", "square", "portrait"]);
+    const modal = await auditPngDialog(page, ["landscape", "square", "portrait"]);
     const layers = await page.evaluate(() => ({
       png: Number.parseInt(getComputedStyle(document.querySelector(".png-options-overlay")).zIndex, 10),
       share: Number.parseInt(getComputedStyle(document.querySelector(".modal-overlay:not(.png-options-overlay)")).zIndex, 10),
@@ -174,19 +179,37 @@ test.describe("PNG export chooser", () => {
 
     await page.goto("/?region=bundestag&lang=de");
     await settle(page);
-    await downloadPngSample(page, page.locator(".chart-card .png-export-button").first(), ["content", "landscape", "square"], testInfo.outputPath("history-landscape.png"), [1920, 1080]);
-    await downloadPngSample(page, page.locator(".results-card .widget-png-trigger"), ["content", "square", "portrait"], testInfo.outputPath("current-square.png"), [1080, 1080]);
+    await downloadPngSample(page, page.locator(".chart-card .png-export-button").first(), ["landscape", "square"], testInfo.outputPath("history-landscape.png"), [1920, 1080]);
+    await downloadPngSample(page, page.locator(".results-card .widget-png-trigger"), ["landscape", "square", "portrait"], testInfo.outputPath("current-landscape-bars.png"), [1920, 1080], "landscape");
+    await downloadPngSample(page, page.locator(".results-card .widget-png-trigger"), ["landscape", "square", "portrait"], testInfo.outputPath("current-square-bars.png"), [1080, 1080], "square");
+    await downloadPngSample(page, page.locator(".results-card .widget-png-trigger"), ["landscape", "square", "portrait"], testInfo.outputPath("current-portrait-columns.png"), [1080, 1350], "portrait");
+    await downloadPngSample(page, page.locator(".tendency-section .widget-png-trigger"), ["landscape", "square", "portrait"], testInfo.outputPath("party-cards-square.png"), [1080, 1080], "square");
 
     await page.goto("/?view=map&lang=de");
     await settle(page);
-    await downloadPngSample(page, page.locator(".poll-map-module .png-export-button").first(), ["content", "landscape", "square"], testInfo.outputPath("map-landscape.png"), [1920, 1080]);
+    await page.locator(".poll-map-module .png-export-button").first().click();
+    const mapModal = await auditPngDialog(page, []);
+    const stripeReferences = await mapModal.locator(".png-preview-clone").evaluate((root) => {
+      const patterns = [...root.querySelectorAll("defs pattern[id]")].map((node) => node.id);
+      const tied = [...root.querySelectorAll(".poll-map-state")].find((node) => node.getAttribute("style")?.includes("url("));
+      return { patterns, fill: tied?.style.fill ?? "" };
+    });
+    expect(stripeReferences.patterns.length).toBeGreaterThan(0);
+    expect(stripeReferences.patterns.some((id) => stripeReferences.fill.includes(`#${id}`))).toBe(true);
+    await mapModal.getByRole("button", { name: /Schließen|Close|Cerrar/i }).click();
+    await downloadPngSample(page, page.locator(".poll-map-module .png-export-button").first(), [], testInfo.outputPath("map-landscape.png"), [1920, 1080]);
 
     await page.goto("/?view=approval&country=de&lang=de");
     await settle(page);
-    await downloadPngSample(page, page.locator(".approval-main-chart .png-export-button"), ["content", "landscape", "square"], testInfo.outputPath("approval-landscape.png"), [1920, 1080]);
+    await downloadPngSample(page, page.locator(".approval-main-chart .png-export-button"), ["landscape", "square"], testInfo.outputPath("approval-landscape.png"), [1920, 1080]);
 
     await page.goto("/?region=spain-congress&lang=es");
     await settle(page);
-    await downloadPngSample(page, page.locator(".spain-insights-export-surface .png-export-button"), ["content", "square", "portrait"], testInfo.outputPath("spain-insight-portrait.png"), [1080, 1350]);
+    await downloadPngSample(page, page.locator(".spain-insights-export-surface .png-export-button"), ["square", "portrait"], testInfo.outputPath("spain-insight-portrait.png"), [1080, 1350]);
+
+    await page.goto("/?country=es&view=spain-issues&lang=es");
+    await settle(page);
+    await downloadPngSample(page, page.locator(".spain-concern-panel .png-export-button").first(), ["landscape", "square", "portrait"], testInfo.outputPath("spain-issues-square.png"), [1080, 1080], "square");
+    await downloadPngSample(page, page.locator(".spain-concern-panel .png-export-button").first(), ["landscape", "square", "portrait"], testInfo.outputPath("spain-issues-portrait-columns.png"), [1080, 1350], "portrait");
   });
 });

@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Pollframe">
   <rect width="32" height="32" rx="8.25" fill="#14171a"/>
-  <path d="M11 7.25H7.75v17.5H11M21 7.25h3.25v17.5H21" fill="none" stroke="#fbfbf7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
-  <path d="m10.25 20.75 4.1-4.2 3.45 2.35 4.25-7.65" fill="none" stroke="#fbfbf7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.35"/>
+  <path d="M11 7.25H7.75v17.5H11M21 7.25h3.25v17.5H21" fill="none" stroke="#fbfbf7" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.4375"/>
+  <path d="m10.25 20.75 4.1-4.2 3.45 2.35 4.25-7.65" fill="none" stroke="#fbfbf7" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8125"/>
 </svg>
