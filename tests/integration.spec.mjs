@@ -861,6 +861,8 @@ test.describe("core routes", () => {
     await page.reload();
     await settle(page);
     await expect(page.getByRole("heading", { level: 1, name: "Deutschland im Überblick" })).toBeVisible();
+    const approvalEntry = page.locator('a[href*="view=approval"][href*="country=de"]').first();
+    await expect(approvalEntry.locator("dd").first()).not.toHaveText("–");
     const approvalRequestsBeforeCountrySwitch = approvalRequestCount;
     expect(approvalRequestsBeforeCountrySwitch).toBeGreaterThanOrEqual(1);
     await page.getByRole("button", { name: "Land auswählen" }).click();
