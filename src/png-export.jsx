@@ -370,21 +370,8 @@ function createExportBrandMark() {
   return mark;
 }
 
-function PreviewBrand() {
-  return <svg className="png-export-brand-mark" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8.25"/><path d="M11 7.25H7.75v17.5H11M21 7.25h3.25v17.5H21" fill="none" strokeWidth="1.4375"/><path d="m10.25 20.75 4.1-4.2 3.45 2.35 4.25-7.65" fill="none" strokeWidth="1.8125"/></svg>;
-}
-
-export async function renderElementPng({ element, filename, title, subtitle, locale = "en-GB", credit = "Pollframe", preset = "content", profile = "chart", theme = "light" }) {
-  if (!element) throw new Error("Missing export element");
+function createExportSurface({ element, title, subtitle, locale, credit, preset, profile, theme }) {
   const format = PRESETS[preset] ?? PRESETS.content;
-  if (document.fonts?.ready) await document.fonts.ready;
-  // Historical charts use a deliberately simpler narrow-screen SVG. Export
-  // the stable wide geometry on every device so a phone download contains the
-  // same labels and resolution as a desktop download.
-  window.dispatchEvent(new CustomEvent("pollframe:export-layout", { detail: { wide: true } }));
-  await new Promise((resolve) => window.requestAnimationFrame(() => window.requestAnimationFrame(resolve)));
-  const host = document.createElement("div");
-  host.className = "png-export-host";
   const surface = document.createElement("section");
   surface.className = "png-export-surface";
   surface.dataset.exportProfile = profile;
@@ -392,54 +379,77 @@ export async function renderElementPng({ element, filename, title, subtitle, loc
   surface.dataset.exportTheme = theme;
   surface.dir = "ltr";
   surface.lang = locale === "de" ? "de" : locale === "es" ? "es" : "en";
+  surface.style.setProperty("width", `${format.width}px`);
+  if (format.height) {
+    surface.classList.add("is-fixed-format");
+    surface.style.setProperty("height", `${format.height}px`);
+  }
+
   const header = document.createElement("header");
   header.className = "png-export-header";
   const identity = document.createElement("div");
   const brand = document.createElement("strong");
-  const brandMark = createExportBrandMark();
-  brand.append(brandMark, document.createTextNode("POLLFRAME"));
+  brand.append(createExportBrandMark(), document.createTextNode("POLLFRAME"));
   const context = document.createElement("small");
   context.textContent = subtitle;
   identity.append(brand, context);
   const date = document.createElement("time");
   date.textContent = new Intl.DateTimeFormat(numberLocale(locale), { dateStyle: "medium" }).format(new Date());
   header.append(identity, date);
+
   const content = document.createElement("div");
   content.className = "png-export-content";
   const clone = prepareExportClone(cleanExportClone(element.cloneNode(true)), { format, preset, profile });
   clone.classList.add("png-export-clone");
   content.append(clone);
+
   const footer = document.createElement("footer");
   footer.className = "png-export-footer";
   const footerTitle = document.createElement("span");
   footerTitle.textContent = title;
   const creditNode = document.createElement("span");
-  creditNode.textContent = credit;
+  creditNode.textContent = credit || "Pollframe";
   footer.append(footerTitle, creditNode);
   surface.append(header, content, footer);
+  return { surface, content, clone, format };
+}
+
+function nextLayoutFrame() {
+  return new Promise((resolve) => window.requestAnimationFrame(() => window.requestAnimationFrame(resolve)));
+}
+
+async function fitExportSurfaceContent({ content, clone, format, profile }) {
+  await nextLayoutFrame();
+  if (format.height) {
+    clone.style.setProperty("transform", "none");
+    const natural = clone.getBoundingClientRect();
+    const scale = Math.max(.38, Math.min(
+      content.clientWidth / Math.max(1, natural.width),
+      content.clientHeight / Math.max(1, natural.height),
+      EXPORT_MAX_SCALE[profile] ?? 1.2,
+    ));
+    clone.style.setProperty("transform", `scale(${scale})`);
+    clone.style.setProperty("transform-origin", "center center");
+  }
+  await nextLayoutFrame();
+}
+
+export async function renderElementPng({ element, filename, title, subtitle, locale = "en-GB", credit = "Pollframe", preset = "content", profile = "chart", theme = "light" }) {
+  if (!element) throw new Error("Missing export element");
+  if (document.fonts?.ready) await document.fonts.ready;
+  // Historical charts use a deliberately simpler narrow-screen SVG. Export
+  // the stable wide geometry on every device so a phone download contains the
+  // same labels and resolution as a desktop download.
+  window.dispatchEvent(new CustomEvent("pollframe:export-layout", { detail: { wide: true } }));
+  await nextLayoutFrame();
+  const host = document.createElement("div");
+  host.className = "png-export-host";
+  const built = createExportSurface({ element, title, subtitle, locale, credit, preset, profile, theme });
+  const { surface, content, clone, format } = built;
   host.append(surface);
   document.body.append(host);
   try {
-    surface.style.setProperty("width", `${format.width}px`);
-    if (format.height) {
-      surface.classList.add("is-fixed-format");
-      surface.style.setProperty("height", `${format.height}px`);
-    }
-    await new Promise((resolve) => window.requestAnimationFrame(() => window.requestAnimationFrame(resolve)));
-    if (format.height) {
-      clone.style.setProperty("transform", "none");
-      const availableHeight = content.clientHeight;
-      const availableWidth = content.clientWidth;
-      const natural = clone.getBoundingClientRect();
-      const scale = Math.max(.38, Math.min(
-        availableWidth / Math.max(1, natural.width),
-        availableHeight / Math.max(1, natural.height),
-        EXPORT_MAX_SCALE[profile] ?? 1.2,
-      ));
-      clone.style.setProperty("transform", `scale(${scale})`);
-      clone.style.setProperty("transform-origin", "center center");
-    }
-    await new Promise((resolve) => window.requestAnimationFrame(() => window.requestAnimationFrame(resolve)));
+    await fitExportSurfaceContent({ content, clone, format, profile });
     freezeExportStyles(surface);
     const logicalHeight = format.height ?? Math.ceil(surface.getBoundingClientRect().height);
     const backgroundColor = EXPORT_BACKGROUNDS[theme] ?? EXPORT_BACKGROUNDS.light;
@@ -487,10 +497,10 @@ function useExportDialog(open, onClose) {
   return dialogRef;
 }
 
-function PngPreview({ element, preset, profile, theme, setTheme, title, subtitle, copy }) {
+function PngPreview({ element, preset, profile, theme, setTheme, title, subtitle, locale, credit, copy }) {
   const liveRef = useRef(null);
   const canvasRef = useRef(null);
-  const hostRef = useRef(null);
+  const stageRef = useRef(null);
   const format = PRESETS[preset] ?? PRESETS.content;
   useEffect(() => {
     const live = liveRef.current;
@@ -514,30 +524,59 @@ function PngPreview({ element, preset, profile, theme, setTheme, title, subtitle
     return () => { cancelAnimationFrame(frame); observer.disconnect(); };
   }, [format.height, format.width, preset]);
   useEffect(() => {
-    const host = hostRef.current;
-    if (!host || !element) return undefined;
-    const clone = prepareExportClone(cleanExportClone(element.cloneNode(true)), { format, preset, profile });
-    clone.classList.add("png-preview-clone");
-    host.replaceChildren(clone);
-    const fit = () => {
-      clone.style.transform = "none";
-      const width = clone.scrollWidth || clone.getBoundingClientRect().width;
-      const height = clone.scrollHeight || clone.getBoundingClientRect().height;
-      const scale = Math.min((host.clientWidth - 18) / Math.max(1, width), (host.clientHeight - 18) / Math.max(1, height), 0.42);
-      clone.style.transform = `translate(-50%, -50%) scale(${Math.max(0.08, scale)})`;
+    const stage = stageRef.current;
+    if (!stage || !element) return undefined;
+    let cancelled = false;
+    let observer = null;
+    let surface = null;
+    const renderPreview = async () => {
+      window.dispatchEvent(new CustomEvent("pollframe:export-layout", { detail: { wide: true } }));
+      if (document.fonts?.ready) await document.fonts.ready;
+      await nextLayoutFrame();
+      if (cancelled) return;
+      const built = createExportSurface({ element, title, subtitle, locale, credit, preset, profile, theme });
+      surface = built.surface;
+      surface.classList.add("png-preview-surface");
+      built.clone.classList.add("png-preview-clone");
+      surface.style.setProperty("visibility", "hidden");
+      stage.append(surface);
+      await fitExportSurfaceContent(built);
+      if (cancelled) { surface.remove(); return; }
+      const fit = () => {
+        const logicalHeight = built.format.height ?? surface.scrollHeight;
+        const scale = Math.min(
+          stage.clientWidth / built.format.width,
+          stage.clientHeight / Math.max(1, logicalHeight),
+        );
+        surface.style.setProperty("transform", `translate(-50%, -50%) scale(${Math.max(.01, scale)})`);
+      };
+      fit();
+      surface.dataset.previewReady = "true";
+      surface.style.removeProperty("visibility");
+      [...stage.querySelectorAll(".png-preview-surface")].forEach((candidate) => {
+        if (candidate !== surface) candidate.remove();
+      });
+      observer = new ResizeObserver(fit);
+      observer.observe(stage);
     };
-    const frame = requestAnimationFrame(() => requestAnimationFrame(fit));
-    const observer = new ResizeObserver(fit);
-    observer.observe(host);
-    return () => { cancelAnimationFrame(frame); observer.disconnect(); clone.remove(); };
-  }, [element, preset, profile, theme]);
+    renderPreview();
+    return () => {
+      cancelled = true;
+      observer?.disconnect();
+      if (surface && surface.dataset.previewReady !== "true") surface.remove();
+    };
+  }, [credit, element, locale, preset, profile, subtitle, theme, title]);
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent("pollframe:export-layout", { detail: { wide: true } }));
+    return () => window.dispatchEvent(new CustomEvent("pollframe:export-layout", { detail: { wide: false } }));
+  }, []);
   const ratio = format.height ? `${format.width} / ${format.height}` : "4 / 3";
   return <div ref={liveRef} className="png-live-preview">
     <div className="png-preview-theme" role="radiogroup" aria-label={copy.appearance}>
       <span>{copy.appearance}</span>
       {["light", "dark"].map((value) => <button key={value} type="button" role="radio" aria-checked={theme === value} className={theme === value ? "selected" : ""} onClick={() => setTheme(value)}>{copy[value]}</button>)}
     </div>
-    <div ref={canvasRef} className="png-preview-canvas" data-export-theme={theme} data-export-profile={profile} data-export-preset={preset} style={{ aspectRatio: ratio }}><header><strong><PreviewBrand />POLLFRAME</strong><small>{subtitle}</small></header><div ref={hostRef} className="png-preview-content" /><footer>{title}</footer></div>
+    <div ref={canvasRef} className="png-preview-canvas" data-export-theme={theme} data-export-profile={profile} data-export-preset={preset} style={{ aspectRatio: ratio }}><div ref={stageRef} className="png-preview-stage" /></div>
   </div>;
 }
 
@@ -588,7 +627,7 @@ export function PngExportModal({ open, onClose, elementRef, filename, title, sub
               {config.formats.map((format) => <button key={format} type="button" role="radio" aria-checked={preset === format} className={preset === format ? "selected" : ""} onClick={() => { setPreset(format); setStatus("idle"); }}><span className={`png-format-shape is-${format}`} aria-hidden="true" /><span><strong>{profileCopy(copy, config, format)}{format === config.recommended && <em>{copy.recommended}</em>}</strong><small>{profileCopy(copy, config, format, "Meta")}</small></span></button>)}
             </div>
           </div>}
-          <PngPreview element={elementRef.current} preset={preset} profile={profile} theme={theme} setTheme={(value) => { setTheme(value); setStatus("idle"); }} title={title} subtitle={subtitle} copy={copy} />
+          <PngPreview element={elementRef.current} preset={preset} profile={profile} theme={theme} setTheme={(value) => { setTheme(value); setStatus("idle"); }} title={title} subtitle={subtitle} locale={locale} credit={credit} copy={copy} />
         </div>
         {touchShare && <p className="png-share-help">{copy.systemHelp}</p>}
         <div className="png-options-actions">
