@@ -52,6 +52,7 @@ async function installPngCapture(page, { nativeShare = false } = {}) {
 async function auditPngDialog(page, expectedFormats) {
   const modal = page.locator(".png-options-modal");
   await expect(modal).toBeVisible();
+  await expect(modal.locator('.png-preview-surface[data-preview-ready="true"]')).toHaveCount(1);
   await expect(modal.locator('.png-format-grid [role="radio"]')).toHaveCount(expectedFormats.length);
   await expect(modal.locator(".png-format-panel")).toHaveCount(expectedFormats.length ? 1 : 0);
   for (const format of expectedFormats) await expect(modal.locator(`.png-format-shape.is-${format}`)).toHaveCount(1);
@@ -86,6 +87,12 @@ async function auditPngDialog(page, expectedFormats) {
   return modal;
 }
 
+async function waitForPreview(modal, { preset, theme = null }) {
+  const selector = `.png-preview-surface[data-preview-ready="true"][data-export-preset="${preset}"]${theme ? `[data-export-theme="${theme}"]` : ""}`;
+  await expect(modal.locator(selector)).toHaveCount(1);
+  return modal.locator(selector);
+}
+
 async function downloadPngSample(page, button, expectedFormats, outputPath, expectedSize, selectedFormat = null) {
   await page.evaluate(() => { window.__downloadedPng = null; });
   await button.scrollIntoViewIfNeeded();
@@ -114,9 +121,17 @@ test.describe("PNG export chooser", () => {
     const modal = await auditPngDialog(page, ["landscape", "square"]);
     await expect(modal.locator('.png-format-shape.is-landscape').locator("..")).toHaveAttribute("aria-checked", "true");
     await modal.locator(".png-format-shape.is-landscape").locator("..").click();
+    const landscapeSurface = await waitForPreview(modal, { preset: "landscape" });
+    await expect(landscapeSurface).toHaveCSS("width", "1920px");
+    await expect(landscapeSurface).toHaveCSS("height", "1080px");
+    await expect(landscapeSurface.locator(".png-export-header")).toContainText("POLLFRAME");
+    await expect(landscapeSurface.locator(".png-export-footer")).toContainText(/Entwicklung der Wahlabsicht|Voting intention/i);
     const landscapeRatio = await modal.locator(".png-preview-canvas").evaluate((node) => node.getBoundingClientRect().width / node.getBoundingClientRect().height);
     const landscapeCloneWidth = await modal.locator(".png-preview-clone").evaluate((node) => Number.parseFloat(node.style.width));
     await modal.locator(".png-format-shape.is-square").locator("..").click();
+    const squareSurface = await waitForPreview(modal, { preset: "square" });
+    await expect(squareSurface).toHaveCSS("width", "1080px");
+    await expect(squareSurface).toHaveCSS("height", "1080px");
     const squareRatio = await modal.locator(".png-preview-canvas").evaluate((node) => node.getBoundingClientRect().width / node.getBoundingClientRect().height);
     const squareCloneWidth = await modal.locator(".png-preview-clone").evaluate((node) => Number.parseFloat(node.style.width));
     expect(landscapeRatio).toBeGreaterThan(1.65);
@@ -125,6 +140,7 @@ test.describe("PNG export chooser", () => {
     expect(landscapeCloneWidth).toBeGreaterThan(squareCloneWidth * 1.5);
     await modal.locator('.png-preview-theme [role="radio"]').filter({ hasText: /Dunkel|Dark|Oscuro/i }).click();
     await expect(modal.locator('.png-preview-canvas')).toHaveAttribute("data-export-theme", "dark");
+    await waitForPreview(modal, { preset: "square", theme: "dark" });
     await modal.screenshot({ path: testInfo.outputPath("png-dialog-history.png") });
     await modal.getByRole("button", { name: /Schließen|Close|Cerrar/i }).click();
 
@@ -132,6 +148,9 @@ test.describe("PNG export chooser", () => {
     const widgetModal = await auditPngDialog(page, ["landscape", "square", "portrait"]);
     await expect(widgetModal.locator(".png-format-shape.is-landscape").locator("..")).toHaveAttribute("aria-checked", "true");
     await widgetModal.locator(".png-format-shape.is-portrait").locator("..").click();
+    const portraitSurface = await waitForPreview(widgetModal, { preset: "portrait" });
+    await expect(portraitSurface).toHaveCSS("width", "1080px");
+    await expect(portraitSurface).toHaveCSS("height", "1350px");
     await expect(widgetModal.locator(".png-preview-clone .result-list")).toHaveCSS("display", "grid");
     await expect(widgetModal.locator(".png-preview-clone .result-bar").first()).toHaveCSS("width", "44px");
     await widgetModal.screenshot({ path: testInfo.outputPath("png-dialog-widget.png") });
