@@ -8232,19 +8232,19 @@ footer nav .footer-action:hover {
   padding:34px 30px 28px!important;
 }
 :is(.png-export-clone,.png-preview-clone).results-card[data-png-profile="current-poll"][data-png-preset="portrait"] .result-list {
-  min-height:690px;
+  height:720px;
+  min-height:0;
   margin-top:28px;
   display:grid!important;
-  grid-template-columns:repeat(auto-fit,minmax(84px,1fr));
   align-items:stretch;
   gap:13px;
 }
 :is(.png-export-clone,.png-preview-clone).results-card[data-png-profile="current-poll"][data-png-preset="portrait"] .result-row {
   min-width:0;
-  min-height:690px;
+  min-height:0;
   display:grid!important;
   grid-template-columns:1fr!important;
-  grid-template-rows:minmax(38px,auto) minmax(470px,1fr) auto auto;
+  grid-template-rows:minmax(32px,auto) minmax(105px,1fr) auto auto;
   grid-template-areas:"name" "bar" "value" "delta";
   align-items:end;
   justify-items:center;
