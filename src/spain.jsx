@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { PartyInfoButton, regionalSpainPartyProfile } from "./party-profiles.jsx";
 import { useDismissOnlyDetails } from "./pollframe-ui.jsx";
+import { PngExportButton } from "./png-export.jsx";
 
 export const SPAIN_PARTY_DEFINITIONS = [
   { id: "405", slug: "podemos-up", name: "Podemos / UP", color: "#6d3b87" },
@@ -588,10 +589,12 @@ function issuePageLanguage(locale) {
 }
 
 function ConcernBars({ id, locale, title, intro, items, labels, info, dataDate }) {
+  const exportRef = useRef(null);
+  const exportLabel = locale === "es" ? "Exportar PNG" : locale === "de" ? "PNG exportieren" : "Export PNG";
   return (
-    <article id={id} className="spain-concern-panel">
+    <article ref={exportRef} id={id} className="spain-concern-panel">
       <small className="widget-data-age">{dataAgeLabel(dataDate, locale)}</small>
-      <header><div className="widget-info-heading"><MiniGraphInfo locale={locale} title={info.title} text={info.text} dataDate={dataDate} /><div><h2>{title}</h2><p>{intro}</p></div></div></header>
+      <header><div className="widget-info-heading"><MiniGraphInfo locale={locale} title={info.title} text={info.text} dataDate={dataDate} /><div><h2>{title}</h2><p>{intro}</p></div></div><PngExportButton elementRef={exportRef} filename={`pollframe-${id}`} title={title} subtitle="España · CIS" locale={locale} label={exportLabel} credit="Centro de Investigaciones Sociológicas · Pollframe" profile="issues" className="widget-share-trigger spain-concern-png" /></header>
       <div className="spain-concern-ranking">{items.map((item, index) => <div key={item.id}><b>{index + 1}</b><span>{labels[item.id] ?? item.label}</span><div><i style={{ width: `${item.value}%`, background: item.color }} /></div><strong>{formatNumber(item.value, locale)}%</strong></div>)}</div>
     </article>
   );

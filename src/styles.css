@@ -1023,16 +1023,14 @@ body:has(.graph-info-popover[open]) { overflow: hidden; }
 }
 
 .png-export-brand-mark {
-  display: inline-grid;
-  place-items: center;
+  display: block;
   width: 24px;
   height: 24px;
-  border-radius: 6px;
-  background: var(--ink);
-  color: white;
-  font-size: 15px;
-  letter-spacing: 0;
+  flex:0 0 24px;
+  color:var(--surface);
 }
+.png-export-brand-mark rect { fill:var(--ink); }
+.png-export-brand-mark path { stroke:var(--surface); stroke-linecap:round; stroke-linejoin:round; }
 
 .png-export-header small,
 .png-export-header time,
@@ -7131,6 +7129,7 @@ footer nav .footer-action:hover {
 .widget-share-tools { display:inline-flex; flex:0 0 auto; gap:.25rem; }
 .widget-share-trigger { display:grid; place-items:center; width:32px; height:32px; padding:0; border:1px solid var(--line); border-radius:8px; background:var(--surface); color:var(--muted); cursor:pointer; }
 .widget-png-trigger { min-width:32px; gap:0; overflow:hidden; font-size:0; }
+.spain-concern-png { min-width:32px; flex:0 0 32px; gap:0; overflow:hidden; font-size:0; }
 .widget-share-trigger:hover,.widget-share-trigger:focus-visible { border-color:var(--faint); color:var(--ink); }
 .widget-share-modal { width:min(1050px,calc(100% - 32px)); }
 .widget-share-modal .panel-header { align-items:flex-start; }
@@ -7684,6 +7683,8 @@ footer nav .footer-action:hover {
 .png-preview-canvas>header,.png-preview-canvas>footer { position:relative; z-index:2; display:flex; align-items:center; justify-content:space-between; gap:8px; padding:7px 9px; background:var(--surface); color:var(--muted); font-size:7px; }
 .png-preview-canvas>header { border-bottom:1px solid var(--line); }
 .png-preview-canvas>header strong { color:var(--ink); letter-spacing:.09em; }
+.png-preview-canvas>header strong { display:inline-flex; align-items:center; gap:4px; }
+.png-preview-canvas>header .png-export-brand-mark { width:12px; height:12px; flex-basis:12px; }
 .png-preview-canvas>footer { border-top:1px solid #e2e2dd; font-weight:700; }
 .png-preview-canvas[data-export-theme="dark"]>footer { border-color:var(--line); }
 .png-preview-content { position:relative; min-height:0; overflow:hidden; background:var(--surface); }
@@ -8209,15 +8210,159 @@ footer nav .footer-action:hover {
 :is(.png-export-content,.png-preview-content) .approval-insight-grid { grid-template-columns:repeat(3,minmax(0,1fr))!important; }
 :is(.png-export-content,.png-preview-content) .approval-insight-grid.compare { grid-template-columns:repeat(2,minmax(0,1fr))!important; }
 
-/* A polling snapshot is naturally wide. Give each row editorial breathing
-   room in square and portrait exports so the statistic fills the chosen
-   social-media canvas instead of floating in a shallow strip. */
-.png-export-clone.results-card[data-png-profile="widget"][data-png-preset="square"] .result-row,
-.png-preview-clone.results-card[data-png-profile="widget"][data-png-preset="square"] .result-row {
-  min-height:52px;
+/* Export layouts are compositions, not crops. Every profile below is sized
+   for the canvas it offers so a format choice changes the graphic itself. */
+:is(.png-export-clone,.png-preview-clone) {
+  content-visibility:visible!important;
+  contain:none!important;
 }
-.png-export-clone.results-card[data-png-profile="widget"][data-png-preset="portrait"] .result-row,
-.png-preview-clone.results-card[data-png-profile="widget"][data-png-preset="portrait"] .result-row {
-  min-height:64px;
+.png-options-modal.is-single-format { width:min(720px,calc(100% - 32px)); }
+.png-options-modal.is-single-format .png-dialog-layout { grid-template-columns:1fr; }
+.png-options-modal.is-single-format .png-live-preview { min-height:390px; }
+
+:is(.png-export-clone,.png-preview-clone).results-card[data-png-profile="current-poll"] {
+  padding:30px 34px 25px!important;
 }
-:is(.png-export-clone,.png-preview-clone).results-card[data-png-profile="widget"] .result-bar { height:9px; }
+:is(.png-export-clone,.png-preview-clone).results-card[data-png-profile="current-poll"] .result-bar { height:10px; }
+:is(.png-export-clone,.png-preview-clone).results-card[data-png-profile="current-poll"][data-png-preset="landscape"] .result-list { gap:14px; }
+:is(.png-export-clone,.png-preview-clone).results-card[data-png-profile="current-poll"][data-png-preset="landscape"] .result-row {
+  min-height:62px;
+  grid-template-columns:minmax(170px,.9fr) minmax(260px,1.45fr) 72px 52px!important;
+  font-size:.9rem;
+}
+:is(.png-export-clone,.png-preview-clone).results-card[data-png-profile="current-poll"][data-png-preset="square"] .result-list { gap:12px; }
+:is(.png-export-clone,.png-preview-clone).results-card[data-png-profile="current-poll"][data-png-preset="square"] .result-row {
+  min-height:55px;
+  grid-template-columns:minmax(150px,1.1fr) minmax(150px,1fr) 64px 44px!important;
+}
+:is(.png-export-clone,.png-preview-clone).results-card[data-png-profile="current-poll"][data-png-preset="portrait"] {
+  padding:34px 30px 28px!important;
+}
+:is(.png-export-clone,.png-preview-clone).results-card[data-png-profile="current-poll"][data-png-preset="portrait"] .result-list {
+  min-height:690px;
+  margin-top:28px;
+  display:grid!important;
+  grid-template-columns:repeat(auto-fit,minmax(84px,1fr));
+  align-items:stretch;
+  gap:13px;
+}
+:is(.png-export-clone,.png-preview-clone).results-card[data-png-profile="current-poll"][data-png-preset="portrait"] .result-row {
+  min-width:0;
+  min-height:690px;
+  display:grid!important;
+  grid-template-columns:1fr!important;
+  grid-template-rows:minmax(38px,auto) minmax(470px,1fr) auto auto;
+  grid-template-areas:"name" "bar" "value" "delta";
+  align-items:end;
+  justify-items:center;
+  gap:9px!important;
+  border:0;
+}
+:is(.png-export-clone,.png-preview-clone).results-card[data-png-profile="current-poll"][data-png-preset="portrait"] .party-name {
+  grid-area:name;
+  max-width:100%;
+  align-self:start;
+  justify-content:center;
+  text-align:center;
+}
+:is(.png-export-clone,.png-preview-clone).results-card[data-png-profile="current-poll"][data-png-preset="portrait"] .party-name .party-info-trigger {
+  overflow:visible;
+  text-overflow:clip;
+  white-space:normal;
+}
+:is(.png-export-clone,.png-preview-clone).results-card[data-png-profile="current-poll"][data-png-preset="portrait"] .result-bar {
+  grid-area:bar;
+  width:44px;
+  height:100%;
+  align-self:stretch;
+  justify-self:center;
+  border-radius:10px 10px 4px 4px;
+}
+:is(.png-export-clone,.png-preview-clone).results-card[data-png-profile="current-poll"][data-png-preset="portrait"] .result-bar>i {
+  inset:auto 0 0!important;
+  width:100%!important;
+  height:var(--png-column-level,0)!important;
+}
+:is(.png-export-clone,.png-preview-clone).results-card[data-png-profile="current-poll"][data-png-preset="portrait"] .result-row>strong { grid-area:value; text-align:center; font-size:1.04rem; }
+:is(.png-export-clone,.png-preview-clone).results-card[data-png-profile="current-poll"][data-png-preset="portrait"] .result-row>.delta { grid-area:delta; text-align:center; }
+
+:is(.png-export-clone,.png-preview-clone).spain-concern-panel[data-png-profile="issues"] {
+  padding:32px 34px 27px!important;
+}
+:is(.png-export-clone,.png-preview-clone).spain-concern-panel[data-png-profile="issues"] .spain-concern-ranking { gap:8px; margin-top:22px; }
+:is(.png-export-clone,.png-preview-clone).spain-concern-panel[data-png-profile="issues"] .spain-concern-ranking>div {
+  min-height:86px;
+  grid-template-columns:30px minmax(190px,1.05fr) minmax(220px,1.45fr) 64px;
+  gap:14px;
+}
+:is(.png-export-clone,.png-preview-clone).spain-concern-panel[data-png-profile="issues"] .spain-concern-ranking>div>span,
+:is(.png-export-clone,.png-preview-clone).spain-concern-panel[data-png-profile="issues"] .spain-concern-ranking>div>strong { font-size:.9rem; }
+:is(.png-export-clone,.png-preview-clone).spain-concern-panel[data-png-profile="issues"] .spain-concern-ranking>div>div { height:10px; }
+:is(.png-export-clone,.png-preview-clone).spain-concern-panel[data-png-profile="issues"][data-png-preset="square"] .spain-concern-ranking>div {
+  grid-template-columns:28px minmax(170px,1.2fr) minmax(140px,.9fr) 60px;
+}
+:is(.png-export-clone,.png-preview-clone).spain-concern-panel[data-png-profile="issues"][data-png-preset="portrait"] .spain-concern-ranking {
+  min-height:690px;
+  display:grid!important;
+  grid-template-columns:repeat(auto-fit,minmax(120px,1fr));
+  align-items:stretch;
+  gap:16px;
+}
+:is(.png-export-clone,.png-preview-clone).spain-concern-panel[data-png-profile="issues"][data-png-preset="portrait"] .spain-concern-ranking>div {
+  min-width:0;
+  min-height:690px;
+  display:grid!important;
+  grid-template-columns:1fr;
+  grid-template-rows:30px minmax(58px,auto) minmax(470px,1fr) auto;
+  align-items:end;
+  justify-items:center;
+  gap:9px;
+  border:0;
+}
+:is(.png-export-clone,.png-preview-clone).spain-concern-panel[data-png-profile="issues"][data-png-preset="portrait"] .spain-concern-ranking>div>b { align-self:start; }
+:is(.png-export-clone,.png-preview-clone).spain-concern-panel[data-png-profile="issues"][data-png-preset="portrait"] .spain-concern-ranking>div>span {
+  align-self:start;
+  overflow:visible;
+  text-align:center;
+  text-overflow:clip;
+  white-space:normal;
+  line-height:1.25;
+}
+:is(.png-export-clone,.png-preview-clone).spain-concern-panel[data-png-profile="issues"][data-png-preset="portrait"] .spain-concern-ranking>div>div {
+  display:flex;
+  align-items:flex-end;
+  width:48px;
+  height:100%;
+  align-self:stretch;
+  border-radius:11px 11px 4px 4px;
+}
+:is(.png-export-clone,.png-preview-clone).spain-concern-panel[data-png-profile="issues"][data-png-preset="portrait"] .spain-concern-ranking>div>div>i {
+  width:100%!important;
+  height:var(--png-column-level,0)!important;
+  margin-top:auto;
+  border-radius:inherit;
+}
+:is(.png-export-clone,.png-preview-clone).spain-concern-panel[data-png-profile="issues"][data-png-preset="portrait"] .spain-concern-ranking>div>strong { text-align:center; font-size:1rem; }
+
+:is(.png-export-clone,.png-preview-clone).tendency-section[data-png-profile="party-grid"] {
+  padding:30px 32px!important;
+  border:1px solid var(--line);
+  border-radius:18px;
+  background:var(--surface);
+}
+:is(.png-export-clone,.png-preview-clone).tendency-section[data-png-profile="party-grid"] .tendency-grid { gap:14px; }
+:is(.png-export-clone,.png-preview-clone).tendency-section[data-png-profile="party-grid"] .tendency-card { min-height:112px; padding:15px; }
+:is(.png-export-clone,.png-preview-clone).tendency-section[data-png-profile="party-grid"] .tendency-card-main { margin:-15px; padding:15px; width:calc(100% + 30px); }
+:is(.png-export-clone,.png-preview-clone).tendency-section[data-png-profile="party-grid"][data-png-preset="landscape"] .tendency-grid { grid-template-columns:repeat(4,minmax(0,1fr))!important; }
+:is(.png-export-clone,.png-preview-clone).tendency-section[data-png-profile="party-grid"][data-png-preset="square"] .tendency-grid,
+:is(.png-export-clone,.png-preview-clone).tendency-section[data-png-profile="party-grid"][data-png-preset="portrait"] .tendency-grid { grid-template-columns:repeat(2,minmax(0,1fr))!important; }
+:is(.png-export-clone,.png-preview-clone).tendency-section[data-png-profile="party-grid"][data-png-preset="portrait"] .tendency-card { min-height:134px; }
+
+:is(.png-export-clone,.png-preview-clone).projection-section[data-png-profile="seat-grid"] { padding:30px 34px!important; }
+:is(.png-export-clone,.png-preview-clone).projection-section[data-png-profile="seat-grid"][data-png-preset="landscape"] .projection-grid { grid-template-columns:repeat(2,minmax(0,1fr))!important; }
+:is(.png-export-clone,.png-preview-clone).projection-section[data-png-profile="seat-grid"][data-png-preset="portrait"] .projection-grid { grid-template-columns:1fr!important; gap:22px; }
+
+@media (max-width:680px) {
+  .png-options-modal.is-single-format .png-dialog-layout { grid-template-rows:minmax(0,1fr); overflow:hidden; }
+  .png-options-modal.is-single-format .png-live-preview { grid-row:1; min-height:0; }
+}

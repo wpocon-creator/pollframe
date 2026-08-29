@@ -118,11 +118,10 @@ async function settle(page) {
   await page.evaluate(() => document.fonts?.ready);
 }
 
-async function downloadPng(page, button, format = "content") {
+async function downloadPng(page, button, format = null) {
   await button.click();
   const modal = page.locator(".png-options-modal");
   await expect(modal).toBeVisible();
-  await expect(modal.locator(".png-format-grid > button")).toHaveCount(3);
   const overlap = await modal.evaluate((root) => {
     const formats = root.querySelector(".png-format-grid")?.getBoundingClientRect();
     const actions = root.querySelector(".png-options-actions")?.getBoundingClientRect();
@@ -130,7 +129,7 @@ async function downloadPng(page, button, format = "content") {
     return Math.max(0, Math.min(formats.bottom, actions.bottom) - Math.max(formats.top, actions.top));
   });
   expect(overlap, "PNG format choices overlap the export buttons").toBeLessThanOrEqual(1);
-  if (format !== "content") await modal.locator(`.png-format-shape.is-${format}`).locator("..").click();
+  if (format) await modal.locator(`.png-format-shape.is-${format}`).locator("..").click();
   const downloadPromise = page.waitForEvent("download");
   await modal.getByRole("button", { name: /PNG herunterladen|Download PNG|Descargar PNG/i }).click();
   const download = await downloadPromise;
@@ -304,7 +303,7 @@ test.describe("core routes", () => {
     const chartExportButton = page.locator(".chart-card .png-export-button").first();
     const download = await downloadPng(page, chartExportButton, "landscape");
     await download.saveAs(testInfo.outputPath("bundestag-export.png"));
-    expect(download.suggestedFilename()).toMatch(/^pollframe-bundestag-all-trend-landscape-\d{4}-\d{2}-\d{2}\.png$/);
+    expect(download.suggestedFilename()).toMatch(/^pollframe-bundestag-all-trend-landscape-(?:light|dark)-\d{4}-\d{2}-\d{2}\.png$/);
     const png = await readFile(await download.path());
     expect([...png.subarray(0, 8)]).toEqual([137, 80, 78, 71, 13, 10, 26, 10]);
     expect(png.readUInt32BE(16)).toBe(1920);
@@ -312,7 +311,7 @@ test.describe("core routes", () => {
     await expectPngHasVisibleContent(page, png);
     const squareDownload = await downloadPng(page, chartExportButton, "square");
     await squareDownload.saveAs(testInfo.outputPath("bundestag-export-square.png"));
-    expect(squareDownload.suggestedFilename()).toMatch(/-square-\d{4}-\d{2}-\d{2}\.png$/);
+    expect(squareDownload.suggestedFilename()).toMatch(/-square-(?:light|dark)-\d{4}-\d{2}-\d{2}\.png$/);
     const squarePng = await readFile(await squareDownload.path());
     expect(squarePng.readUInt32BE(16)).toBe(1080);
     expect(squarePng.readUInt32BE(20)).toBe(1080);
@@ -355,10 +354,11 @@ test.describe("core routes", () => {
 
     const mapDownload = await downloadPng(page, page.getByRole("button", { name: /PNG exportieren|Export PNG/i }));
     await mapDownload.saveAs(testInfo.outputPath("map-export.png"));
-    expect(mapDownload.suggestedFilename()).toMatch(/^pollframe-deutschlandkarte-party-content-\d{4}-\d{2}-\d{2}\.png$/);
+    expect(mapDownload.suggestedFilename()).toMatch(/^pollframe-deutschlandkarte-party-landscape-(?:light|dark)-\d{4}-\d{2}-\d{2}\.png$/);
     const mapPng = await readFile(await mapDownload.path());
     expect([...mapPng.subarray(0, 8)]).toEqual([137, 80, 78, 71, 13, 10, 26, 10]);
-    expect(mapPng.readUInt32BE(16)).toBeGreaterThanOrEqual(2200);
+    expect(mapPng.readUInt32BE(16)).toBe(1920);
+    expect(mapPng.readUInt32BE(20)).toBe(1080);
 
     await page.getByRole("button", { name: /Karte einbetten|Embed map/i }).click();
     await expect(page.getByRole("dialog", { name: /Deutschlandkarte einbetten|Embed map of Germany/i })).toBeVisible();
@@ -604,13 +604,14 @@ test.describe("core routes", () => {
       const pngDownload = await downloadPng(page, page.locator(".chart-card .png-export-button"));
       await pngDownload.saveAs(testInfo.outputPath("spain-export.png"));
       const png = await readFile(await pngDownload.path());
-      expect(png.readUInt32BE(16)).toBeGreaterThanOrEqual(3000);
-      expect(png.readUInt32BE(20)).toBeGreaterThan(900);
+      expect(png.readUInt32BE(16)).toBe(1920);
+      expect(png.readUInt32BE(20)).toBe(1080);
       await expectPngHasVisibleContent(page, png);
       const insightDownload = await downloadPng(page, page.locator(".spain-pulse-heading .png-export-button"));
       await insightDownload.saveAs(testInfo.outputPath("spain-pulse-export.png"));
       const insightPng = await readFile(await insightDownload.path());
-      expect(insightPng.readUInt32BE(16)).toBeGreaterThanOrEqual(3000);
+      expect(insightPng.readUInt32BE(16)).toBe(1080);
+      expect(insightPng.readUInt32BE(20)).toBe(1350);
       await expectPngHasVisibleContent(page, insightPng);
 
       await page.evaluate(() => localStorage.setItem("opinion-poll-locale", "en-GB"));
@@ -1476,8 +1477,8 @@ test.describe("core routes", () => {
     const snapshotDownload = await downloadPng(page, page.locator(".results-card").getByRole("button", { name: /PNG exportieren|Export PNG/i }));
     const snapshotPng = await readFile(await snapshotDownload.path());
     await snapshotDownload.saveAs(testInfo.outputPath("current-average-export.png"));
-    expect(snapshotPng.readUInt32BE(16)).toBeGreaterThanOrEqual(3000);
-    expect(snapshotPng.readUInt32BE(20)).toBeGreaterThan(900);
+    expect(snapshotPng.readUInt32BE(16)).toBe(1920);
+    expect(snapshotPng.readUInt32BE(20)).toBe(1080);
     await expectPngHasVisibleContent(page, snapshotPng);
 
     await page.goto("/embed.html?embed=1&widget=current-average&region=bundestag&lang=de&theme=dark");
