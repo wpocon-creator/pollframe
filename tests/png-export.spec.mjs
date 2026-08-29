@@ -113,6 +113,83 @@ async function downloadPngSample(page, button, expectedFormats, outputPath, expe
 }
 
 test.describe("PNG export chooser", () => {
+  test("portrait current-poll grids stay balanced across countries and devices", async ({ page }, testInfo) => {
+    test.skip(!["chromium-desktop", "iphone-13-chromium"].includes(testInfo.project.name), "Representative fine- and coarse-pointer coverage only.");
+    for (const route of [
+      "/?region=bundestag&lang=de",
+      "/?region=uk-westminster&lang=en-GB",
+      "/?region=spain-congress&lang=es",
+    ]) {
+      await page.goto(route);
+      await settle(page);
+      await page.locator(".results-card .widget-png-trigger").click();
+      const modal = await auditPngDialog(page, ["landscape", "square", "portrait"]);
+      await modal.locator(".png-format-shape.is-portrait").locator("..").click();
+      await waitForPreview(modal, { preset: "portrait" });
+      const composition = await modal.locator(".png-preview-clone .result-list").evaluate((list) => {
+        const rows = [...list.querySelectorAll(":scope > .result-row")];
+        const rowGroups = new Map();
+        rows.forEach((row) => {
+          const top = Math.round(row.getBoundingClientRect().top);
+          rowGroups.set(top, (rowGroups.get(top) ?? 0) + 1);
+        });
+        const groups = [...rowGroups.values()];
+        const heights = rows.map((row) => row.getBoundingClientRect().height);
+        const clippedNames = rows.filter((row) => {
+          const name = row.querySelector(".party-info-trigger");
+          return name && (name.scrollWidth > name.clientWidth + 2 || name.scrollHeight > name.clientHeight + 2);
+        }).length;
+        return {
+          groups,
+          heightSpread: Math.max(...heights) - Math.min(...heights),
+          clippedNames,
+          horizontalOverflow: list.scrollWidth - list.clientWidth,
+        };
+      });
+      expect(Math.max(...composition.groups) - Math.min(...composition.groups), route).toBeLessThanOrEqual(1);
+      expect(composition.groups.length === 1 || Math.min(...composition.groups) >= 2, route).toBe(true);
+      expect(composition.heightSpread, route).toBeLessThanOrEqual(1);
+      expect(composition.clippedNames, route).toBe(0);
+      expect(composition.horizontalOverflow, route).toBeLessThanOrEqual(2);
+      await modal.getByRole("button", { name: /Schließen|Close|Cerrar/i }).click();
+    }
+  });
+
+  test("UK current polling portrait export remains a complete readable composition", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "chromium-desktop", "One raster audit is sufficient for the fixed export geometry.");
+    await installPngCapture(page);
+    await page.goto("/?region=uk-westminster&lang=en-GB");
+    await settle(page);
+    const button = page.locator(".results-card .widget-png-trigger");
+    await button.click();
+    const modal = await auditPngDialog(page, ["landscape", "square", "portrait"]);
+    await modal.locator(".png-format-shape.is-portrait").locator("..").click();
+    await waitForPreview(modal, { preset: "portrait" });
+    const composition = await modal.locator(".png-preview-clone .result-list").evaluate((list) => {
+      const rows = [...list.querySelectorAll(":scope > .result-row")];
+      const rowGroups = new Map();
+      rows.forEach((row) => {
+        const top = Math.round(row.getBoundingClientRect().top);
+        rowGroups.set(top, (rowGroups.get(top) ?? 0) + 1);
+      });
+      const heights = rows.map((row) => row.getBoundingClientRect().height);
+      const clippedNames = rows.filter((row) => {
+        const name = row.querySelector(".party-info-trigger");
+        return name && (name.scrollWidth > name.clientWidth + 2 || name.scrollHeight > name.clientHeight + 2);
+      }).length;
+      return {
+        columns: Number(list.dataset.pngPortraitColumns),
+        rows: Number(list.dataset.pngPortraitRows),
+        groups: [...rowGroups.values()],
+        heightSpread: Math.max(...heights) - Math.min(...heights),
+        clippedNames,
+      };
+    });
+    expect(composition).toEqual({ columns: 4, rows: 2, groups: [4, 4], heightSpread: 0, clippedNames: 0 });
+    await modal.getByRole("button", { name: /Schließen|Close|Cerrar/i }).click();
+    await downloadPngSample(page, button, ["landscape", "square", "portrait"], testInfo.outputPath("uk-current-portrait.png"), [1080, 1350], "portrait");
+  });
+
   test("uses graph-specific formats and changes the real preview geometry", async ({ page }, testInfo) => {
     if (testInfo.project.name.includes("iphone")) await installPngCapture(page, { nativeShare: true });
     await page.goto("/?region=bundestag&lang=de");

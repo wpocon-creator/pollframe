@@ -268,6 +268,20 @@ function exportCloneWidth(format, profile, preset) {
   return available;
 }
 
+function balancedPortraitColumnCount(count) {
+  if (count <= 5) return Math.max(1, count);
+  let best = { columns: 3, score: Number.POSITIVE_INFINITY };
+  for (let columns = 3; columns <= Math.min(5, count); columns += 1) {
+    const rowCount = Math.ceil(count / columns);
+    const remainder = count % columns;
+    const orphanPenalty = remainder === 1 ? 100 : 0;
+    const unusedSlots = remainder ? columns - remainder : 0;
+    const score = orphanPenalty + rowCount * 10 + unusedSlots;
+    if (score < best.score) best = { columns, score };
+  }
+  return best.columns;
+}
+
 function prepareExportClone(clone, { format, preset, profile }) {
   clone.dataset.pngPreset = preset;
   clone.dataset.pngProfile = profile;
@@ -293,6 +307,27 @@ function prepareExportClone(clone, { format, preset, profile }) {
       const value = Number.parseFloat(bar.style.width);
       if (Number.isFinite(value)) bar.style.setProperty("--png-column-level", `${Math.min(100, (value / issueCeiling) * 100)}%`);
     });
+    if (profile === "current-poll") {
+      const list = clone.querySelector(".result-list");
+      const rows = [...(list?.querySelectorAll(":scope > .result-row") ?? [])];
+      const count = rows.length;
+      const columns = balancedPortraitColumnCount(count);
+      const rowCount = Math.max(1, Math.ceil(count / columns));
+      if (list) {
+        // Use twice as many grid tracks as visual columns. This lets an
+        // incomplete final row begin on a half-column and remain centred.
+        list.style.setProperty("grid-template-columns", `repeat(${columns * 2},minmax(0,1fr))`, "important");
+        list.style.setProperty("grid-template-rows", `repeat(${rowCount},minmax(0,1fr))`, "important");
+        list.dataset.pngPortraitColumns = String(columns);
+        list.dataset.pngPortraitRows = String(rowCount);
+        rows.forEach((row) => row.style.setProperty("grid-column", "span 2"));
+        const remainder = count % columns;
+        if (remainder) {
+          const finalRowStart = count - remainder;
+          rows[finalRowStart]?.style.setProperty("grid-column", `${columns - remainder + 1} / span 2`);
+        }
+      }
+    }
   }
   return clone;
 }
