@@ -206,7 +206,7 @@ test.describe("core routes", () => {
     await page.locator(".results-card .graph-info-popover summary").click();
     await expect(page.locator(".results-card .graph-info-card")).toContainText(/wurde am .* veröffentlicht/i);
     await expect(page.locator(".results-card .graph-info-card")).toContainText(/Befragungszeitraum:/i);
-    await page.locator(".results-card .graph-info-backdrop").click({ position: { x: 5, y: 5 } });
+    await page.mouse.click(5, 5); // Outside the native modal's bounds.
     await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
       "href",
       "https://de.pollframe.workers.dev/de/bundestag/umfragen",
@@ -550,7 +550,7 @@ test.describe("core routes", () => {
     await expect(page.locator(".spain-concern-panel .info-glyph").first()).toHaveText("i");
     await expectDocumentFits(page);
     await page.screenshot({ path: testInfo.outputPath("spain-issues.png"), fullPage: true });
-    await page.locator(".spain-concern-panel .graph-info-backdrop").first().click({ position: { x: 5, y: 5 } });
+    await page.mouse.click(5, 5);
     await page.getByRole("link", { name: /Volver a España/i }).click();
     await settle(page);
 
@@ -593,7 +593,7 @@ test.describe("core routes", () => {
     await page.locator(".spain-results-card .graph-info-popover summary").click();
     await expect(page.locator(".spain-results-card .graph-info-card")).toContainText(/terminó su trabajo de campo el/i);
     await expect(page.locator(".spain-results-card .graph-info-card")).toContainText(/Trabajo de campo:/i);
-    await page.locator(".spain-results-card .graph-info-backdrop").click({ position: { x: 5, y: 5 } });
+    await page.mouse.click(5, 5);
     if (testInfo.project.name.includes("iphone") || testInfo.project.name.includes("pixel") || testInfo.project.name.includes("galaxy")) {
       await expect(page.locator(".chart-heading > div > p:not(.section-label)")).toBeHidden();
       await expect(page.locator(".tendency-heading .widget-info-heading > div > p")).toBeHidden();
@@ -1075,7 +1075,7 @@ test.describe("core routes", () => {
     expect(chartInfoOrder.titleLeft).toBeGreaterThan(chartInfoOrder.iconRight);
     await chartInfo.locator("summary").click();
     await expect(chartInfo.locator(".graph-info-card")).toContainText(/keine Wahlprognose|not an election forecast/i);
-    await chartInfo.locator(".graph-info-backdrop").click({ position: { x: 5, y: 5 } });
+    await page.mouse.click(5, 5);
     await expect(chartInfo).not.toHaveAttribute("open", "");
     if (testInfo.project.use.hasTouch) {
       await expect(page.locator(".event-marker.inspect-only")).not.toHaveCount(0);

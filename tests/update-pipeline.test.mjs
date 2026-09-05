@@ -4,6 +4,14 @@ import test from "node:test";
 import { discoverFgwCurrentDownloads, fetchWithRetry } from "../scripts/lib/approval-sources.mjs";
 import { fetchTextWithRetry, settleWithConcurrency } from "../scripts/lib/resilient-source.mjs";
 import { isLiveDataPath } from "../worker/index.js";
+import { previousMeasurement } from "../scripts/lib/data-review.mjs";
+
+test("anomaly checks use the latest eligible poll even when source rows are unordered", () => {
+  const rows = [{date:"2026-09-06",pollster:"1"}, {date:"2026-09-01",pollster:"1"}, {date:"2026-09-02",pollster:"2"}, {date:"2024-01-01",pollster:"1"}];
+  assert.equal(previousMeasurement(rows,"2026-09-03",(row)=>row.pollster==="1").date,"2026-09-01");
+  assert.equal(previousMeasurement(rows.toReversed ? rows.toReversed() : [...rows].reverse(),"2026-09-03",(row)=>row.pollster==="1").date,"2026-09-01");
+  assert.equal(previousMeasurement([],"2026-09-03"),null);
+});
 
 test("official FGW download discovery survives versioned filename changes", () => {
   const html = '<a href="/Umfragen/Politbarometer/Langzeitentwicklung_-_Themen_im_Ueberblick/Politik_II/4_Arbeit_Reg.xlsx">Regierung</a><a href="/Umfragen/Politbarometer/Langzeitentwicklung_-_Themen_im_Ueberblick/Politik_II/11_Arbeit_Merz_27.xlsx">Kanzler</a>';

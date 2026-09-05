@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { readFile } from "node:fs/promises";
+import { previousMeasurement } from "./lib/data-review.mjs";
 
 const approvals = new Set(JSON.parse(await readFile("data/anomaly-approvals.json", "utf8")).approved ?? []);
 const findings = [];
@@ -11,8 +12,8 @@ const targets = [
 ];
 
 function baseline(path) {
-  try { return JSON.parse(execFileSync("git", ["show", `HEAD:${path}`], { encoding: "utf8", maxBuffer: 12 * 1024 * 1024, stdio: ["ignore", "pipe", "ignore"] })); }
-  catch { return null; }
+  const ref = process.env.POLLFRAME_REVIEW_BASE_REF || "HEAD";
+  return JSON.parse(execFileSync("git", ["show", `${ref}:${path}`], { encoding: "utf8", maxBuffer: 12 * 1024 * 1024, stdio: ["ignore", "pipe", "ignore"] }));
 }
 
 function fingerprint(parts) {
@@ -34,7 +35,7 @@ for (const path of targets) {
   if (!before?.polls || !after?.polls) continue;
   const oldKeys = new Set(before.polls.map(pollKey));
   for (const poll of after.polls.filter((candidate) => !oldKeys.has(pollKey(candidate)))) {
-    const previous = [...before.polls].reverse().find((candidate) => candidate.pollster === poll.pollster && candidate.date <= poll.date);
+    const previous = previousMeasurement(before.polls, poll.date, (candidate) => candidate.pollster === poll.pollster);
     if (!previous) continue;
     for (const [party, value] of Object.entries(poll.results ?? {})) {
       if (party === "0" || !Number.isFinite(previous.results?.[party])) continue;
@@ -53,7 +54,7 @@ for (const country of ["de", "uk"]) {
     const newSeries = newApproval?.countries?.[country]?.series?.[metric] ?? [];
     const oldDates = new Set(oldSeries.map((point) => point.date));
     for (const point of newSeries.filter((candidate) => !oldDates.has(candidate.date))) {
-      const previous = [...oldSeries].reverse().find((candidate) => candidate.date <= point.date);
+      const previous = previousMeasurement(oldSeries, point.date);
       if (!previous) continue;
       for (const answer of ["positive", "negative"]) {
         if (!Number.isFinite(point[answer]) || !Number.isFinite(previous[answer])) continue;

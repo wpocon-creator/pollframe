@@ -20,7 +20,10 @@ export function InfoPopover({ label = "Info", closeLabel = "Close", className = 
   useEffect(() => () => dialogRef.current?.close(), []);
   return <details ref={detailsRef} className={`graph-info-popover ${className}`.trim()} data-export-ignore="true" onToggle={sync}>
     <summary aria-label={label} title={label}><span className="info-glyph" aria-hidden="true">i</span></summary>
-    <dialog ref={dialogRef} className={`graph-info-card ${cardClassName}`.trim()} aria-label="Info" onClose={() => detailsRef.current?.removeAttribute("open")} onClick={(event) => {
+    <dialog ref={dialogRef} className={`graph-info-card ${cardClassName}`.trim()} aria-label="Info" onKeyDown={(event) => {
+      // Escape closes only this topmost dialog, not a party chart underneath.
+      if (event.key === "Escape" || event.key === "Tab") event.stopPropagation();
+    }} onClose={() => detailsRef.current?.removeAttribute("open")} onClick={(event) => {
       if (event.target !== event.currentTarget) return;
       const bounds = event.currentTarget.getBoundingClientRect();
       if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) close();

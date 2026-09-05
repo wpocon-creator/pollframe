@@ -4481,7 +4481,7 @@ function WidgetEmbedView({ widget, t, locale, pollData, latestDate, current, pre
     const termStart = electionDates.filter((date) => date <= latestDate).at(-1) ?? pollData.polls[0]?.date ?? ARCHIVE_START;
     return <PartyDetailModal party={party} onClose={() => {}} t={t} locale={locale} polls={pollData.polls} selectedPollsters={selectedPollsters} latestDate={latestDate} partyDefinitions={partyDefinitions} termStart={termStart} archiveStart={pollData.polls[0]?.date ?? ARCHIVE_START} region={region} metadata={pollData.metadata} embed initialPeriod={period} />;
   }
-  const statusLabel = region.type === "uk-federal" && pollData.metadata?.weightedAveragePollsterId
+  const statusLabel = region.type === "uk-federal" && current.synthetic
     ? (locale === "de" ? "Gewichteter 14-Tage-Trend" : locale === "es" ? "Tendencia ponderada de 14 días" : "Weighted 14-day trend")
     : pollData.pollsters?.[current.pollster] ?? null;
   const heading = widget === "current-average" ? t.current : widget === "tendencies" ? t.tendencies : (locale === "de" ? "Modellierte Sitzverteilung" : locale === "es" ? "Reparto modelizado de escaños" : "Modelled seat allocation");
