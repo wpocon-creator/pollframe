@@ -42,6 +42,14 @@ test("party history labels fit and chart buttons do not consume the title width"
   await page.goto("/?region=bundestag&party=greens&lang=de");
   const modal = page.locator(".party-modal");
   await expect(modal).toBeVisible();
+  const blockedZoom = await modal.locator(".party-detail-chart svg").evaluate((svg) => {
+    const blocked = [];
+    for (let node = svg; node; node = node.parentElement) {
+      if (!/auto|manipulation|pinch-zoom/.test(getComputedStyle(node).touchAction)) blocked.push(node.className?.baseVal ?? node.className);
+    }
+    return blocked;
+  });
+  expect(blockedZoom, "a parent must not cancel pinch zoom allowed by the chart").toEqual([]);
   const labels = await modal.locator("svg text.axis-label").evaluateAll((elements) => elements.map((element) => {
     const text = element.getBoundingClientRect();
     const svg = element.ownerSVGElement.getBoundingClientRect();
