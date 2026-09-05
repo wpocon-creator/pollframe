@@ -3,6 +3,8 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 // Deliberately slower than a tap: the tile has time to visibly compress before
 // it detaches from the grid, matching the familiar iOS home-screen gesture.
 const HOLD_DELAY_MS = 420;
+const TOUCH_HOLD_DELAY_MS = 620;
+const TOUCH_PRESS_DELAY_MS = 140;
 const SCROLL_CANCEL_DISTANCE = 9;
 const DRAG_START_DISTANCE = 6;
 const REORDER_COOLDOWN_MS = 72;
@@ -239,6 +241,7 @@ export function useWatchlistReorder({ cards, enabled, items, persistItems, setIt
   function detachSession(session) {
     if (!session) return;
     if (session.holdTimer) window.clearTimeout(session.holdTimer);
+    if (session.pressTimer) window.clearTimeout(session.pressTimer);
     if (session.pressFrame) cancelAnimationFrame(session.pressFrame);
     if (session.frame) cancelAnimationFrame(session.frame);
     if (session.liftFrame) cancelAnimationFrame(session.liftFrame);
@@ -477,16 +480,17 @@ export function useWatchlistReorder({ cards, enabled, items, persistItems, setIt
       touchIdentifier,
       frame: 0,
       holdTimer: 0,
+      pressTimer: 0,
       pressFrame: 0,
     };
-    card.classList.add("is-drag-pressing");
+    if (event.pointerType !== "touch") card.classList.add("is-drag-pressing");
     const finishFromPointer = (releaseEvent) => { if (releaseEvent.pointerId === session.pointerId) finishDrag(true); };
     const cancelFromPointer = (cancelEvent) => {
       if (cancelEvent.pointerId !== session.pointerId) return;
       // Safari can cancel its PointerEvent stream while continuing to deliver
       // the same physical contact through TouchEvents. Keep that live touch as
       // the source of truth; touchcancel/touchend still terminate it safely.
-      if (session.pointerType === "touch" && session.touchIdentifier != null) return;
+      if (session.active && session.pointerType === "touch" && session.touchIdentifier != null) return;
       finishDrag(false);
     };
     const trackedTouchEnded = (touchEvent) => session.pointerType === "touch"
@@ -495,7 +499,13 @@ export function useWatchlistReorder({ cards, enabled, items, persistItems, setIt
     const finishFromTouch = (touchEvent) => { if (touchEvent.touches.length === 0 || trackedTouchEnded(touchEvent)) finishDrag(true); };
     const cancelFromTouch = (touchEvent) => { if (touchEvent.touches.length === 0 || trackedTouchEnded(touchEvent)) finishDrag(false); };
     const trackTouchStart = (touchEvent) => {
-      if (touchEvent.touches.length > 1) { finishDrag(false); return; }
+      if (touchEvent.touches.length > 1) {
+        // Before lifting, two fingers belong to native zoom. Once dragging,
+        // keep tracking the original finger if another finger touches down.
+        if (session.active) { if (touchEvent.cancelable) touchEvent.preventDefault(); }
+        else finishDrag(false);
+        return;
+      }
       if (session.pointerType !== "touch" || session.touchIdentifier != null) return;
       session.touchIdentifier = nearestTouch(touchEvent.touches, session.clientX, session.clientY)?.identifier;
     };
@@ -521,6 +531,7 @@ export function useWatchlistReorder({ cards, enabled, items, persistItems, setIt
       if (session.active && moveEvent.cancelable) moveEvent.preventDefault();
     };
     const cancelFromWindow = () => finishDrag(false);
+    const cancelPendingOnScroll = () => { if (session.pending) finishDrag(false); };
     const cancelWhenHidden = () => { if (document.visibilityState === "hidden") finishDrag(false); };
     const cancelFromKeyboard = (keyEvent) => { if (keyEvent.key === "Escape") { keyEvent.preventDefault(); finishDrag(false); } };
     session.detachListeners = () => {
@@ -532,6 +543,7 @@ export function useWatchlistReorder({ cards, enabled, items, persistItems, setIt
       window.removeEventListener("touchstart", trackTouchStart, true);
       window.removeEventListener("touchmove", blockTouchMove, true);
       window.removeEventListener("blur", cancelFromWindow);
+      window.removeEventListener("scroll", cancelPendingOnScroll, true);
       window.removeEventListener("keydown", cancelFromKeyboard, true);
       document.removeEventListener("visibilitychange", cancelWhenHidden, true);
     };
@@ -540,13 +552,15 @@ export function useWatchlistReorder({ cards, enabled, items, persistItems, setIt
     window.addEventListener("pointercancel", cancelFromPointer, true);
     window.addEventListener("touchend", finishFromTouch, { capture: true, passive: true });
     window.addEventListener("touchcancel", cancelFromTouch, { capture: true, passive: true });
-    window.addEventListener("touchstart", trackTouchStart, { capture: true, passive: true });
+    window.addEventListener("touchstart", trackTouchStart, { capture: true, passive: false });
     window.addEventListener("touchmove", blockTouchMove, { capture: true, passive: false });
     window.addEventListener("blur", cancelFromWindow);
+    window.addEventListener("scroll", cancelPendingOnScroll, true);
     window.addEventListener("keydown", cancelFromKeyboard, true);
     document.addEventListener("visibilitychange", cancelWhenHidden, true);
     sessionRef.current = session;
-    try { session.captureElement.setPointerCapture?.(event.pointerId); } catch { /* synthetic or unsupported pointer */ }
+    // Do not capture or block a pending touch: a swipe still belongs to the
+    // browser. Capture and touchmove cancellation start only after the hold.
     // Begin the hold clock only after two painted frames. On a busy first load
     // Safari could otherwise run an already-due timer before ever presenting
     // the compressed state, which made the gesture look as if it did nothing.
@@ -555,7 +569,10 @@ export function useWatchlistReorder({ cards, enabled, items, persistItems, setIt
       session.pressFrame = requestAnimationFrame(() => {
         session.pressFrame = 0;
         if (sessionRef.current !== session || !session.pending) return;
-        session.holdTimer = window.setTimeout(() => activateDrag(session), HOLD_DELAY_MS);
+        if (session.pointerType === "touch") session.pressTimer = window.setTimeout(() => {
+          if (sessionRef.current === session && session.pending) card.classList.add("is-drag-pressing");
+        }, TOUCH_PRESS_DELAY_MS);
+        session.holdTimer = window.setTimeout(() => activateDrag(session), session.pointerType === "touch" ? TOUCH_HOLD_DELAY_MS : HOLD_DELAY_MS);
       });
     });
   }

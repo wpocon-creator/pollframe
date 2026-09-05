@@ -367,6 +367,16 @@ test.describe("PNG export chooser", () => {
     await expect(page.locator(".embed-modal:not(.png-options-modal)")).toBeVisible();
   });
 
+  test("compact approval redesign preserves both real PNG compositions", async ({ page }, testInfo) => {
+    test.skip(!["chromium-desktop", "iphone-13-chromium"].includes(testInfo.project.name), "Representative desktop and touch downloads");
+    await installPngCapture(page);
+    await page.goto("/?view=approval&country=de&lang=de");
+    await settle(page);
+    for (const [preset, size] of [["landscape", [1920, 1080]], ["square", [1080, 1080]]]) {
+      await downloadPngSample(page, page.locator(".approval-current-government .widget-png-trigger"), ["landscape", "square"], `test-results/design-review/${testInfo.project.name}/approval-export-${preset}.png`, size, preset);
+    }
+  });
+
   test("renders complete profile-specific graphics rather than empty frames", async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== "chromium-desktop", "One representative visual export audit is sufficient.");
     test.setTimeout(180_000); // Seventeen real high-resolution downloads, not a single navigation.
