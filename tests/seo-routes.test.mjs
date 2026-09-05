@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import test from "node:test";
+import test, { mock } from "node:test";
 import worker from "../worker/index.js";
 import { publicRegionPath, routeParamsForPath, routeQueryForLocation } from "../src/public-routes.js";
+mock.method(globalThis, "fetch", async () => new Response("", { status: 503 }));
 
 test("clean public paths map to the same application state as legacy query routes", () => {
   assert.deepEqual(routeParamsForPath("/de/bundestag/umfragen"), { region: "bundestag" });
@@ -24,20 +25,20 @@ test("the Worker serves route-specific metadata and readable fallback copy", asy
     },
   };
   for (const [path, language, titleText, headingText] of [
-    ["/de/bundestag/umfragen", "de", "Bundestagswahl-Umfragen", "Aktuelle Sonntagsfrage"],
-    ["/uk/westminster/polls", "en", "UK Westminster polls", "UK Westminster voting-intention polls"],
-    ["/es/encuestas", "es", "Encuestas electorales", "Encuestas electorales de España"],
+    ["/de/bundestag/umfragen", "de", "Bundestag", "Bundestag: aktuelle Wahlumfragen"],
+    ["/uk/westminster/polls", "en-GB", "Westminster", "Westminster: latest election polls"],
+    ["/es/encuestas", "es", "Congreso de los Diputados", "Congreso de los Diputados: últimas encuestas"],
     ["/de/landtagswahl/berlin/umfragen", "de", "Berlin", "Landtagswahl-Umfragen in Berlin"],
   ]) {
     const response = await worker.fetch(new Request(`https://pollframe.com${path}`), env);
     const html = await response.text();
     assert.equal(response.status, 200);
     assert.equal(response.headers.get("content-language"), language);
-    assert.ok(html.includes(`<meta property="og:locale" content="${language === "es" ? "es_ES" : language === "en" ? "en_GB" : "de_DE"}"`));
+    assert.ok(html.includes(`<meta property="og:locale" content="${language === "es" ? "es_ES" : language === "en-GB" ? "en_GB" : "de_DE"}"`));
     assert.match(html, new RegExp(`<title>[^<]*${titleText}`));
     assert.ok(html.includes(`<link rel="canonical" href="https://pollframe.com${path}"`));
     assert.ok(html.includes(`<h1>${headingText}`));
-    assert.ok(html.includes("<noscript><main>"));
+    assert.ok(html.includes('id="seo-initial-content"'));
   }
 });
 

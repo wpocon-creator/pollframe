@@ -10,6 +10,7 @@ import { includeHistoricalEvent, isPrimaryElectionEvent, rankHistoricalEvents } 
 import { trackAggregateEvent, trackAggregateEventOnce } from "./aggregateAnalytics.js";
 import { requestWasAborted } from "./network.js";
 import { SITE_ORIGIN, publicShareOrigin } from "./site-origin.js";
+import { localizedCanonical, languageAlternates } from "./seo-locale.js";
 import { PngExportButton } from "./png-export-button.jsx";
 import {
   publicCountryPath,
@@ -249,7 +250,7 @@ function updatePageMetadata({
   locale,
   indexable = true,
 }) {
-  const canonicalUrl = new URL(canonicalPath, SITE_ORIGIN).href;
+  const canonicalUrl = localizedCanonical(canonicalPath, locale);
   const openGraphLocale = LOCALE_META[locale]?.openGraph ?? "en_GB";
   document.title = title;
   setMetaByName("description", description);
@@ -272,7 +273,15 @@ function updatePageMetadata({
   setMetaByProperty("og:image:height", "630");
   setMetaByProperty("og:image:type", "image/png");
   setMetaByProperty("og:image:alt", "Pollframe – Wahlumfragen für Bund und Länder");
-  setCanonicalUrl(canonicalPath);
+  setCanonicalUrl(canonicalUrl);
+  document.head.querySelectorAll('link[rel="alternate"][hreflang]').forEach((link) => link.remove());
+  if (indexable) for (const { locale: language, href } of languageAlternates(canonicalPath)) {
+    const link = document.createElement("link");
+    link.rel = "alternate";
+    link.hreflang = language;
+    link.href = href;
+    document.head.append(link);
+  }
 }
 
 const EVENT_CATEGORIES = [

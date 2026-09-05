@@ -13,6 +13,29 @@ Updated 5 September 2026. Main address: **https://pollframe.com**.
 
 ## William — the short list
 
+### SEO follow-up implemented
+
+The Worker now returns visible, language-specific initial HTML rather than only
+a JavaScript shell and a small noscript paragraph. A compact projection covers
+19 parliaments, including each latest original poll's date, institute, party
+figures and source/licence links. It is generated and checked by the normal data
+workflow; the Worker reads the published projection with a 60-second edge TTL
+and falls back to the last deployed snapshot on upstream failure. It never
+substitutes a fetch date for a poll date. The four supported languages have
+distinct canonical URLs and reciprocal hreflang links. Missing URLs return 404;
+valid app and private-dashboard routes explicitly load index.html. Fixed
+lastmod dates were removed from the sitemap rather than implying false freshness.
+
+The existing approved logo now has stable PNG and ICO favicon declarations;
+homepage WebSite structured data identifies Pollframe. Google's cached search
+icon cannot be changed directly: request homepage indexing in Search Console
+and allow recrawling. This does not guarantee a particular ranking or display.
+
+Regression checks: `node --test tests/seo-content.test.mjs`; real Worker browser
+checks: run `wrangler dev --local --local-upstream localhost --port 8787`, then
+`POLLFRAME_TEST_BASE_URL=http://127.0.0.1:8787 npx playwright test tests/seo-browser.spec.mjs`.
+Use `node scripts/verify-domain-release.mjs` after publication.
+
 ### 1. Secure the domain and save the receipt
 
 In Cloudflare, check domain renewal, the renewal payment method and the registration contact email. Enable two-factor authentication/passkeys if not already active and store recovery codes safely. Save the domain invoice with your existing expense receipts and record the payment once in your existing finances document. No second accounting system is needed for this migration.
