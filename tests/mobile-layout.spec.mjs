@@ -75,6 +75,38 @@ test.describe("mobile layout geometry", () => {
     test.skip(!phoneProjects.has(testInfo.project.name), "phone layout audit only");
   });
 
+  test("full-screen settings and widget composer are not capped like information popups", async ({page}, testInfo) => {
+    await page.addInitScript(() => {
+      const original = window.matchMedia.bind(window);
+      window.matchMedia = query => query === '(display-mode: standalone)' ? {matches:true,addEventListener(){},removeEventListener(){}} : original(query);
+    });
+    await page.goto('/?view=watchlist&country=de&lang=de');
+    await page.getByRole('button',{name:/Einstellungen|Settings/}).click();
+    const settings = page.locator('.side-panel');
+    await expect(settings).toBeVisible();
+    await expect.poll(async()=>Math.round((await settings.boundingBox()).height)).toBe(page.viewportSize().height);
+    await expect.poll(async()=>Math.round((await settings.boundingBox()).width)).toBe(page.viewportSize().width);
+    await settings.getByRole('button',{name:/Größer|Larger/}).scrollIntoViewIfNeeded();
+    await expectInsideViewport(settings.getByRole('button',{name:/Größer|Larger/}),page,'last setting');
+    await settings.evaluate(node=>node.scrollTop=0);
+    await page.screenshot({path:testInfo.outputPath('fullscreen-settings.png')});
+    await settings.getByRole('button',{name:/Schließen|Close/}).click();
+    await page.locator('.watchlist-add-button').click();
+    const gallery = page.locator('.watch-gallery');
+    await expect(gallery).toBeVisible();
+    await expect.poll(async()=>Math.round((await gallery.boundingBox()).height)).toBe(page.viewportSize().height);
+    await expectInsideViewport(gallery.locator('header .icon-button'),page,'composer close');
+    await expectInsideViewport(gallery.locator('.watch-gallery-add'),page,'composer add');
+    expect(await gallery.evaluate(node=>getComputedStyle(node).overflowY)).toBe('hidden');
+    await page.screenshot({path:testInfo.outputPath('fullscreen-composer.png')});
+    await gallery.locator('header .icon-button').click();
+    await page.goto('/?region=bundestag&lang=de');
+    await page.locator('.results-card .graph-info-popover>summary').click();
+    const info = page.locator('.graph-info-card:visible').first();
+    await expect(info).toBeVisible();
+    expect((await info.boundingBox()).height).toBeLessThanOrEqual(page.viewportSize().height*.75+1);
+  });
+
   test("header controls and country menu stay centred and inside the screen", async ({ page }, testInfo) => {
     await page.goto("/");
     await settle(page);
