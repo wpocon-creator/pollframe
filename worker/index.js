@@ -5,6 +5,45 @@ import {
   publicRegionPath,
   publicViewPath,
 } from "../src/public-routes.js";
+import { SITE_ORIGIN, LEGACY_SITE_ORIGIN } from "../src/site-origin.js";
+
+function legacyAppRequest(request, url) {
+  return url.origin === LEGACY_SITE_ORIGIN && (
+    request.headers.get("x-pollframe-app") === "1"
+    || request.headers.has("service-worker-navigation-preload")
+    || url.searchParams.get("view") === "watchlist"
+    || ["app", "shortcut"].includes(url.searchParams.get("source"))
+  );
+}
+
+export function domainRedirect(request) {
+  if (!["GET", "HEAD"].includes(request.method)) return null;
+  const url = new URL(request.url);
+  const knownHost = ["pollframe.com", "www.pollframe.com", "de.pollframe.workers.dev"].includes(url.hostname);
+  if (!knownHost) return null;
+  // Assets, APIs and existing embeds must remain same-origin for old apps and
+  // published iframes. Public documents move; no browser preferences are copied.
+  const documentPath = isPublicContentPath(url.pathname) || url.pathname === "/index.html";
+  const wwwDocument = url.hostname === "www.pollframe.com" && ["/embed.html", "/robots.txt", "/sitemap.xml"].includes(url.pathname);
+  if (!documentPath && !wwwDocument) return null;
+  if (legacyAppRequest(request, url)) return null;
+  const target = legacyPublicRedirect(url) ?? new URL(url);
+  target.protocol = "https:";
+  target.hostname = "pollframe.com";
+  target.port = "";
+  if (target.pathname === "/index.html") target.pathname = "/";
+  return target.href === url.href ? null : target;
+}
+
+function domainHtml(html, requestUrl, env) {
+  const token = requestUrl.origin === LEGACY_SITE_ORIGIN
+    ? "4e1831c7e0754afa811e25e2a7a07943"
+    : requestUrl.origin === SITE_ORIGIN ? env.WEB_ANALYTICS_TOKEN : "";
+  const beacon = /^[a-f0-9]{32}$/.test(token ?? "")
+    ? `<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token":"${token}"}'></script>`
+    : "";
+  return html.replace("<!-- pollframe-web-analytics -->", beacon);
+}
 
 const JSON_HEADERS = {
   "content-type": "application/json; charset=utf-8",
@@ -257,13 +296,15 @@ function seoFallback(route) {
 
 async function seoPageResponse(request, env, route) {
   const requestUrl = new URL(request.url);
-  const canonicalUrl = `${requestUrl.origin}${requestUrl.pathname.replace(/\/+$/, "") || "/"}`;
+  const canonicalUrl = `${SITE_ORIGIN}${requestUrl.pathname.replace(/\/+$/, "") || "/"}`;
   const shellRequest = new Request(`${requestUrl.origin}/`, { method: "GET", headers: request.headers });
   const shell = await env.ASSETS.fetch(shellRequest);
   const contentType = shell.headers.get("content-type") ?? "";
   if (!shell.ok || !contentType.includes("text/html")) return shell;
   let html = await shell.text();
-  const socialImage = `${requestUrl.origin}/pollframe-social.png`;
+  html = domainHtml(html, requestUrl, env);
+  const socialImage = `${SITE_ORIGIN}/pollframe-social.png`;
+  if (route) {
   const openGraphLocale = route.lang === "es" ? "es_ES" : route.lang === "en" ? "en_GB" : "de_DE";
   html = html
     .replace(/<html lang="[^"]+">/, `<html lang="${escapeHtml(route.lang)}">`)
@@ -279,11 +320,18 @@ async function seoPageResponse(request, env, route) {
     .replace(/<meta name="twitter:image"[^>]*\/>/, `<meta name="twitter:image" content="${escapeHtml(socialImage)}" />`)
     .replace(/<link rel="canonical"[^>]*\/>/, `<link rel="canonical" href="${escapeHtml(canonicalUrl)}" />`)
     .replace(/<noscript>[\s\S]*?<\/noscript>/, seoFallback(route));
+  }
   const headers = new Headers(shell.headers);
   headers.set("content-type", "text/html; charset=utf-8");
-  headers.set("content-language", route.lang);
+  if (route) headers.set("content-language", route.lang);
   headers.set("cache-control", "public, max-age=0, must-revalidate");
   headers.set("x-content-type-options", "nosniff");
+  if (requestUrl.origin === LEGACY_SITE_ORIGIN) {
+    headers.set("cache-control", "private, no-store");
+    headers.set("vary", "Service-Worker-Navigation-Preload, X-Pollframe-App");
+  }
+  headers.delete("etag");
+  headers.delete("content-length");
   return new Response(request.method === "HEAD" ? null : html, { status: 200, headers });
 }
 
@@ -580,13 +628,18 @@ export class AnalyticsStore {
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+    const domainTarget = domainRedirect(request);
+    if (domainTarget) return new Response(null, {
+      status: 308,
+      headers: { location: domainTarget.href, "cache-control": "private, no-store" },
+    });
     if (["GET", "HEAD"].includes(request.method)) {
       const redirect = legacyPublicRedirect(url);
       if (redirect) return Response.redirect(redirect, 308);
     }
     if (["GET", "HEAD"].includes(request.method) && isPublicContentPath(url.pathname)) {
       const route = seoRoute(url.pathname);
-      if (route) return seoPageResponse(request, env, route);
+      if (route || url.pathname === "/") return seoPageResponse(request, env, route);
     }
     if (["GET", "HEAD"].includes(request.method) && isLiveDataPath(url.pathname)) return liveDataResponse(request, env);
     if (url.pathname === "/api/analytics") {

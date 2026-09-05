@@ -281,7 +281,7 @@ try {
   const body = await fetchTextWithRetry(`https://en.wikipedia.org/w/api.php?action=parse&page=${UK_WIKI_PAGE}&prop=text&format=json&formatversion=2`, {
     attempts: 2, timeoutMs: 20_000,
     fallbackUrl: `${UK_WIKI_URL}?action=render`,
-    headers: { "User-Agent": "Pollframe/1.0 (political polling visualisation; de.pollframe.workers.dev)" },
+    headers: { "User-Agent": "Pollframe/1.0 (political polling visualisation; pollframe.com)" },
   });
   const html = body.trimStart().startsWith("{") ? JSON.parse(body).parse.text : body;
   const extra = parseUkSupplement(html, vaultLatest);

@@ -5,6 +5,7 @@ import { PartyInfoButton } from "./party-profiles.jsx";
 import { includeHistoricalEvent, isPrimaryElectionEvent, rankHistoricalEvents } from "./event-selection.js";
 import { PngExportButton } from "./png-export-button.jsx";
 import { trackAggregateEvent } from "./aggregateAnalytics.js";
+import { publicShareOrigin } from "./site-origin.js";
 import "./approval-cards.css";
 
 const DAY = 86_400_000;
@@ -334,8 +335,8 @@ function CurrentApprovalCard({ data, country, metric, locale, embed = false }) {
   ].filter(([, value]) => Number.isFinite(value));
   const subject = metric === "government" ? text.government : leaderLabel(country, text);
   const title = `${subject}: ${text.current}`;
-  const publicUrl = `${window.location.origin}/?view=approval&country=${country}&metric=${metric}&lang=${locale}#approval-current-${metric}`;
-  const embedUrl = `${window.location.origin}/embed.html?view=approval&country=${country}&widget=current-approval&metric=${metric}&lang=${locale}&theme=${shareTheme}`;
+  const publicUrl = `${publicShareOrigin(window.location.origin)}/?view=approval&country=${country}&metric=${metric}&lang=${locale}#approval-current-${metric}`;
+  const embedUrl = `${publicShareOrigin(window.location.origin)}/embed.html?view=approval&country=${country}&widget=current-approval&metric=${metric}&lang=${locale}&theme=${shareTheme}`;
   return (
     <aside ref={exportRef} id={`approval-current-${metric}`} className={`approval-current-card approval-current-${metric} ${ended ? "is-archive" : ""}`} aria-labelledby={`approval-current-${metric}-title`}>
       {!embed && <div className="approval-current-corner-info"><InfoDialog data={data} countries={[country]} metric={metric} locale={locale} currentOnly /></div>}
@@ -881,11 +882,11 @@ export function ApprovalPage({ data, locale, embed = false, eventCatalog = {} })
     ? current.length > 1 ? current.filter((item) => item !== category) : current
     : [...current, category]);
   const params = new URLSearchParams({ view: "approval", country: requestedCountry, compare: compare ? "1" : "0", metric, range, display, answers: answers.join(","), events: "1", eventCats: selectedEventCategories.join(","), lang: locale, share: "1" });
-  const publicUrl = `${window.location.origin}/?${params}`;
+  const publicUrl = `${publicShareOrigin(window.location.origin)}/?${params}`;
   const embedParams = new URLSearchParams(params);
   embedParams.delete("share");
   embedParams.set("theme", shareTheme);
-  const embedUrl = `${window.location.origin}/embed.html?${embedParams}`;
+  const embedUrl = `${publicShareOrigin(window.location.origin)}/embed.html?${embedParams}`;
   useEffect(() => {
     if (embed) return;
     const url = new URL(window.location.href);

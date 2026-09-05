@@ -8,8 +8,22 @@ async function settle(page) {
 
 async function installPngCapture(page, { nativeShare = false } = {}) {
   await page.addInitScript(({ nativeShare }) => {
+    const blobs = new Map();
+    const createObjectURL = URL.createObjectURL.bind(URL);
+    URL.createObjectURL = (blob) => {
+      const url = createObjectURL(blob);
+      blobs.set(url, blob);
+      return url;
+    };
     window.__inspectPngBlob = async (blob) => {
-      const objectUrl = URL.createObjectURL(blob);
+      // Inspect bytes without requiring weaker production CSP permissions for
+      // blob: image loads or fetch(blob:). data: images are already supported.
+      const objectUrl = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
       try {
         const image = await new Promise((resolve, reject) => {
           const candidate = new Image();
@@ -34,13 +48,14 @@ async function installPngCapture(page, { nativeShare = false } = {}) {
         }
         return { width: image.naturalWidth, height: image.naturalHeight, bytes: blob.size, contrast: maximum - minimum, luminance: luminance / (pixels.length / 4) };
       } finally {
-        URL.revokeObjectURL(objectUrl);
+        // FileReader data URLs need no object-URL cleanup.
       }
     };
     document.addEventListener("click", (event) => {
       const link = event.target.closest?.("a[download]");
       if (!link?.href.startsWith("blob:")) return;
-      fetch(link.href).then((response) => response.blob()).then(window.__inspectPngBlob).then((result) => { window.__downloadedPng = result; });
+      const blob = blobs.get(link.href);
+      if (blob) window.__inspectPngBlob(blob).then((result) => { window.__downloadedPng = result; });
     }, true);
     if (nativeShare) {
       Object.defineProperty(navigator, "canShare", { configurable: true, value: ({ files }) => Boolean(files?.length) });

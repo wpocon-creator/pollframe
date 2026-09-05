@@ -1,5 +1,10 @@
 # Pollframe
 
+Production: **https://pollframe.com**. The old workers.dev address remains for
+permanent public-page redirects, existing embeds and installed-app compatibility.
+See [DOMAIN_MIGRATION.md](DOMAIN_MIGRATION.md) for the launch checklist, Search
+Console/AdSense account steps and `scripts/verify-domain-release.mjs` for live checks.
+
 A responsive, static-first polling dashboard for Germany, the United Kingdom
 and Spain, including German states, UK constituencies and Spanish autonomous
 communities. The default polling view shows a smoothed equal-pollster trend: at
@@ -107,7 +112,9 @@ Wrangler uploads `dist`. Do not deploy the directory directly: an old `dist`
 folder can otherwise replace a newer public release.
 
 `wrangler.jsonc` publishes the generated `dist` directory as static assets and
-runs the small Worker API only for `/api/*`. Bug reports are kept in the private
+runs the Worker for APIs, live polling data and public HTML metadata/redirects.
+Both .com custom domains are recorded there so later deploys retain them.
+Bug reports are kept in the private
 `BugReportStore` Durable Object. Before the first production deployment, create
 the dashboard password as a Worker secret:
 

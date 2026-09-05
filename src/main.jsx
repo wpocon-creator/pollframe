@@ -9,6 +9,7 @@ import { PartyInfoButton, PartyInfoModalHost } from "./party-profiles.jsx";
 import { includeHistoricalEvent, isPrimaryElectionEvent, rankHistoricalEvents } from "./event-selection.js";
 import { trackAggregateEvent, trackAggregateEventOnce } from "./aggregateAnalytics.js";
 import { requestWasAborted } from "./network.js";
+import { SITE_ORIGIN, publicShareOrigin } from "./site-origin.js";
 import { PngExportButton } from "./png-export-button.jsx";
 import {
   publicCountryPath,
@@ -45,7 +46,6 @@ const ELECTION_SOURCE_URL = "https://www.bundeswahlleiterin.de/bundestagswahlen.
 const GERMAN_ELECTION_OPEN_DATA_URL = "https://www.bundeswahlleiterin.de/bundestagswahlen/2025/ergebnisse/opendata.html";
 const GERMAN_ELECTION_DATA_LICENSE_URL = "https://www.govdata.de/dl-de/by-2-0";
 const CONTACT_EMAIL = "opinionpoll.redaktion@proton.me";
-const SITE_ORIGIN = "https://de.pollframe.workers.dev";
 const SOCIAL_IMAGE_URL = `${SITE_ORIGIN}/pollframe-social.png`;
 const BUG_REPORT_DASHBOARD_PATH = "/pf-ops/3f592c524cff69071b258ce63776e793/reports";
 const IS_EMBED_ENTRY = window.location.pathname === EMBED_PATH;
@@ -3190,7 +3190,7 @@ function ConstituencyResultCard({ selected, locale, onChange = null, embed = fal
   const winner = UK_MAP_PARTY_DEFINITIONS.find((party) => party.id === selected.winner?.partyId) ?? UK_PARTY_DEFINITIONS.find((party) => party.id === selected.winner?.partyId);
   const region = REGION_META.find((entry) => entry.slug === "uk-westminster");
   const title = isGerman ? `Wahlergebnis 2024 · ${selected.name}` : `2024 election result · ${selected.name}`;
-  const shareUrl = `${window.location.origin}/?view=uk-constituencies&seat=${encodeURIComponent(selected.slug)}&lang=${encodeURIComponent(locale)}`;
+  const shareUrl = `${publicShareOrigin(window.location.origin)}/?view=uk-constituencies&seat=${encodeURIComponent(selected.slug)}&lang=${encodeURIComponent(locale)}`;
   const credit = "UK Parliament · Open Parliament Licence v3.0 · Pollframe";
   return <section ref={exportRef} className={`constituency-detail constituency-result-card ${embed ? "is-embed" : ""}`} aria-labelledby="constituency-result-title">
     <div className="constituency-title"><div><p className="section-label">{selected.country}{selected.region !== selected.country ? ` · ${selected.region}` : ""}</p><h2 id="constituency-result-title">{selected.name}</h2><small>{selected.code} · {selected.electorate.toLocaleString(getNumberLocale(locale))} {isGerman ? "Wahlberechtigte 2024" : "electors in 2024"}</small></div>{!embed && <div className="constituency-title-actions" data-export-ignore="true"><WidgetShareTools widget="constituency" elementRef={exportRef} filename={`pollframe-${selected.slug}-2024`} title={title} subtitle={selected.country} locale={locale} t={copy[locale]} region={region} extraEmbedParams={{ view: "uk-constituencies", seat: selected.slug }} shareHref={shareUrl} credit={credit} height={880} />{onChange && <button className="secondary-button" type="button" onClick={onChange}>{isGerman ? "Andere suchen" : "Find another"}</button>}</div>}</div>
@@ -4070,7 +4070,7 @@ function MapAttribution({ locale }) {
 }
 
 function buildEmbedUrl({ locale, theme, range, mode, selectedParties, selectedPollsters, selectedEventCategories, regionSlug, customStartDate, customEndDate }) {
-  const url = new URL(EMBED_PATH, window.location.origin);
+  const url = new URL(EMBED_PATH, publicShareOrigin(window.location.origin));
   url.searchParams.set("embed", "1");
   if (regionSlug) url.searchParams.set("region", regionSlug);
   url.searchParams.set("lang", locale);
@@ -4088,7 +4088,7 @@ function buildEmbedUrl({ locale, theme, range, mode, selectedParties, selectedPo
 }
 
 function buildShareUrl({ locale, range, mode, selectedParties, selectedPollsters, selectedEventCategories, regionSlug, customStartDate, customEndDate }) {
-  const url = new URL("/", window.location.origin);
+  const url = new URL("/", publicShareOrigin(window.location.origin));
   url.searchParams.set("region", regionSlug);
   url.searchParams.set("share", "1");
   url.searchParams.set("lang", locale);
@@ -4105,7 +4105,7 @@ function buildShareUrl({ locale, range, mode, selectedParties, selectedPollsters
 }
 
 function buildMapShareUrl({ locale, mode, partyId }) {
-  const url = new URL("/", window.location.origin);
+  const url = new URL("/", publicShareOrigin(window.location.origin));
   url.searchParams.set("view", "map");
   url.searchParams.set("share", "1");
   url.searchParams.set("lang", locale);
@@ -4299,7 +4299,7 @@ function triggerBlobDownload(blob, filename) {
   window.setTimeout(() => URL.revokeObjectURL(objectUrl), 30_000);
 }
 
-async function renderElementPng({ element, filename, title, subtitle, locale, credit = "DAWUM · ODbL 1.0 · de.pollframe.workers.dev", preset = "content" }) {
+async function renderElementPng({ element, filename, title, subtitle, locale, credit = "DAWUM · ODbL 1.0 · pollframe.com", preset = "content" }) {
   if (!element) throw new Error("Missing export element");
   const format = PNG_EXPORT_PRESETS[preset] ?? PNG_EXPORT_PRESETS.content;
   if (document.fonts?.ready) await document.fonts.ready;
@@ -4424,11 +4424,11 @@ function WidgetShareModal({
   });
   if (extraEmbedParams.view === "uk-constituencies") params.delete("region");
   if (selectedPollsters.length) params.set("pollsters", selectedPollsters.join(","));
-  const embedUrl = `${window.location.origin}/embed.html?${params}`;
+  const embedUrl = `${publicShareOrigin(window.location.origin)}/embed.html?${params}`;
   const targetId = widget === "current-average" ? "snapshot-title" : widget === "tendencies" ? "tendency-title" : widget === "party-history" ? "party-detail-title" : widget === "constituency" ? "constituency-result-title" : "projection-title";
   const shareParams = new URLSearchParams({ region: region.slug, lang: locale, share: "1" });
   if (selectedPollsters.length) shareParams.set("pollsters", selectedPollsters.join(","));
-  const shareUrl = shareHref ?? `${window.location.origin}/?${shareParams}#${targetId}`;
+  const shareUrl = shareHref ?? `${publicShareOrigin(window.location.origin)}/?${shareParams}#${targetId}`;
   const labels = journalistLabels(locale);
   const credit = creditOverride ?? (region.type === "uk-federal"
     ? "UK Election Data Vault · Wikipedia contributors (CC BY-SA 4.0) · Pollframe"
@@ -5281,7 +5281,7 @@ function GermanyPollingMap({
               locale={locale}
               label={t.exportPng}
               profile="map"
-              credit="DAWUM · ODbL 1.0 · MapSVG/@svg-maps · CC BY 4.0 · de.pollframe.workers.dev"
+              credit="DAWUM · ODbL 1.0 · MapSVG/@svg-maps · CC BY 4.0 · pollframe.com"
             />
             <button className="primary-button map-share-button" onClick={onShare}>
               <Icon name="share" />{l("Karte einbetten", "embedMap")}
@@ -5462,7 +5462,7 @@ function GermanyPollingMap({
 }
 
 function buildMapEmbedUrl({ locale, theme, mode, partyId }) {
-  const url = new URL(EMBED_PATH, window.location.origin);
+  const url = new URL(EMBED_PATH, publicShareOrigin(window.location.origin));
   url.searchParams.set("embed", "1");
   url.searchParams.set("view", "map");
   url.searchParams.set("lang", locale);
