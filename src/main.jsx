@@ -6073,6 +6073,7 @@ function readWatchlistSessionBaselines(country, items) {
 function defaultWatchLayout(item, index = 0) {
   if (item.layout === "tall") return "large";
   if (COMPACT_WATCH_TYPES.has(item.type)) return "wide";
+  if (item.type === "approval") return item.layout === "large" ? "large" : "wide";
   if (item.type === "coalition") return "wide";
   if (item.layout) return item.layout;
   if (item.type === "snapshot") return "wide";
@@ -6271,12 +6272,33 @@ function WatchEconomyWidget({ summary, locale }) {
 
 function WatchApprovalWidget({ country, locale }) {
   const l = (de, en, es) => locale === "de" ? de : locale === "es" ? es : en;
-  return <><div className="watch-map-title"><h3>{l("Zufriedenheit", "Approval", "Satisfacción")}</h3></div><div className="watch-approval-values">{["leader", "government"].map((metric) => {
-    const poll = country.series?.[metric]?.at(-1);
-    if (!poll) return null;
-    const net = Number.isFinite(poll.negative) ? poll.positive - poll.negative : null;
-    return <span key={metric}><small>{metric === "leader" ? poll.leader : l("Bundesregierung", "Government", "Gobierno")}</small><strong>{poll.positive.toLocaleString(getNumberLocale(locale), { maximumFractionDigits: 1 })}%</strong><b>{l("gute Arbeit", "good performance", "buena gestión")}</b>{net !== null && <span className={`watch-approval-net ${net >= 0 ? "up" : "down"}`}>{l("Saldo", "Net", "Saldo")} {net > 0 ? "+" : ""}{net.toLocaleString(getNumberLocale(locale), { maximumFractionDigits: 1 })} {locale === "de" ? "Pp." : "pp"}</span>}<small className="watch-approval-age">{formatCurrentRecency(poll.date, locale)}</small></span>;
-  })}</div></>;
+  const measurements = ["leader", "government"]
+    .map(metric => ({ metric, poll: country.series?.[metric]?.at(-1) }))
+    .filter(item => item.poll);
+  const sameDate = new Set(measurements.map(item => item.poll.date)).size === 1;
+  const labels = [l("Gute Arbeit", "Good job", "Buena gestión"), l("Schlechte Arbeit", "Bad job", "Mala gestión"), l("Saldo", "Net", "Saldo")];
+  return <>
+    <div className="watch-map-title"><h3>{l("Zufriedenheit", "Approval", "Satisfacción")}</h3></div>
+    <table className={`watch-approval-summary${sameDate ? "" : " has-split-dates"}`} aria-label={l("Bewertung der Arbeit", "Performance ratings", "Valoración de la gestión")}>
+      <thead><tr><td />{labels.map(label => <th key={label} scope="col">{label}</th>)}</tr></thead>
+      <tbody>{measurements.map(({ metric, poll }) => {
+        const net = Number.isFinite(poll.positive) && Number.isFinite(poll.negative) ? poll.positive - poll.negative : null;
+        const subject = metric === "leader" ? poll.leader : l("Regierung", "Government", "Gobierno");
+        return <tr key={metric}>
+          <th scope="row">{subject}{!sameDate && <small className="watch-approval-age">{formatCurrentRecency(poll.date, locale)}</small>}</th>
+          {[poll.positive, poll.negative, net].map((value, index) => {
+            const present = Number.isFinite(value);
+            const tone = !present ? "" : index === 0 || (index === 2 && value >= 0) ? "up" : "down";
+            return <td key={index} className={tone}>{present ? <>
+              {index === 2 && value > 0 ? "+" : ""}{value.toLocaleString(getNumberLocale(locale), { maximumFractionDigits: 1 })}
+              <small>{index === 2 ? ` ${locale === "de" ? "Pp." : "pp"}` : "%"}</small>
+            </> : "–"}</td>;
+          })}
+        </tr>;
+      })}</tbody>
+    </table>
+    {sameDate && <small className="watch-approval-age">{formatCurrentRecency(measurements[0].poll.date, locale)}</small>}
+  </>;
 }
 
 function WatchSpainPartyLinks({ group }) {
@@ -6591,8 +6613,6 @@ function WatchlistPage({ locale, initialCountry = "de", refreshVersion = 0 }) {
             : mapPartyProfileDefinition(MAP_PARTY_GROUPS.find((party) => party.id === item.mapPartyId)))
         : null;
       const approvalCountry = mapAssets.approval?.countries?.[initialCountry];
-      const approvalLeader = approvalCountry?.series?.leader?.at(-1);
-      const approvalGovernment = approvalCountry?.series?.government?.at(-1);
       const watchAreaName = item.type === "approval" ? (initialCountry === "uk" ? "UK" : initialCountry === "es" ? "España" : "Deutschland") : region.name === "Deutschland" ? "Bundestag" : region.name;
       return <article key={item.id} data-watch-id={item.id} className={`watch-card watch-card-${layout} watch-card-${item.type} ${draggingId === item.id ? "is-dragging" : ""}`} role={!editMode ? "link" : undefined} tabIndex={!editMode ? 0 : undefined} onClick={(event) => { if (!editMode && !event.target.closest("button")) navigateInApp(target); }} onKeyDown={(event) => { if (!editMode && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); navigateInApp(target); } }} onPointerDown={editMode ? (event) => beginPointerDrag(event, item.id) : undefined} onTouchStart={editMode ? (event) => beginTouchDrag(event, item.id) : undefined}>
         {editMode && <div className="watch-card-editbar"><button className="watch-drag-handle" type="button" aria-label={wl(`Widget ${cardIndex + 1} verschieben. Gedrückt halten und ziehen oder Pfeiltasten verwenden`, `Move widget ${cardIndex + 1}. Press, hold and drag or use arrow keys`, `Mover widget ${cardIndex + 1}. Mantén pulsado y arrastra o usa las flechas`)} onKeyDown={(event) => { if (["ArrowUp", "ArrowLeft", "ArrowDown", "ArrowRight"].includes(event.key)) { event.preventDefault(); keyboardReorder(item.id, ["ArrowUp", "ArrowLeft"].includes(event.key) ? -1 : 1); } else if (event.key === "Escape") endPointerDrag(false); }}><Icon name="grip" size={20} /><span>{wl("Verschieben", "Move", "Mover")}</span></button><button className="watch-remove" type="button" onClick={() => removeItem(item.id)} aria-label={wl("Widget entfernen", "Remove widget", "Eliminar widget")}><Icon name="trash" size={18} /></button></div>}

@@ -245,7 +245,7 @@ test("Watchlist drag auto-scrolls at both screen edges and stops immediately bet
   await expect(page.locator("body > .watch-card-drag-shell")).toHaveCount(0);
 });
 
-test("Watchlist edit mode reserves coarse card gestures for dragging", async ({ page }, testInfo) => {
+test("Watchlist edit mode permits native scrolling until a deliberate hold", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "iphone-13", "real WebKit touch-action regression");
   await page.addInitScript((german) => {
     const original = window.matchMedia.bind(window);
@@ -257,7 +257,34 @@ test("Watchlist edit mode reserves coarse card gestures for dragging", async ({ 
   }, deItems);
   await page.goto("/?view=watchlist&country=de");
   await page.getByRole("button", { name: /Bearbeiten|Edit/i }).click();
-  await expect.poll(() => page.locator(".watch-card").first().evaluate((card) => getComputedStyle(card).touchAction)).toBe("none");
+  await expect.poll(() => page.locator(".watch-card").first().evaluate((card) => getComputedStyle(card).touchAction)).toMatch(/pan-y/);
+});
+
+test("a phone swipe scrolls in edit mode without shrinking, lifting or reordering", async ({page,context},testInfo) => {
+  test.skip(testInfo.project.name !== "iphone-13-chromium", "real touch gestures through Chromium CDP");
+  await page.addInitScript(items => {
+    const original=window.matchMedia.bind(window);
+    window.matchMedia=query=>query==='(display-mode: standalone)' ? {matches:true,addEventListener(){},removeEventListener(){}} : original(query);
+    localStorage.setItem("pollframe-watchlist-de-v2",JSON.stringify(items));
+  },deItems);
+  await page.goto('/?view=watchlist&country=de');
+  await page.getByRole('button',{name:/Bearbeiten|Edit/i}).click();
+  const source=page.locator('.watch-card').first();
+  await source.scrollIntoViewIfNeeded();
+  const box=await source.boundingBox();
+  const y=Math.min(page.viewportSize().height-70,box.y+box.height*.7);
+  const x=box.x+box.width*.55;
+  const initial=await page.evaluate(()=>window.scrollY);
+  const before=await page.locator('.watch-card').evaluateAll(nodes=>nodes.map(node=>node.dataset.watchId));
+  const cdp=await context.newCDPSession(page);
+  await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x,y,id:1}]});
+  expect(await source.getAttribute('class')).not.toMatch(/is-drag-pressing/);
+  for(let step=1;step<=6;step++) await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x,y:y-step*20,id:1}]});
+  await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+  await expect.poll(()=>page.evaluate(()=>window.scrollY)).toBeGreaterThan(initial+35);
+  await page.waitForTimeout(750); // A cancelled hold must not fire after the swipe.
+  await expect(page.locator('.watch-card-drag-shell,.is-drag-pressing')).toHaveCount(0);
+  expect(await page.locator('.watch-card').evaluateAll(nodes=>nodes.map(node=>node.dataset.watchId))).toEqual(before);
 });
 
 test("Watchlist touch auto-scroll follows both phone edges", async ({ page, context }, testInfo) => {
