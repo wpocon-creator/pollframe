@@ -135,20 +135,16 @@ test.describe("mobile layout geometry", () => {
     await visibleInfoCard.evaluate((card) => Promise.all(card.getAnimations().map((animation) => animation.finished.catch(() => undefined))));
     const infoGeometry = await visibleInfoCard.evaluate((card) => {
       const cardRect = card.getBoundingClientRect();
-      const backdropRect = document.querySelector(".graph-info-popover[open] .graph-info-backdrop").getBoundingClientRect();
       return {
         centreOffset: Math.abs(((cardRect.top + cardRect.bottom) / 2) - (innerHeight / 2)),
         inside: cardRect.top >= 8 && cardRect.bottom <= innerHeight - 8 && cardRect.left >= 8 && cardRect.right <= innerWidth - 8,
-        backdrop: { top: backdropRect.top, bottom: backdropRect.bottom, left: backdropRect.left, right: backdropRect.right },
-        blur: getComputedStyle(document.querySelector(".graph-info-popover[open] .graph-info-backdrop")).backdropFilter,
+        modal: card.matches(":modal"),
+        blur: getComputedStyle(card,"::backdrop").backdropFilter,
       };
     });
     expect(infoGeometry.centreOffset).toBeLessThanOrEqual(3);
     expect(infoGeometry.inside).toBe(true);
-    expect(infoGeometry.backdrop.top).toBeLessThanOrEqual(0);
-    expect(infoGeometry.backdrop.bottom).toBeGreaterThanOrEqual(page.viewportSize().height);
-    expect(infoGeometry.backdrop.left).toBeLessThanOrEqual(0);
-    expect(infoGeometry.backdrop.right).toBeGreaterThanOrEqual(page.viewportSize().width);
+    expect(infoGeometry.modal).toBe(true); // Browser top-layer backdrop covers the full viewport.
     expect(infoGeometry.blur).not.toBe("none");
     await page.locator(".graph-info-popover[open] .graph-info-card header button").click();
     await page.getByRole("button", { name: /Diagramm anpassen|Customise chart|Customize chart/i }).click();

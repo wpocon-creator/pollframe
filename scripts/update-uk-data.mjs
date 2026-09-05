@@ -386,7 +386,7 @@ const individualPolls = [...rawGroups.values()].map((rows) => {
     && total >= 80
     && total <= 110
     && Object.values(poll.results).every((value) => value >= 0 && value <= 100);
-});
+}).sort((a, b) => a.date.localeCompare(b.date));
 const polls = latestByDate([...weightedPolls, ...individualPolls]);
 assertFreshUkPolls(individualPolls);
 const weightedIsStale = Date.parse(polls.at(-1).date) - Date.parse(weightedPolls.at(-1).date) > 21 * 86_400_000;

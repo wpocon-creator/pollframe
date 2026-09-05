@@ -56,4 +56,9 @@ test("party history labels fit and chart buttons do not consume the title width"
   const toolsBox = await modal.locator(".party-modal-actions").boundingBox();
   expect(titleBox.y).toBeGreaterThanOrEqual(toolsBox.y + toolsBox.height);
   await page.screenshot({ path: testInfo.outputPath("party-history-phone.png") });
+  await modal.locator(".graph-info-popover summary").click();
+  await expect(modal.locator("dialog:modal")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(modal.locator("dialog")).toBeHidden();
+  await expect(modal).toBeVisible();
 });
