@@ -772,7 +772,7 @@ test.describe("core routes", () => {
     await expect(page.locator(".customize-panel")).toContainText(/Connected averages|Verbundene Durchschnittswerte/i);
     await expect(page.locator(".customize-panel .select-control").nth(1)).toContainText(/10 years|10 Jahre/i);
     await expect(page.locator(".customize-panel")).toContainText(/Poll of polls.*weighted trend/i);
-    await expect(page.locator(".customize-panel")).not.toContainText(/FindOutNow/);
+    await expect(page.locator(".customize-panel")).toContainText(/FindOutNow/);
     await page.locator(".customize-panel .select-control").nth(0).locator("summary").click();
     await page.getByRole("button", { name: /Connected averages|Verbundene Durchschnittswerte/i }).click();
     await expect(page.locator(".average-series-line")).not.toHaveCount(0);
@@ -1100,7 +1100,7 @@ test.describe("core routes", () => {
   });
 
   test("the full UK archive keeps every election and reserves both early event lanes", async ({ page }, testInfo) => {
-    await page.goto("/?region=uk-westminster&range=all&share=1&lang=en-GB");
+    await page.goto("/?region=uk-westminster&pollsters=9000&range=all&share=1&lang=en-GB");
     await settle(page);
     const chart = page.locator(".poll-chart").first();
     await expect(chart.locator(".historical-election-marker")).toHaveCount(22);
@@ -1113,12 +1113,12 @@ test.describe("core routes", () => {
     await expect(chart.locator(".event-dot-tick")).toHaveCount(0);
     await page.locator(".chart-card").screenshot({ path: testInfo.outputPath("uk-full-archive-events.png") });
 
-    await page.goto("/?region=uk-westminster&lang=en-GB");
+    await page.goto("/?region=uk-westminster&pollsters=9000&lang=en-GB");
     await settle(page);
     await page.getByRole("button", { name: /Customise chart/i }).click();
     const rangeControl = page.locator(".customize-panel .select-control").nth(1);
     await rangeControl.locator("summary").click();
-    await rangeControl.getByRole("button", { name: /Full archive/i }).click();
+    await rangeControl.getByRole("button", { name: /Full available archive/i }).click();
     await expect(page.locator('.event-dot[aria-label*="National Health Service"]')).toHaveCount(1);
     expect(Number(await page.locator('.event-dot[aria-label*="National Health Service"] .event-dot-hit').getAttribute("r"))).toBeGreaterThanOrEqual(14);
   });

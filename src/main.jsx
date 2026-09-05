@@ -8053,7 +8053,7 @@ function RegionalApp() {
         ? "Verlauf aus den ausgewählten Instituten. Der gewichtete Archivtrend ist separat auswählbar."
         : "A trend from the selected pollsters. The weighted historical archive can be selected separately.",
       sinceElection: isGerman ? "Seit der Unterhauswahl 2024" : "Since the 2024 general election",
-      fullArchive: isGerman ? "Gesamtes Archiv · seit 1943" : "Full archive · since 1943",
+      fullArchive: locale === "es" ? "Todos los datos disponibles" : isGerman ? "Gesamtes verfügbares Archiv" : "Full available archive",
       methodTitle: isGerman ? "Daten und Methodik für Großbritannien" : "Great Britain data and methodology",
       methodIntro: isGerman ? "Die nationale Umfragereihe bezieht sich auf Großbritannien – England, Schottland und Wales – und nicht auf Nordirland." : "The national polling series covers Great Britain—England, Scotland and Wales—not Northern Ireland.",
       meanTitle: isGerman ? "Umfragen und Archivtrend" : "Individual polls and archive trend",
@@ -8458,7 +8458,9 @@ function RegionalApp() {
   const termStart = stateElectionDates.filter((date) => !latestDate || date <= latestDate).at(-1)
     ?? pollData?.polls[0]?.date
     ?? ARCHIVE_START;
-  const archiveStart = pollData?.polls[0]?.date ?? ARCHIVE_START;
+  const archiveStart = (region?.type === "uk-federal"
+    ? pollData?.polls.find((poll) => selectedPollsters.includes(poll.pollster))?.date
+    : pollData?.polls[0]?.date) ?? ARCHIVE_START;
   const chartInfo = mainChartInfo(
     locale,
     region?.type,
