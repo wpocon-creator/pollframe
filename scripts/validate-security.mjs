@@ -200,9 +200,16 @@ requireCondition(wranglerConfig.name === "de", "Cloudflare Worker name does not 
 requireCondition(mainHtml.includes('name="referrer" content="no-referrer"'), "main HTML lacks a no-referrer fallback");
 requireCondition(mainHtml.includes('rel="canonical" href="https://de.pollframe.workers.dev/"'), "main HTML lacks the production canonical URL");
 requireCondition(mainHtml.includes('<script src="/manifest-context.js"></script>'), "main HTML lacks the app manifest loader");
-requireCondition(mainHtml.includes('rel="apple-touch-icon" href="/apple-touch-icon.png"'), "main HTML lacks the iOS app icon");
+requireCondition(mainHtml.includes('rel="apple-touch-icon" href="/apple-touch-icon-v2.png"'), "main HTML lacks the iOS app icon");
 requireCondition(mainHtml.includes('name="apple-mobile-web-app-capable" content="yes"'), "main HTML lacks iOS standalone support");
-requireCondition(mainHtml.includes("<noscript>") && mainHtml.includes("/?region=bundestag") && mainHtml.includes("/?region=uk-westminster") && mainHtml.includes("/?region=spain-congress"), "main HTML lacks a crawlable no-JavaScript navigation fallback");
+requireCondition(mainHtml.includes("<noscript>") && mainHtml.includes("/de/bundestag/umfragen") && mainHtml.includes("/uk/westminster/polls") && mainHtml.includes("/es/encuestas"), "main HTML lacks a crawlable no-JavaScript navigation fallback");
+requireCondition(!/<loc>[^<]*\?/.test(sitemap), "sitemap still exposes query-string routes instead of stable public paths");
+for (const route of ["/countries", "/de/bundestag/umfragen", "/de/regierung/zufriedenheit", "/uk/westminster/polls", "/uk/constituencies", "/es/encuestas", "/es/preocupaciones", "/sources", "/editorial-standards"]) {
+  requireCondition(sitemap.includes(`https://de.pollframe.workers.dev${route}`), `sitemap is missing public route: ${route}`);
+  requireCondition(wranglerConfig.assets.run_worker_first.some((pattern) => pattern === route || (pattern.endsWith("/*") && route.startsWith(pattern.slice(0, -1)))), `SEO shell does not run for public route: ${route}`);
+}
+requireCondition(workerSource.includes("seoPageResponse") && workerSource.includes("seoFallback"), "public routes lack server-readable metadata and no-JavaScript explanatory content");
+requireCondition(wranglerConfig.assets.run_worker_first.includes("/") && workerSource.includes("legacyPublicRedirect"), "legacy query routes are not normalised before the application shell");
 requireCondition(mainHtml.includes('property="og:title"'), "main HTML lacks Open Graph metadata");
 requireCondition(
   mainHtml.includes('property="og:image" content="https://de.pollframe.workers.dev/pollframe-social.png"')
@@ -250,11 +257,11 @@ requireCondition(serviceWorker.includes("POLLFRAME_CACHED_DATA"), "service worke
 
 const sitemapUrls = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => match[1]);
 requireCondition(sitemapUrls.length === 29, `sitemap contains ${sitemapUrls.length} URLs instead of 29`);
-requireCondition(sitemapUrls.includes("https://de.pollframe.workers.dev/?view=approval&amp;country=de"), "sitemap omits the German government and leader evaluation page");
-requireCondition(!sitemapUrls.includes("https://de.pollframe.workers.dev/?view=approval&amp;country=uk"), "sitemap still exposes the withheld UK approval page");
-requireCondition(sitemapUrls.includes("https://de.pollframe.workers.dev/?page=redaktion"), "sitemap omits the public editorial standards and correction log");
+requireCondition(sitemapUrls.includes("https://de.pollframe.workers.dev/de/regierung/zufriedenheit"), "sitemap omits the German government and leader evaluation page");
+requireCondition(!sitemapUrls.includes("https://de.pollframe.workers.dev/uk/government/approval"), "sitemap still exposes the withheld UK approval page");
+requireCondition(sitemapUrls.includes("https://de.pollframe.workers.dev/editorial-standards"), "sitemap omits the public editorial standards and correction log");
 requireCondition(!sitemapUrls.some((url) => url.includes("view=spain-region")), "sitemap exposes Spanish regional compilations before per-source rights review");
-requireCondition((sitemap.match(/<lastmod>2026-08-22<\/lastmod>/g) ?? []).length === sitemapUrls.length, "sitemap last-modified dates are incomplete");
+requireCondition((sitemap.match(/<lastmod>2026-08-30<\/lastmod>/g) ?? []).length === sitemapUrls.length, "sitemap last-modified dates are incomplete");
 requireCondition(new Set(sitemapUrls).size === sitemapUrls.length, "sitemap contains duplicate URLs");
 requireCondition(
   sitemapUrls.every((url) => url.startsWith("https://de.pollframe.workers.dev/")),
@@ -270,7 +277,7 @@ requireCondition(
   "sitemap is missing the German overview root",
 );
 requireCondition(
-  sitemapUrls.includes("https://de.pollframe.workers.dev/?view=countries"),
+  sitemapUrls.includes("https://de.pollframe.workers.dev/countries"),
   "sitemap is missing the country selector",
 );
 requireCondition(
@@ -286,7 +293,7 @@ requireCondition(
   "sitemap exposes an unfinished country route",
 );
 requireCondition(
-  sitemapUrls.includes("https://de.pollframe.workers.dev/?region=spain-congress"),
+  sitemapUrls.includes("https://de.pollframe.workers.dev/es/encuestas"),
   "sitemap is missing the Spanish Congress archive",
 );
 
@@ -304,10 +311,10 @@ if (distInfo?.isDirectory()) {
     "dist/manifest.webmanifest",
     "dist/manifest-context.js",
     "dist/sw.js",
-    "dist/apple-touch-icon.png",
-    "dist/pollframe-app-192.png",
-    "dist/pollframe-app-512.png",
-    "dist/pollframe-maskable-512.png",
+    "dist/apple-touch-icon-v2.png",
+    "dist/pollframe-app-v2-192.png",
+    "dist/pollframe-app-v2-512.png",
+    "dist/pollframe-maskable-v2-512.png",
   ]) requireCondition(distFiles.includes(appFile), `production app asset is missing: ${appFile}`);
   requireCondition(
     !distFiles.some((path) => /(?:country-region-map-(?:at|fr|pl)|europawahl-deutschland)/.test(path)),

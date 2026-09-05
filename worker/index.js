@@ -1,3 +1,11 @@
+import {
+  isPublicContentPath,
+  publicCountryPath,
+  publicPagePath,
+  publicRegionPath,
+  publicViewPath,
+} from "../src/public-routes.js";
+
 const JSON_HEADERS = {
   "content-type": "application/json; charset=utf-8",
   "cache-control": "no-store",
@@ -14,6 +22,270 @@ const LIVE_DATA_ROOTS = new Set([
   "/spain-summary.json",
 ]);
 const LIVE_DATA_MAX_BYTES = 30 * 1024 * 1024;
+
+const STATE_NAMES = {
+  "baden-wuerttemberg": "Baden-Württemberg",
+  bayern: "Bayern",
+  berlin: "Berlin",
+  brandenburg: "Brandenburg",
+  bremen: "Bremen",
+  hamburg: "Hamburg",
+  hessen: "Hessen",
+  "mecklenburg-vorpommern": "Mecklenburg-Vorpommern",
+  niedersachsen: "Niedersachsen",
+  "nordrhein-westfalen": "Nordrhein-Westfalen",
+  "rheinland-pfalz": "Rheinland-Pfalz",
+  saarland: "Saarland",
+  sachsen: "Sachsen",
+  "sachsen-anhalt": "Sachsen-Anhalt",
+  "schleswig-holstein": "Schleswig-Holstein",
+  thueringen: "Thüringen",
+};
+
+const SEO_ROUTES = {
+  "/countries": {
+    lang: "de",
+    title: "Wahlumfragen nach Land: Deutschland, UK und Spanien · Pollframe",
+    description: "Aktuelle Wahlumfragen, historische Trends, Karten und politische Daten für Deutschland, das Vereinigte Königreich und Spanien.",
+    heading: "Wahlumfragen nach Land",
+    paragraphs: [
+      "Pollframe bündelt aktuelle Wahlumfragen und langfristige Entwicklungen für Deutschland, das Vereinigte Königreich und Spanien.",
+      "Jede Länderansicht dokumentiert Aktualität, Methodik und Originalquellen der dargestellten Daten.",
+    ],
+    links: [["Deutschland", "/"], ["United Kingdom", "/uk"], ["España", "/es"]],
+  },
+  "/de/bundestag/umfragen": {
+    lang: "de",
+    title: "Bundestagswahl-Umfragen und aktuelle Sonntagsfrage · Pollframe",
+    description: "Aktuelle Sonntagsfrage zur Bundestagswahl mit neuester Umfrage, langfristigem Verlauf, Institutsvergleich, Ereignissen und modellierter Sitzverteilung.",
+    heading: "Aktuelle Sonntagsfrage und Bundestagswahl-Umfragen",
+    paragraphs: [
+      "Die Pollframe-Übersicht zeigt die jüngste veröffentlichte Bundestagswahl-Umfrage und den langfristigen Verlauf der deutschen Wahlabsicht.",
+      "Institute, Erhebungszeiträume, Ereignisse und die rechnerische Sitzverteilung sind nachvollziehbar dokumentiert und lassen sich für Veröffentlichungen exportieren.",
+    ],
+    links: [["Deutschland im Überblick", "/"], ["Kanzler- und Regierungszufriedenheit", "/de/regierung/zufriedenheit"], ["Quellen und Lizenzen", "/sources"]],
+  },
+  "/de/bundeslaender/karte": {
+    lang: "de",
+    title: "Wahlumfragen der Bundesländer auf einer Deutschlandkarte · Pollframe",
+    description: "Aktuelle Parteistärken und Wahlumfragen der 16 Bundesländer auf einer interaktiven Deutschlandkarte vergleichen.",
+    heading: "Wahlumfragen der deutschen Bundesländer",
+    paragraphs: [
+      "Die Deutschlandkarte vergleicht veröffentlichte Wahlumfragen aller 16 Bundesländer und führt direkt zu den jeweiligen Landtagswahl-Seiten.",
+      "Datenlücken und unterschiedliche Aktualität bleiben sichtbar; Werte werden nicht geschätzt, wenn keine passende Umfrage vorliegt.",
+    ],
+    links: [["Bundestagswahl-Umfragen", "/de/bundestag/umfragen"], ["Alle Länder", "/countries"], ["Methodik und Quellen", "/sources"]],
+  },
+  "/de/regierung/zufriedenheit": {
+    lang: "de",
+    title: "Kanzlerzufriedenheit und Regierungszufriedenheit Deutschland · Pollframe",
+    description: "Aktuelle und historische Kanzler- und Regierungszufriedenheit in Deutschland mit Amtszeiten, Ereignissen, Methodik und Quellen.",
+    heading: "Kanzler- und Regierungszufriedenheit in Deutschland",
+    paragraphs: [
+      "Pollframe zeigt veröffentlichte positive und negative Bewertungen von Bundeskanzler und Bundesregierung im Zeitverlauf.",
+      "Regierungswechsel und politische Ereignisse werden zeitlich eingeordnet; Fragestellung, Institute und Quellen stehen in der Information zur Grafik.",
+    ],
+    links: [["Deutschland im Überblick", "/"], ["Bundestagswahl-Umfragen", "/de/bundestag/umfragen"], ["Redaktionelle Standards", "/editorial-standards"]],
+  },
+  "/uk": {
+    lang: "en",
+    title: "Latest UK election polls and constituency results · Pollframe",
+    description: "Latest Westminster voting-intention polls, polling history since 1943 and official 2024 constituency results for the United Kingdom.",
+    heading: "UK election polls and results",
+    paragraphs: [
+      "Pollframe presents the latest Westminster voting-intention trend, a polling archive dating back to 1943 and official constituency results from the 2024 general election.",
+      "The polling series covers Great Britain, while the election map and constituency finder cover the full United Kingdom; that distinction is stated on each relevant view.",
+    ],
+    links: [["Westminster polling trend", "/uk/westminster/polls"], ["Constituency results", "/uk/constituencies"], ["Sources and licences", "/sources"]],
+  },
+  "/uk/westminster/polls": {
+    lang: "en",
+    title: "UK Westminster polls: latest voting-intention trend · Pollframe",
+    description: "Weighted UK Westminster voting-intention trend, individual pollsters, political events and a polling archive dating back to 1943.",
+    heading: "UK Westminster voting-intention polls",
+    paragraphs: [
+      "The main view shows the latest weighted Westminster polling trend alongside individual pollsters and the underlying publication dates.",
+      "The historical chart reaches back to 1943 and separates election markers from sourced political events so that changes can be interpreted without treating correlation as proof of cause.",
+    ],
+    links: [["UK overview", "/uk"], ["Constituency results", "/uk/constituencies"], ["Editorial standards", "/editorial-standards"]],
+  },
+  "/uk/constituencies": {
+    lang: "en",
+    title: "UK constituency results 2024 and postcode finder · Pollframe",
+    description: "Search all 650 UK constituencies and view official party results from the 2024 general election.",
+    heading: "UK constituency results and postcode finder",
+    paragraphs: [
+      "Search by constituency or postcode to open the official 2024 general-election result for any of the United Kingdom's 650 constituencies.",
+      "Results distinguish vote share, winning party and electorate and link back to the documented official source.",
+    ],
+    links: [["UK overview", "/uk"], ["Westminster polls", "/uk/westminster/polls"], ["Sources and licences", "/sources"]],
+  },
+  "/es": {
+    lang: "es",
+    title: "Encuestas electorales de España y datos políticos · Pollframe",
+    description: "Encuestas nacionales de España desde 1996, evolución de la intención de voto, preocupaciones públicas y datos de las comunidades autónomas.",
+    heading: "Encuestas electorales y datos políticos de España",
+    paragraphs: [
+      "Pollframe reúne la intención de voto nacional, su evolución histórica desde 1996 y datos políticos de las comunidades autónomas.",
+      "La fecha de publicación, el trabajo de campo, la metodología y las fuentes originales se muestran junto a cada estadística.",
+    ],
+    links: [["Encuestas nacionales", "/es/encuestas"], ["Qué preocupa a España", "/es/preocupaciones"], ["Fuentes y licencias", "/sources"]],
+  },
+  "/es/encuestas": {
+    lang: "es",
+    title: "Encuestas electorales de España: intención de voto actual · Pollframe",
+    description: "Últimas encuestas electorales de España, media y evolución desde 1996, comparación entre institutos, acontecimientos y reparto estimado de escaños.",
+    heading: "Encuestas electorales de España",
+    paragraphs: [
+      "La página muestra la última intención de voto publicada y la evolución de las encuestas electorales españolas desde 1996.",
+      "Se pueden comparar institutos y periodos, consultar acontecimientos documentados y exportar gráficos con su nota de fuente.",
+    ],
+    links: [["España", "/es"], ["Qué preocupa a España", "/es/preocupaciones"], ["Estándares editoriales", "/editorial-standards"]],
+  },
+  "/es/preocupaciones": {
+    lang: "es",
+    title: "Principales problemas y preocupaciones de España · Pollframe",
+    description: "Problemas que más preocupan en España, preocupaciones personales y percepción de la economía según el barómetro del CIS.",
+    heading: "Qué preocupa a España",
+    paragraphs: [
+      "Esta página compara los problemas que la ciudadanía considera más importantes para España con sus preocupaciones personales.",
+      "También muestra cómo se valora la situación económica personal y la del país, manteniendo visibles la pregunta, la muestra y el trabajo de campo del CIS.",
+    ],
+    links: [["España", "/es"], ["Encuestas electorales", "/es/encuestas"], ["Fuentes y licencias", "/sources"]],
+  },
+  "/sources": {
+    lang: "de",
+    title: "Datenquellen, Methodik und Lizenzen · Pollframe",
+    description: "Dokumentation der Pollframe-Datenquellen, Verarbeitungsschritte, offenen Lizenzen und Quellenhinweise für Grafiken und Wahldaten.",
+    heading: "Datenquellen, Methodik und Lizenzen",
+    paragraphs: [
+      "Pollframe dokumentiert für jede Darstellung, woher die Daten stammen, wie sie verarbeitet wurden und welche Nutzungs- oder Lizenzhinweise gelten.",
+      "Amtliche Wahlergebnisse, offene Datensätze und Umfragequellen bleiben voneinander getrennt; weiterführende Originalquellen sind direkt verlinkt.",
+    ],
+    links: [["Deutschland", "/"], ["United Kingdom", "/uk"], ["España", "/es"], ["Redaktionelle Standards", "/editorial-standards"]],
+  },
+  "/editorial-standards": {
+    lang: "de",
+    title: "Redaktionelle Standards und Korrekturen · Pollframe",
+    description: "Pollframes Regeln für Datenaktualisierung, Ereignisauswahl, Korrekturen, Quellen und transparente statistische Darstellung.",
+    heading: "Redaktionelle Standards von Pollframe",
+    paragraphs: [
+      "Die redaktionellen Standards erklären, wie Pollframe Umfragen, Wahlergebnisse, Ereignisse und Aktualitätsangaben auswählt und darstellt.",
+      "Korrekturen werden nachvollziehbar vorgenommen; parteipolitische Bewertungen und unbelegte Kausalbehauptungen gehören nicht zur Datenaufbereitung.",
+    ],
+    links: [["Quellen und Lizenzen", "/sources"], ["Deutschland", "/"], ["United Kingdom", "/uk"], ["España", "/es"]],
+  },
+};
+
+function stateSeoRoute(pathname) {
+  const match = pathname.match(/^\/de\/landtagswahl\/([a-z0-9-]+)\/umfragen\/?$/);
+  const name = match ? STATE_NAMES[match[1]] : null;
+  if (!name) return null;
+  return {
+    lang: "de",
+    title: `${name}: aktuelle Landtagswahl-Umfragen · Pollframe`,
+    description: `Aktuelle Umfragen zur Landtagswahl in ${name} mit veröffentlichten Einzelwerten, langfristigem Verlauf, Parteien und Quellen.`,
+    heading: `Landtagswahl-Umfragen in ${name}`,
+    paragraphs: [
+      `Pollframe zeigt die jüngsten veröffentlichten Wahlumfragen für ${name} und ordnet sie in den verfügbaren historischen Verlauf ein.`,
+      "Jeder Umfragepunkt behält Institut und Veröffentlichungsdatum; Datenlücken werden sichtbar gelassen und nicht durch erfundene Werte ersetzt.",
+    ],
+    links: [["Deutschland im Überblick", "/"], ["Karte der Bundesländer", "/de/bundeslaender/karte"], ["Quellen und Lizenzen", "/sources"]],
+  };
+}
+
+function seoRoute(pathname) {
+  const normalized = pathname !== "/" ? pathname.replace(/\/+$/, "") : pathname;
+  return SEO_ROUTES[normalized] ?? stateSeoRoute(normalized);
+}
+
+function legacyPublicRedirect(requestUrl) {
+  if (requestUrl.pathname !== "/" || !requestUrl.search) return null;
+  const query = new URLSearchParams(requestUrl.search);
+  const region = query.get("region");
+  const view = query.get("view");
+  const country = query.get("country");
+  const page = query.get("page");
+  let pathname = null;
+  const routeKeys = [];
+
+  if (region && (region === "bundestag" || region === "uk-westminster" || region === "spain-congress" || STATE_NAMES[region])) {
+    pathname = publicRegionPath(region);
+    routeKeys.push("region");
+  } else if (page === "lizenzen" || page === "redaktion") {
+    pathname = publicPagePath(page);
+    routeKeys.push("page");
+  } else if (view === "approval" && country === "de") {
+    pathname = publicViewPath("approval", "de");
+    routeKeys.push("view", "country");
+  } else if (view === "map" && !country) {
+    pathname = publicViewPath("map");
+    routeKeys.push("view");
+  } else if (view === "countries") {
+    pathname = publicViewPath("countries");
+    routeKeys.push("view");
+  } else if (view === "uk-constituencies") {
+    pathname = publicViewPath("uk-constituencies");
+    routeKeys.push("view", "country");
+  } else if (view === "spain-issues" && country === "es") {
+    pathname = publicViewPath("spain-issues", "es");
+    routeKeys.push("view", "country");
+  } else if (!view && !region && !page && ["uk", "es"].includes(country)) {
+    pathname = publicCountryPath(country);
+    routeKeys.push("country");
+  } else if (!view && !region && !page && country === "de") {
+    pathname = "/";
+    routeKeys.push("country");
+  }
+
+  if (!pathname) return null;
+  for (const key of routeKeys) query.delete(key);
+  const target = new URL(pathname, requestUrl.origin);
+  target.search = query.toString();
+  return target;
+}
+
+function escapeHtml(value) {
+  return String(value).replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[character]));
+}
+
+function seoFallback(route) {
+  const paragraphs = route.paragraphs.map((paragraph) => `<p>${escapeHtml(paragraph)}</p>`).join("");
+  const links = route.links.map(([label, href]) => `<a href="${escapeHtml(href)}">${escapeHtml(label)}</a>`).join(" · ");
+  return `<noscript><main><h1>${escapeHtml(route.heading)}</h1>${paragraphs}<nav aria-label="Weitere Pollframe-Seiten">${links}</nav></main></noscript>`;
+}
+
+async function seoPageResponse(request, env, route) {
+  const requestUrl = new URL(request.url);
+  const canonicalUrl = `${requestUrl.origin}${requestUrl.pathname.replace(/\/+$/, "") || "/"}`;
+  const shellRequest = new Request(`${requestUrl.origin}/`, { method: "GET", headers: request.headers });
+  const shell = await env.ASSETS.fetch(shellRequest);
+  const contentType = shell.headers.get("content-type") ?? "";
+  if (!shell.ok || !contentType.includes("text/html")) return shell;
+  let html = await shell.text();
+  const socialImage = `${requestUrl.origin}/pollframe-social.png`;
+  const openGraphLocale = route.lang === "es" ? "es_ES" : route.lang === "en" ? "en_GB" : "de_DE";
+  html = html
+    .replace(/<html lang="[^"]+">/, `<html lang="${escapeHtml(route.lang)}">`)
+    .replace(/<title>[\s\S]*?<\/title>/, `<title>${escapeHtml(route.title)}</title>`)
+    .replace(/<meta\s+name="description"[\s\S]*?\/>/, `<meta name="description" content="${escapeHtml(route.description)}" />`)
+    .replace(/<meta property="og:title"[^>]*\/>/, `<meta property="og:title" content="${escapeHtml(route.title)}" />`)
+    .replace(/<meta property="og:locale"[^>]*\/>/, `<meta property="og:locale" content="${openGraphLocale}" />`)
+    .replace(/<meta\s+property="og:description"[\s\S]*?\/>/, `<meta property="og:description" content="${escapeHtml(route.description)}" />`)
+    .replace(/<meta property="og:url"[^>]*\/>/, `<meta property="og:url" content="${escapeHtml(canonicalUrl)}" />`)
+    .replace(/<meta property="og:image"[^>]*\/>/, `<meta property="og:image" content="${escapeHtml(socialImage)}" />`)
+    .replace(/<meta name="twitter:title"[^>]*\/>/, `<meta name="twitter:title" content="${escapeHtml(route.title)}" />`)
+    .replace(/<meta\s+name="twitter:description"[\s\S]*?\/>/, `<meta name="twitter:description" content="${escapeHtml(route.description)}" />`)
+    .replace(/<meta name="twitter:image"[^>]*\/>/, `<meta name="twitter:image" content="${escapeHtml(socialImage)}" />`)
+    .replace(/<link rel="canonical"[^>]*\/>/, `<link rel="canonical" href="${escapeHtml(canonicalUrl)}" />`)
+    .replace(/<noscript>[\s\S]*?<\/noscript>/, seoFallback(route));
+  const headers = new Headers(shell.headers);
+  headers.set("content-type", "text/html; charset=utf-8");
+  headers.set("content-language", route.lang);
+  headers.set("cache-control", "public, max-age=0, must-revalidate");
+  headers.set("x-content-type-options", "nosniff");
+  return new Response(request.method === "HEAD" ? null : html, { status: 200, headers });
+}
 
 export function isLiveDataPath(pathname) {
   if (LIVE_DATA_ROOTS.has(pathname)) return true;
@@ -308,6 +580,14 @@ export class AnalyticsStore {
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+    if (["GET", "HEAD"].includes(request.method)) {
+      const redirect = legacyPublicRedirect(url);
+      if (redirect) return Response.redirect(redirect, 308);
+    }
+    if (["GET", "HEAD"].includes(request.method) && isPublicContentPath(url.pathname)) {
+      const route = seoRoute(url.pathname);
+      if (route) return seoPageResponse(request, env, route);
+    }
     if (["GET", "HEAD"].includes(request.method) && isLiveDataPath(url.pathname)) return liveDataResponse(request, env);
     if (url.pathname === "/api/analytics") {
       if (request.method === "POST") {

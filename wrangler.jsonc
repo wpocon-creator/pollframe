@@ -15,7 +15,16 @@
       "/state-map-data.json",
       "/uk-summary.json",
       "/spain-summary.json",
-      "/data/*"
+      "/data/*",
+      "/",
+      "/countries",
+      "/de/*",
+      "/uk",
+      "/uk/*",
+      "/es",
+      "/es/*",
+      "/sources",
+      "/editorial-standards"
     ],
     "html_handling": "none",
     "not_found_handling": "single-page-application"

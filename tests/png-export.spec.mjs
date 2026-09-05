@@ -93,6 +93,19 @@ async function waitForPreview(modal, { preset, theme = null }) {
   return modal.locator(selector);
 }
 
+async function expectDialogChromeAnchored(modal) {
+  const geometry = await modal.evaluate((root) => {
+    const modalRect = root.getBoundingClientRect();
+    const headerRect = root.querySelector(":scope > .panel-header")?.getBoundingClientRect();
+    return {
+      scrollTop: root.scrollTop,
+      headerInside: Boolean(headerRect) && headerRect.top >= modalRect.top - 1 && headerRect.bottom <= modalRect.bottom + 1,
+    };
+  });
+  expect(geometry.scrollTop, "the publishing-dialog frame must not scroll away").toBe(0);
+  expect(geometry.headerInside, "the publishing-dialog header must remain visible").toBe(true);
+}
+
 async function downloadPngSample(page, button, expectedFormats, outputPath, expectedSize, selectedFormat = null) {
   await page.evaluate(() => { window.__downloadedPng = null; });
   await button.scrollIntoViewIfNeeded();
@@ -113,6 +126,68 @@ async function downloadPngSample(page, button, expectedFormats, outputPath, expe
 }
 
 test.describe("PNG export chooser", () => {
+  test("centres PNG and embed dialogs against the viewport after scrolling", async ({ page }, testInfo) => {
+    test.skip(!["chromium-desktop", "iphone-13-chromium"].includes(testInfo.project.name), "Representative desktop and phone geometry coverage only.");
+    await page.goto("/?region=bundestag&lang=de");
+    await settle(page);
+
+    const assertViewportCentred = async (modal, label) => {
+      await expect(modal).toBeVisible();
+      await modal.evaluate((element) => Promise.all(element.getAnimations().map((animation) => animation.finished.catch(() => undefined))));
+      const geometry = await modal.evaluate((element) => {
+        const rect = element.getBoundingClientRect();
+        // Fixed-position portals centre in the visual viewport. On desktop,
+        // innerWidth includes the scrollbar gutter that is intentionally kept
+        // stable while the underlying document is locked.
+        const viewport = { width: window.innerWidth, height: window.innerHeight };
+        return {
+          parent: element.parentElement?.parentElement?.tagName,
+          horizontalOffset: Math.abs((rect.left + rect.width / 2) - viewport.width / 2),
+          verticalOffset: Math.abs((rect.top + rect.height / 2) - viewport.height / 2),
+          inside: rect.left >= -1 && rect.right <= viewport.width + 1 && rect.top >= -1 && rect.bottom <= viewport.height + 1,
+        };
+      });
+      expect(geometry.parent, `${label} should be portalled to document.body`).toBe("BODY");
+      expect(geometry.inside, `${label} should remain fully visible`).toBe(true);
+      expect(geometry.horizontalOffset, `${label} horizontal centre`).toBeLessThanOrEqual(2);
+      expect(geometry.verticalOffset, `${label} vertical centre`).toBeLessThanOrEqual(2);
+    };
+
+    const chart = page.locator(".chart-card");
+    await chart.scrollIntoViewIfNeeded();
+    await chart.evaluate((element) => { element.style.transform = "translateZ(0)"; });
+    await page.evaluate(() => window.scrollBy(0, 420));
+
+    await page.locator(".chart-actions .primary-button").click();
+    const shareModal = page.locator(".embed-modal:not(.png-options-modal)");
+    await assertViewportCentred(shareModal, "embed dialog");
+    await shareModal.getByRole("button", { name: /Schließen|Close|Cerrar/i }).click();
+
+    await page.locator(".chart-actions .png-export-button").click();
+    const pngModal = page.locator(".png-options-modal");
+    await expect(pngModal.locator('.png-preview-surface[data-preview-ready="true"]')).toHaveCount(1);
+    await assertViewportCentred(pngModal, "PNG dialog");
+    await pngModal.getByRole("button", { name: /Schließen|Close|Cerrar/i }).click();
+
+    await page.locator(".results-card .widget-share-trigger:not(.widget-png-trigger)").click();
+    const widgetModal = page.locator(".widget-share-modal");
+    await assertViewportCentred(widgetModal, "widget embed dialog");
+    await widgetModal.getByRole("button", { name: /Schließen|Close|Cerrar/i }).click();
+
+    await page.goto("/?view=map&lang=de");
+    await settle(page);
+    await page.getByRole("button", { name: /Karte einbetten|Embed map/i }).click();
+    const mapModal = page.locator(".embed-modal");
+    await assertViewportCentred(mapModal, "map embed dialog");
+    await mapModal.getByRole("button", { name: /Schließen|Close|Cerrar/i }).click();
+
+    await page.goto("/?view=approval&country=de&lang=de");
+    await settle(page);
+    await page.getByRole("button", { name: "Teilen & einbetten", exact: true }).click();
+    const approvalModal = page.locator(".approval-share-card");
+    await assertViewportCentred(approvalModal, "approval embed dialog");
+  });
+
   test("portrait current-poll grids stay balanced across countries and devices", async ({ page }, testInfo) => {
     test.skip(!["chromium-desktop", "iphone-13-chromium"].includes(testInfo.project.name), "Representative fine- and coarse-pointer coverage only.");
     for (const route of [
@@ -218,6 +293,7 @@ test.describe("PNG export chooser", () => {
     await modal.locator('.png-preview-theme [role="radio"]').filter({ hasText: /Dunkel|Dark|Oscuro/i }).click();
     await expect(modal.locator('.png-preview-canvas')).toHaveAttribute("data-export-theme", "dark");
     await waitForPreview(modal, { preset: "square", theme: "dark" });
+    await expectDialogChromeAnchored(modal);
     await modal.screenshot({ path: testInfo.outputPath("png-dialog-history.png") });
     await modal.getByRole("button", { name: /Schließen|Close|Cerrar/i }).click();
 
@@ -252,6 +328,28 @@ test.describe("PNG export chooser", () => {
     expect(image.luminance).toBeLessThan(150);
   });
 
+  test("Germany map exports as a tightly used 4:5 graphic on phones", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "iphone-13-chromium", "Representative mobile export coverage only.");
+    await installPngCapture(page, { nativeShare: true });
+    await page.goto("/?view=map&lang=de");
+    await settle(page);
+    await page.locator(".poll-map-module .png-export-button").first().click();
+    const modal = await auditPngDialog(page, []);
+    const composition = await modal.locator(".png-preview-clone").evaluate((root) => {
+      const map = root.querySelector(".polling-map").getBoundingClientRect();
+      const clone = root.getBoundingClientRect();
+      return { preset: root.dataset.pngPreset, widthUse: map.width / clone.width };
+    });
+    expect(composition.preset).toBe("portrait");
+    expect(composition.widthUse).toBeGreaterThan(.7);
+    await modal.locator(".png-options-actions .primary-button").click();
+    await page.waitForFunction(() => Boolean(window.__sharedPng), null, { timeout: 30_000 });
+    const image = await page.evaluate(() => window.__sharedPng);
+    expect([image.width, image.height]).toEqual([1080, 1350]);
+    expect(image.bytes).toBeGreaterThan(20_000);
+    expect(image.contrast).toBeGreaterThan(35);
+  });
+
   test("remains clean when opened from inside Share and Embed", async ({ page }, testInfo) => {
     await page.goto("/?region=bundestag&lang=en-GB");
     await settle(page);
@@ -271,6 +369,7 @@ test.describe("PNG export chooser", () => {
 
   test("renders complete profile-specific graphics rather than empty frames", async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== "chromium-desktop", "One representative visual export audit is sufficient.");
+    test.setTimeout(180_000); // Seventeen real high-resolution downloads, not a single navigation.
     await installPngCapture(page);
 
     await page.goto("/?region=bundestag&lang=de");
@@ -296,8 +395,15 @@ test.describe("PNG export chooser", () => {
     });
     expect(stripeReferences.patterns.length).toBeGreaterThan(0);
     expect(stripeReferences.patterns.some((id) => stripeReferences.fill.includes(`#${id}`))).toBe(true);
+    const mapComposition = await mapModal.locator(".png-preview-clone").evaluate((root) => {
+      const map = root.querySelector(".polling-map").getBoundingClientRect();
+      const clone = root.getBoundingClientRect();
+      return { widthUse: map.width / clone.width, preset: root.dataset.pngPreset };
+    });
+    expect(mapComposition.preset).toBe("portrait");
+    expect(mapComposition.widthUse).toBeGreaterThan(.7);
     await mapModal.getByRole("button", { name: /Schließen|Close|Cerrar/i }).click();
-    await downloadPngSample(page, page.locator(".poll-map-module .png-export-button").first(), [], testInfo.outputPath("map-landscape.png"), [1920, 1080]);
+    await downloadPngSample(page, page.locator(".poll-map-module .png-export-button").first(), [], testInfo.outputPath("map-portrait.png"), [1080, 1350]);
 
     await page.goto("/?view=approval&country=de&lang=de");
     await settle(page);

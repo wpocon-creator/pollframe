@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 import { chromium } from "@playwright/test";
 
 const root = resolve(".");
+const iconsOnly = process.argv.includes("--icons-only");
 const desktopVariants = resolve(homedir(), "Desktop", "Pollframe-Logo-Varianten");
 const variantNames = [
   ["01-bereinigt-original", "01 · Bereinigtes Original"],
@@ -26,13 +27,13 @@ async function renderSvg(input, output, width, height) {
 }
 
 try {
-  await renderSvg(resolve(root, "public/wahlbild-icon.svg"), resolve(root, "public/pollframe-app-192.png"), 192, 192);
-  await renderSvg(resolve(root, "public/wahlbild-icon.svg"), resolve(root, "public/pollframe-app-512.png"), 512, 512);
-  await renderSvg(resolve(root, "public/wahlbild-icon.svg"), resolve(root, "public/apple-touch-icon.png"), 180, 180);
-  await renderSvg(resolve(root, "public/pollframe-maskable.svg"), resolve(root, "public/pollframe-maskable-512.png"), 512, 512);
-  await renderSvg(resolve(root, "public/pollframe-social.svg"), resolve(root, "public/pollframe-social.png"), 1200, 630);
+  await renderSvg(resolve(root, "public/wahlbild-icon.svg"), resolve(root, "public/pollframe-app-v2-192.png"), 192, 192);
+  await renderSvg(resolve(root, "public/wahlbild-icon.svg"), resolve(root, "public/pollframe-app-v2-512.png"), 512, 512);
+  await renderSvg(resolve(root, "public/wahlbild-icon.svg"), resolve(root, "public/apple-touch-icon-v2.png"), 180, 180);
+  await renderSvg(resolve(root, "public/pollframe-maskable.svg"), resolve(root, "public/pollframe-maskable-v2-512.png"), 512, 512);
+  if (!iconsOnly) await renderSvg(resolve(root, "public/pollframe-social.svg"), resolve(root, "public/pollframe-social.png"), 1200, 630);
 
-  const variantsAvailable = await Promise.all(variantNames.map(async ([name]) => {
+  const variantsAvailable = !iconsOnly && await Promise.all(variantNames.map(async ([name]) => {
     try { await access(resolve(desktopVariants, `${name}.svg`)); return true; }
     catch { return false; }
   })).then((results) => results.every(Boolean));

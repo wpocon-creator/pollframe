@@ -139,6 +139,23 @@ async function downloadPng(page, button, format = null) {
 }
 
 test.describe("core routes", () => {
+  test("clean public URLs resolve to their indexable Pollframe views", async ({ page }) => {
+    const routes = [
+      ["/de/bundestag/umfragen", /Bundestag|federal polling/i, "https://de.pollframe.workers.dev/de/bundestag/umfragen"],
+      ["/de/landtagswahl/berlin/umfragen", /Abgeordnetenhauswahl|Berlin election/i, "https://de.pollframe.workers.dev/de/landtagswahl/berlin/umfragen"],
+      ["/uk/westminster/polls", /Westminster|britischen Unterhauswahl/i, "https://de.pollframe.workers.dev/uk/westminster/polls"],
+      ["/es/encuestas", /España|Spanien|spanischen|Spanish/i, "https://de.pollframe.workers.dev/es/encuestas"],
+      ["/de/regierung/zufriedenheit", /Regierung|government/i, "https://de.pollframe.workers.dev/de/regierung/zufriedenheit"],
+    ];
+    for (const [route, heading, canonical] of routes) {
+      await page.goto(route);
+      await settle(page);
+      await expect(page.getByRole("heading", { level: 1 }).first()).toContainText(heading);
+      await expect(page.locator('link[rel="canonical"]')).toHaveAttribute("href", canonical);
+      await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /index, follow/);
+    }
+  });
+
   test("overview, navigation and settings are integrated", async ({ page }, testInfo) => {
     const errors = watchRuntime(page);
     await page.goto("/");
@@ -192,7 +209,7 @@ test.describe("core routes", () => {
     await page.locator(".results-card .graph-info-backdrop").click({ position: { x: 5, y: 5 } });
     await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
       "href",
-      "https://de.pollframe.workers.dev/?region=bundestag",
+      "https://de.pollframe.workers.dev/de/bundestag/umfragen",
     );
     await expectDocumentFits(page);
 
@@ -343,7 +360,7 @@ test.describe("core routes", () => {
     await expect(page.locator(".map-method-note")).toContainText(/90 Tage|90 days/);
     await expectDocumentFits(page);
 
-    await page.locator('.polling-map a[href="/?region=bayern"]').focus();
+    await page.locator('.polling-map a[href="/de/landtagswahl/bayern/umfragen"]').focus();
     await expect(page.locator(".map-stale-badge")).toBeVisible();
 
     await page.getByRole("button", { name: /Karte anpassen|Customize map/i }).click();
@@ -380,7 +397,7 @@ test.describe("core routes", () => {
       await expect(page.locator(".chart-footer .data-attribution")).toContainText("dawum.de");
       await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
         "href",
-        `https://de.pollframe.workers.dev${route}`,
+        `https://de.pollframe.workers.dev/de/landtagswahl/${new URL(`https://pollframe.invalid/${route}`).searchParams.get("region")}/umfragen`,
       );
       const projection = page.locator(".projection-section");
       await projection.scrollIntoViewIfNeeded();
@@ -633,11 +650,11 @@ test.describe("core routes", () => {
   test("state and autonomous-community maps open their page on the first activation", async ({ page }, testInfo) => {
     await page.goto("/?view=states");
     await settle(page);
-    const bavaria = page.locator('.germany-map a[href="/?region=bayern"]');
+    const bavaria = page.locator('.germany-map a[href="/de/landtagswahl/bayern/umfragen"]');
     await expect(bavaria).toBeVisible();
     if (testInfo.project.use.hasTouch) await bavaria.tap();
     else await bavaria.click();
-    await expect(page).toHaveURL(/region=bayern/);
+    await expect(page).toHaveURL(/\/de\/landtagswahl\/bayern\/umfragen/);
     await expect(page.getByRole("heading", { level: 1, name: /Landtagswahl/ })).toBeVisible();
 
     await page.goto("/?country=es&lang=es");
@@ -690,7 +707,7 @@ test.describe("core routes", () => {
       await expect(page.locator(".uk-map-detail")).toContainText("Scotland");
       await expect(page.locator(".uk-map-visual svg > .uk-map-active-overlay")).toHaveCount(1);
     }
-    await expect(page.locator('link[rel="canonical"]')).toHaveAttribute("href", "https://de.pollframe.workers.dev/?country=uk");
+    await expect(page.locator('link[rel="canonical"]')).toHaveAttribute("href", "https://de.pollframe.workers.dev/uk");
     await expectDocumentFits(page);
     await expectNoBrokenVisibleText(page);
 
@@ -699,7 +716,7 @@ test.describe("core routes", () => {
     await expect(page).toHaveURL(/country=uk(?!.*view=uk-issues)/);
     await expect(page.getByRole("heading", { level: 1, name: /United Kingdom at a glance|Vereinigtes Königreich im Überblick/i })).toBeVisible();
     await expect(page.locator(".uk-issues-full-ranking,.uk-economy-perception")).toHaveCount(0);
-    await expect(page.locator('link[rel="canonical"]')).toHaveAttribute("href", "https://de.pollframe.workers.dev/?country=uk");
+    await expect(page.locator('link[rel="canonical"]')).toHaveAttribute("href", "https://de.pollframe.workers.dev/uk");
     await expectDocumentFits(page);
     await expectNoBrokenVisibleText(page);
 
@@ -708,7 +725,7 @@ test.describe("core routes", () => {
 
     await page.getByRole("link", { name: /Constituency finder|Wahlkreisfinder/i }).click();
     await settle(page);
-    await expect(page).toHaveURL(/view=uk-constituencies/);
+    await expect(page).toHaveURL(/\/uk\/constituencies/);
     await expect(page.getByRole("heading", { level: 1, name: /Find your constituency|Finde deinen Wahlkreis/i })).toBeVisible();
     if (!testInfo.project.use.hasTouch) {
       const exploreSeat = page.locator(".battleground-list button").first();
@@ -730,7 +747,7 @@ test.describe("core routes", () => {
 
     await page.getByRole("link", { name: /Westminster polling|Unterhaus-Umfragen/i }).click();
     await settle(page);
-    await expect(page).toHaveURL(/region=uk-westminster/);
+    await expect(page).toHaveURL(/\/uk\/westminster\/polls/);
     await expect(page.getByRole("heading", { level: 1, name: /Westminster voting intention|Umfragen zur britischen Unterhauswahl/i })).toBeVisible();
     await expect(page.locator(".poll-chart")).toBeVisible();
     await expect(page.locator(".chart-footer .data-attribution")).toContainText("UK Election Data Vault");
@@ -791,6 +808,18 @@ test.describe("core routes", () => {
     expect(errors).toEqual([]);
   });
 
+  test("an explicit language remains authoritative when opening another country", async ({ page }) => {
+    await page.goto("/?country=uk&lang=de");
+    await settle(page);
+    await expect(page.getByRole("heading", { level: 1, name: "🇬🇧 Vereinigtes Königreich im Überblick" })).toBeVisible();
+    await expect(page.locator("html")).toHaveAttribute("lang", "de");
+
+    await page.goto("/?country=uk&lang=en-GB");
+    await settle(page);
+    await expect(page.getByRole("heading", { level: 1, name: "🇬🇧 United Kingdom at a glance" })).toBeVisible();
+    await expect(page.locator("html")).toHaveAttribute("lang", "en");
+  });
+
   test("party labels open neutral sourced profiles without shifting the page", async ({ page }, testInfo) => {
     const errors = watchRuntime(page);
     await page.goto("/?region=bundestag");
@@ -811,6 +840,14 @@ test.describe("core routes", () => {
     await expect(page.locator(".party-profile-policies li")).toHaveCount(4);
     await expect(page.locator(".party-profile-sources a")).toHaveCount(2);
     expect(await page.locator(".party-profile-sources a").evaluateAll((links) => links.every((link) => link.href.startsWith("https://")))).toBe(true);
+    const partyLinkStyle = await spd.evaluate((node) => getComputedStyle(node).textDecorationLine);
+    expect(partyLinkStyle).toContain("underline");
+    const modalPosition = await page.locator(".party-profile-modal").evaluate((node) => {
+      const rect = node.getBoundingClientRect();
+      return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2, viewportX: innerWidth / 2, viewportY: innerHeight / 2 };
+    });
+    expect(Math.abs(modalPosition.x - modalPosition.viewportX)).toBeLessThanOrEqual(2);
+    expect(Math.abs(modalPosition.y - modalPosition.viewportY)).toBeLessThanOrEqual(2);
     const after = await page.locator("main").evaluate((node) => {
       const rect = node.getBoundingClientRect();
       return { left: Math.round(rect.left * 10) / 10, width: Math.round(rect.width * 10) / 10 };
@@ -846,6 +883,19 @@ test.describe("core routes", () => {
     await expect(page.locator(".party-profile-modal")).toContainText("Más Madrid");
     await expect(page.locator(".party-profile-modal")).toContainText(/not yet published|noch keine|aún no ha publicado/i);
     await expect(page.locator(".party-profile-sources a")).toHaveCount(1);
+
+    await page.goto("/?region=spain-congress&lang=es");
+    await settle(page);
+    const insightPp = page.locator(".spain-change-row [data-party-profile='es:pp']").first();
+    await expect(insightPp).toBeVisible();
+    await expect(insightPp).toHaveCSS("text-decoration-line", /underline/);
+
+    await page.goto("/?view=approval&country=de&lang=de");
+    await settle(page);
+    const approvalParty = page.locator(".approval-line-legend [data-party-profile='de:union']").first();
+    await expect(approvalParty).toBeVisible();
+    await approvalParty.click();
+    await expect(page.locator(".party-profile-modal")).toContainText("Christlich Demokratische Union");
     await expectDocumentFits(page);
     expect(errors).toEqual([]);
   });
@@ -861,7 +911,7 @@ test.describe("core routes", () => {
     await page.reload();
     await settle(page);
     await expect(page.getByRole("heading", { level: 1, name: "Deutschland im Überblick" })).toBeVisible();
-    const approvalEntry = page.locator('a[href*="view=approval"][href*="country=de"]').first();
+    const approvalEntry = page.locator('a[href="/de/regierung/zufriedenheit"]').first();
     await expect(approvalEntry.locator("dd").first()).not.toHaveText("–");
     const approvalRequestsBeforeCountrySwitch = approvalRequestCount;
     expect(approvalRequestsBeforeCountrySwitch).toBeGreaterThanOrEqual(1);
@@ -1167,7 +1217,7 @@ test.describe("core routes", () => {
     await expect(page.locator(".customize-panel")).toContainText("Trend + average points");
     await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
       "href",
-      "https://de.pollframe.workers.dev/?region=bundestag",
+      "https://de.pollframe.workers.dev/de/bundestag/umfragen",
     );
     await expectDocumentFits(page);
     expect(errors).toEqual([]);
@@ -1252,7 +1302,7 @@ test.describe("core routes", () => {
     await expect(page.getByRole("heading", { name: /Redaktionelle Standards|Editorial standards/i, level: 1 })).toBeVisible();
     await expect(page.getByRole("heading", { name: /Ereignisse im historischen Kontext|Events as historical context/i })).toBeVisible();
     await expect(page.getByRole("heading", { name: /Öffentliches Änderungsprotokoll|Public change log/i })).toBeVisible();
-    await expect(page.locator('link[rel="canonical"]')).toHaveAttribute("href", "https://de.pollframe.workers.dev/?page=redaktion");
+    await expect(page.locator('link[rel="canonical"]')).toHaveAttribute("href", "https://de.pollframe.workers.dev/editorial-standards");
     await expectDocumentFits(page);
     await expectNoBrokenVisibleText(page);
     expect(errors).toEqual([]);

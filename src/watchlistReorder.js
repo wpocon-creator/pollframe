@@ -1,11 +1,133 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
-const HOLD_DELAY_MS = 185;
+// Deliberately slower than a tap: the tile has time to visibly compress before
+// it detaches from the grid, matching the familiar iOS home-screen gesture.
+const HOLD_DELAY_MS = 420;
 const SCROLL_CANCEL_DISTANCE = 9;
 const DRAG_START_DISTANCE = 6;
 const REORDER_COOLDOWN_MS = 72;
 const DROP_ANIMATION_MS = 190;
+const EDGE_SCROLL_VIEWPORT_RATIO = .17;
+const EDGE_SCROLL_MIN_ZONE_PX = 76;
+const EDGE_SCROLL_MAX_ZONE_PX = 118;
+const EDGE_SCROLL_MAX_PX_PER_SECOND = 1100;
+const EDGE_SCROLL_ACCELERATION_MS = 72;
+const HAPTIC_PULSE_MS = 14;
 const INTERACTIVE_SELECTOR = "button,a,input,select,textarea,[contenteditable='true'],[data-watch-drag-ignore]";
+
+export function verticalEdgeScrollSpeed(clientY, viewportHeight, viewportTop = 0) {
+  if (!Number.isFinite(clientY) || !Number.isFinite(viewportHeight) || !Number.isFinite(viewportTop) || viewportHeight <= 0) return 0;
+  const pointerY = clientY - viewportTop;
+  const edgeZone = Math.min(EDGE_SCROLL_MAX_ZONE_PX, Math.max(EDGE_SCROLL_MIN_ZONE_PX, viewportHeight * EDGE_SCROLL_VIEWPORT_RATIO));
+  if (pointerY < edgeZone) {
+    const depth = Math.min(1, Math.max(0, (edgeZone - pointerY) / edgeZone));
+    const easedDepth = depth * depth * (3 - 2 * depth);
+    return -EDGE_SCROLL_MAX_PX_PER_SECOND * easedDepth;
+  }
+  const edgeStart = viewportHeight - edgeZone;
+  if (pointerY <= edgeStart) return 0;
+  const depth = Math.min(1, Math.max(0, (pointerY - edgeStart) / edgeZone));
+  // Smoothstep keeps the first part of the edge calm while still reaching a
+  // useful speed when the finger is held directly at the bottom of the screen.
+  const easedDepth = depth * depth * (3 - 2 * depth);
+  return EDGE_SCROLL_MAX_PX_PER_SECOND * easedDepth;
+}
+
+export function documentScrollMetrics({
+  windowY = 0,
+  pageYOffset = 0,
+  rootTop = 0,
+  documentTop = 0,
+  bodyTop = 0,
+  rootHeight = 0,
+  documentHeight = 0,
+  bodyHeight = 0,
+  viewportHeight = 0,
+} = {}) {
+  const position = Math.max(0, windowY, pageYOffset, rootTop, documentTop, bodyTop);
+  const maximum = Math.max(0, Math.max(rootHeight, documentHeight, bodyHeight) - viewportHeight);
+  return { position, maximum };
+}
+
+function currentDocumentScrollMetrics(rootScroller) {
+  return documentScrollMetrics({
+    windowY: window.scrollY,
+    pageYOffset: window.pageYOffset,
+    rootTop: rootScroller.scrollTop,
+    documentTop: document.documentElement.scrollTop,
+    bodyTop: document.body?.scrollTop,
+    rootHeight: rootScroller.scrollHeight,
+    documentHeight: document.documentElement.scrollHeight,
+    bodyHeight: document.body?.scrollHeight,
+    viewportHeight: window.visualViewport?.height ?? window.innerHeight,
+  });
+}
+
+function canElementScroll(element, direction) {
+  if (!element || direction === 0) return false;
+  const rootScroller = document.scrollingElement ?? document.documentElement;
+  if (element === rootScroller) {
+    const { position, maximum } = currentDocumentScrollMetrics(rootScroller);
+    return direction < 0 ? position > 1 : position < maximum - 1;
+  }
+  const maximum = Math.max(0, element.scrollHeight - element.clientHeight);
+  if (maximum <= 1) return false;
+  return direction < 0 ? element.scrollTop > 1 : element.scrollTop < maximum - 1;
+}
+
+function scrollableElementAtPointer(clientX, clientY, direction) {
+  const rootScroller = document.scrollingElement ?? document.documentElement;
+  const viewportWidth = Math.max(1, document.documentElement.clientWidth || window.innerWidth);
+  const viewportHeight = Math.max(1, window.innerHeight);
+  const x = Math.min(viewportWidth - 1, Math.max(0, clientX));
+  const y = Math.min(viewportHeight - 1, Math.max(0, clientY));
+  const visited = new Set();
+  for (const hit of document.elementsFromPoint?.(x, y) ?? []) {
+    let element = hit;
+    while (element instanceof HTMLElement && element !== document.body && element !== document.documentElement) {
+      if (visited.has(element)) break;
+      visited.add(element);
+      const overflowY = getComputedStyle(element).overflowY;
+      if (/^(auto|scroll|overlay)$/.test(overflowY) && canElementScroll(element, direction)) return element;
+      element = element.parentElement;
+    }
+  }
+  return canElementScroll(rootScroller, direction) ? rootScroller : null;
+}
+
+function scrollElementImmediately(element, distance) {
+  if (!element || distance === 0) return false;
+  const rootScroller = document.scrollingElement ?? document.documentElement;
+  if (element === rootScroller) {
+    // Installed iOS web apps can report a useful window.scrollY while the root
+    // element's scrollTop remains zero. Read the largest browser-provided value
+    // and calculate the viewport boundary independently of clientHeight.
+    const { position: before, maximum } = currentDocumentScrollMetrics(rootScroller);
+    const destination = Math.min(maximum, Math.max(0, before + distance));
+    window.scrollTo(window.scrollX, destination);
+    // Safari may expose the new position only on the next animation frame.
+    // Returning the requested movement keeps the frame loop and ghost update
+    // alive without depending on a synchronous scrollTop reflection.
+    return Math.abs(destination - before) > .1;
+  }
+  const maximum = Math.max(0, element.scrollHeight - element.clientHeight);
+  const before = element.scrollTop;
+  const destination = Math.min(maximum, Math.max(0, before + distance));
+  element.scrollTop = destination;
+  return Math.abs(element.scrollTop - before) > .1;
+}
+
+function latestPointerSample(event) {
+  const samples = event.getCoalescedEvents?.();
+  return samples?.length ? samples[samples.length - 1] : event;
+}
+
+function nearestTouch(touches, clientX, clientY) {
+  return Array.from(touches ?? []).reduce((nearest, touch) => {
+    const distance = (touch.clientX - clientX) ** 2 + (touch.clientY - clientY) ** 2;
+    return !nearest || distance < nearest.distance ? { touch, distance } : nearest;
+  }, null)?.touch;
+}
 
 function watchCards(grid) {
   return grid ? [...grid.querySelectorAll(":scope > [data-watch-id]")] : [];
@@ -60,8 +182,8 @@ function createDragGhost(card) {
   ghost.removeAttribute("tabindex");
   ghost.setAttribute("aria-hidden", "true");
   ghost.inert = true;
-  ghost.classList.remove("is-dragging");
-  ghost.classList.add("watch-card-drag-ghost");
+  ghost.classList.remove("is-dragging", "is-drag-pressing");
+  ghost.classList.add("watch-card-drag-ghost", "is-lifting");
   ghost.querySelectorAll("button,a,input,select,textarea").forEach((control) => control.setAttribute("tabindex", "-1"));
   replaceGhostReferences(ghost);
   return ghost;
@@ -117,7 +239,10 @@ export function useWatchlistReorder({ cards, enabled, items, persistItems, setIt
   function detachSession(session) {
     if (!session) return;
     if (session.holdTimer) window.clearTimeout(session.holdTimer);
+    if (session.pressFrame) cancelAnimationFrame(session.pressFrame);
     if (session.frame) cancelAnimationFrame(session.frame);
+    if (session.liftFrame) cancelAnimationFrame(session.liftFrame);
+    session.card?.classList.remove("is-drag-pressing");
     session.detachListeners?.();
     try { session.captureElement?.releasePointerCapture?.(session.pointerId); } catch { /* already released */ }
   }
@@ -209,7 +334,7 @@ export function useWatchlistReorder({ cards, enabled, items, persistItems, setIt
     }
   }
 
-  function runFrame() {
+  function runFrame(timestamp) {
     const session = sessionRef.current;
     if (!session?.active) return;
     session.frame = 0;
@@ -217,25 +342,45 @@ export function useWatchlistReorder({ cards, enabled, items, persistItems, setIt
       session.positionDirty = false;
       updatePreview(session);
     }
-    const edge = Math.min(96, window.innerHeight * .17);
-    let velocity = 0;
-    if (session.clientY < edge) velocity = -Math.min(15, ((edge - session.clientY) / edge) * 15);
-    else if (session.clientY > window.innerHeight - edge) velocity = Math.min(15, ((session.clientY - (window.innerHeight - edge)) / edge) * 15);
-    const scrollingElement = document.scrollingElement ?? document.documentElement;
-    const maximumScroll = Math.max(0, scrollingElement.scrollHeight - window.innerHeight);
-    const canScroll = velocity < 0 ? window.scrollY > 0 : velocity > 0 && window.scrollY < maximumScroll - 1;
-    if (canScroll) {
-      window.scrollBy(0, velocity);
-      updatePreview(session);
+    const frameTime = Number.isFinite(timestamp) ? timestamp : performance.now();
+    const elapsed = session.lastFrameTime
+      ? Math.min(40, Math.max(8, frameTime - session.lastFrameTime))
+      : 1000 / 60;
+    session.lastFrameTime = frameTime;
+    const visualViewport = window.visualViewport;
+    const viewportTop = visualViewport?.offsetTop ?? 0;
+    const viewportHeight = visualViewport?.height ?? window.innerHeight;
+    // Edge intent comes only from the live pointer/finger coordinate. The
+    // dragged card's dimensions and offset never influence scrolling.
+    const targetVelocity = verticalEdgeScrollSpeed(session.clientY, viewportHeight, viewportTop);
+    if (targetVelocity !== 0) {
+      if (session.scrollVelocity !== 0 && Math.sign(session.scrollVelocity) !== Math.sign(targetVelocity)) session.scrollVelocity = 0;
+      const acceleration = 1 - Math.exp(-elapsed / EDGE_SCROLL_ACCELERATION_MS);
+      session.scrollVelocity += (targetVelocity - session.scrollVelocity) * acceleration;
+    } else {
+      // Leaving both edge zones is an explicit stop gesture. Avoid inertia here
+      // so the page never keeps moving underneath a stationary dragged card.
+      session.scrollVelocity = 0;
+    }
+    if (targetVelocity !== 0) {
+      const scrollingElement = scrollableElementAtPointer(session.clientX, session.clientY, Math.sign(targetVelocity));
+      if (scrollElementImmediately(scrollingElement, session.scrollVelocity * elapsed / 1000)) {
+        updatePreview(session);
+      }
+      // Keep sampling while the finger is at an edge. This also recovers when
+      // a nested scroller reaches its end and the page becomes the next target.
       session.frame = requestAnimationFrame(runFrame);
+    } else if (session.positionDirty) {
+      updatePreview(session);
     }
   }
 
   function handlePointerMove(event) {
     const session = sessionRef.current;
     if (!session || event.pointerId !== session.pointerId) return;
-    session.clientX = event.clientX;
-    session.clientY = event.clientY;
+    const sample = latestPointerSample(event);
+    session.clientX = sample.clientX;
+    session.clientY = sample.clientY;
     if (session.pending) {
       const distance = Math.hypot(event.clientX - session.pressX, event.clientY - session.pressY);
       if (distance > SCROLL_CANCEL_DISTANCE) finishDrag(false);
@@ -252,7 +397,16 @@ export function useWatchlistReorder({ cards, enabled, items, persistItems, setIt
     session.pending = false;
     session.active = true;
     session.holdTimer = 0;
-    const rect = session.card.getBoundingClientRect();
+    const compressedRect = session.card.getBoundingClientRect();
+    // getBoundingClientRect includes the press animation's scale. Using that
+    // width for the floating tile made its "lift" smaller than the original.
+    const width = session.card.offsetWidth;
+    const height = session.card.offsetHeight;
+    const rect = new DOMRect(
+      compressedRect.left - (width - compressedRect.width) / 2,
+      compressedRect.top - (height - compressedRect.height) / 2,
+      width, height,
+    );
     const ghost = createDragGhost(session.card);
     const shell = document.createElement("div");
     shell.className = "watch-card-drag-shell";
@@ -260,6 +414,7 @@ export function useWatchlistReorder({ cards, enabled, items, persistItems, setIt
     shell.style.height = `${rect.height}px`;
     shell.append(ghost);
     document.body.append(shell);
+    session.card.classList.remove("is-drag-pressing");
     Object.assign(session, {
       originalRect: rect,
       originalScrollY: window.scrollY,
@@ -274,16 +429,34 @@ export function useWatchlistReorder({ cards, enabled, items, persistItems, setIt
       lastSlot: null,
       lastReorder: 0,
       lastReorderPointer: null,
+      lastFrameTime: 0,
+      scrollVelocity: 0,
       positionDirty: true,
+      liftFrame: 0,
     });
     session.candidates = watchCards(session.grid).filter((candidate) => candidate.dataset.watchId !== session.id);
     setDraggingId(session.id);
     document.documentElement.classList.add("watch-reordering");
+    if (session.pointerType !== "mouse") {
+      try { navigator.vibrate?.(HAPTIC_PULSE_MS); } catch { /* haptics are optional */ }
+    }
     try { session.captureElement.setPointerCapture?.(session.pointerId); } catch { /* already captured or unsupported */ }
+    // Two frames guarantee that Safari paints the compressed floating copy
+    // before applying the lift. A single rAF can be coalesced in an installed
+    // iOS app, making the whole compress-and-pop transition invisible.
+    session.liftFrame = requestAnimationFrame(() => {
+      if (sessionRef.current !== session || !session.active) return;
+      session.liftFrame = requestAnimationFrame(() => {
+        if (sessionRef.current !== session || !session.active) return;
+        session.liftFrame = 0;
+        session.ghost.classList.remove("is-lifting");
+        session.ghost.classList.add("is-lifted");
+      });
+    });
     session.frame = requestAnimationFrame(runFrame);
   }
 
-  function beginDrag(event, itemId) {
+  function beginDrag(event, itemId, touchIdentifier = null) {
     if (!canStartDrag(event) || sessionRef.current) return;
     clearLanding();
     const card = event.currentTarget.closest("[data-watch-id]");
@@ -301,14 +474,52 @@ export function useWatchlistReorder({ cards, enabled, items, persistItems, setIt
       clientY: event.clientY,
       pressX: event.clientX,
       pressY: event.clientY,
+      touchIdentifier,
       frame: 0,
       holdTimer: 0,
+      pressFrame: 0,
     };
+    card.classList.add("is-drag-pressing");
     const finishFromPointer = (releaseEvent) => { if (releaseEvent.pointerId === session.pointerId) finishDrag(true); };
-    const cancelFromPointer = (cancelEvent) => { if (cancelEvent.pointerId === session.pointerId) finishDrag(false); };
-    const finishFromTouch = (touchEvent) => { if (touchEvent.touches.length === 0) finishDrag(true); };
-    const cancelFromTouch = (touchEvent) => { if (touchEvent.touches.length === 0) finishDrag(false); };
-    const blockTouchMove = (moveEvent) => { if (sessionRef.current === session && session.active && moveEvent.cancelable) moveEvent.preventDefault(); };
+    const cancelFromPointer = (cancelEvent) => {
+      if (cancelEvent.pointerId !== session.pointerId) return;
+      // Safari can cancel its PointerEvent stream while continuing to deliver
+      // the same physical contact through TouchEvents. Keep that live touch as
+      // the source of truth; touchcancel/touchend still terminate it safely.
+      if (session.pointerType === "touch" && session.touchIdentifier != null) return;
+      finishDrag(false);
+    };
+    const trackedTouchEnded = (touchEvent) => session.pointerType === "touch"
+      && session.touchIdentifier != null
+      && !Array.from(touchEvent.touches ?? []).some((touch) => touch.identifier === session.touchIdentifier);
+    const finishFromTouch = (touchEvent) => { if (touchEvent.touches.length === 0 || trackedTouchEnded(touchEvent)) finishDrag(true); };
+    const cancelFromTouch = (touchEvent) => { if (touchEvent.touches.length === 0 || trackedTouchEnded(touchEvent)) finishDrag(false); };
+    const trackTouchStart = (touchEvent) => {
+      if (touchEvent.touches.length > 1) { finishDrag(false); return; }
+      if (session.pointerType !== "touch" || session.touchIdentifier != null) return;
+      session.touchIdentifier = nearestTouch(touchEvent.touches, session.clientX, session.clientY)?.identifier;
+    };
+    const blockTouchMove = (moveEvent) => {
+      if (sessionRef.current !== session) return;
+      // Safari can thin out pointermove delivery during a captured touch. Its
+      // TouchEvent still contains the real finger position, so use that as a
+      // fallback rather than letting the ghost position drive edge scrolling.
+      const touch = session.touchIdentifier == null
+        ? nearestTouch(moveEvent.touches, session.clientX, session.clientY)
+        : Array.from(moveEvent.touches ?? []).find((candidate) => candidate.identifier === session.touchIdentifier);
+      if (touch) {
+        session.clientX = touch.clientX;
+        session.clientY = touch.clientY;
+        if (session.pending) {
+          if (Math.hypot(touch.clientX - session.pressX, touch.clientY - session.pressY) > SCROLL_CANCEL_DISTANCE) finishDrag(false);
+          return;
+        }
+        if (!session.active) return;
+        session.positionDirty = true;
+        if (!session.frame) session.frame = requestAnimationFrame(runFrame);
+      }
+      if (session.active && moveEvent.cancelable) moveEvent.preventDefault();
+    };
     const cancelFromWindow = () => finishDrag(false);
     const cancelWhenHidden = () => { if (document.visibilityState === "hidden") finishDrag(false); };
     const cancelFromKeyboard = (keyEvent) => { if (keyEvent.key === "Escape") { keyEvent.preventDefault(); finishDrag(false); } };
@@ -318,6 +529,7 @@ export function useWatchlistReorder({ cards, enabled, items, persistItems, setIt
       window.removeEventListener("pointercancel", cancelFromPointer, true);
       window.removeEventListener("touchend", finishFromTouch, true);
       window.removeEventListener("touchcancel", cancelFromTouch, true);
+      window.removeEventListener("touchstart", trackTouchStart, true);
       window.removeEventListener("touchmove", blockTouchMove, true);
       window.removeEventListener("blur", cancelFromWindow);
       window.removeEventListener("keydown", cancelFromKeyboard, true);
@@ -328,13 +540,41 @@ export function useWatchlistReorder({ cards, enabled, items, persistItems, setIt
     window.addEventListener("pointercancel", cancelFromPointer, true);
     window.addEventListener("touchend", finishFromTouch, { capture: true, passive: true });
     window.addEventListener("touchcancel", cancelFromTouch, { capture: true, passive: true });
+    window.addEventListener("touchstart", trackTouchStart, { capture: true, passive: true });
     window.addEventListener("touchmove", blockTouchMove, { capture: true, passive: false });
     window.addEventListener("blur", cancelFromWindow);
     window.addEventListener("keydown", cancelFromKeyboard, true);
     document.addEventListener("visibilitychange", cancelWhenHidden, true);
     sessionRef.current = session;
     try { session.captureElement.setPointerCapture?.(event.pointerId); } catch { /* synthetic or unsupported pointer */ }
-    session.holdTimer = window.setTimeout(() => activateDrag(session), HOLD_DELAY_MS);
+    // Begin the hold clock only after two painted frames. On a busy first load
+    // Safari could otherwise run an already-due timer before ever presenting
+    // the compressed state, which made the gesture look as if it did nothing.
+    session.pressFrame = requestAnimationFrame(() => {
+      if (sessionRef.current !== session || !session.pending) return;
+      session.pressFrame = requestAnimationFrame(() => {
+        session.pressFrame = 0;
+        if (sessionRef.current !== session || !session.pending) return;
+        session.holdTimer = window.setTimeout(() => activateDrag(session), HOLD_DELAY_MS);
+      });
+    });
+  }
+
+  function beginTouchDrag(event, itemId) {
+    if (sessionRef.current || event.touches.length > 1) return;
+    const touch = Array.from(event.changedTouches ?? event.touches ?? [])[0];
+    if (!touch) return;
+    // Pointer Events are normally the primary path. Installed Safari PWAs can
+    // occasionally omit pointerdown after resuming, so start the identical
+    // session from the native TouchEvent as a narrow fallback.
+    beginDrag({
+      target: event.target,
+      currentTarget: event.currentTarget,
+      pointerType: "touch",
+      pointerId: -(touch.identifier + 1),
+      clientX: touch.clientX,
+      clientY: touch.clientY,
+    }, itemId, touch.identifier);
   }
 
   function keyboardReorder(itemId, direction) {
@@ -395,5 +635,5 @@ export function useWatchlistReorder({ cards, enabled, items, persistItems, setIt
     document.documentElement.classList.remove("watch-reordering");
   }, []);
 
-  return { announcement, beginDrag, draggingId, finishDrag, keyboardReorder };
+  return { announcement, beginDrag, beginTouchDrag, draggingId, finishDrag, keyboardReorder };
 }

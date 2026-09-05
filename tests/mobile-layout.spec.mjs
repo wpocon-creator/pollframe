@@ -186,7 +186,28 @@ test.describe("mobile layout geometry", () => {
     await tendencyCard.scrollIntoViewIfNeeded();
     await tendencyCard.click();
     await page.waitForTimeout(200);
-    await expectInsideViewport(page.locator(".party-modal"), page, "party detail dialog");
+    const partyModal = page.locator(".party-modal");
+    await expectInsideViewport(partyModal, page, "party detail dialog");
+    const partyModalScroll = await partyModal.evaluate((element) => ({
+      height: element.getBoundingClientRect().height,
+      overflowY: getComputedStyle(element).overflowY,
+      viewportHeight: window.innerHeight,
+    }));
+    expect(partyModalScroll.height).toBeLessThanOrEqual((partyModalScroll.viewportHeight * .75) + 2);
+    expect(partyModalScroll.overflowY).toBe("auto");
+    const partyChartGeometry = await page.locator(".party-detail-chart svg").evaluate((svg) => ({
+      touchAction: getComputedStyle(svg).touchAction,
+      labels: [...svg.querySelectorAll(":scope > g > .axis-label")].map((label) => {
+        const rect = label.getBoundingClientRect();
+        const root = svg.getBoundingClientRect();
+        return { left: rect.left - root.left, right: rect.right - root.left, width: root.width };
+      }),
+    }));
+    expect(partyChartGeometry.touchAction === "manipulation" || partyChartGeometry.touchAction.includes("pinch-zoom")).toBe(true);
+    for (const label of partyChartGeometry.labels) {
+      expect(label.left, "party history y-axis label must not lose its first digit").toBeGreaterThanOrEqual(-1);
+      expect(label.right).toBeLessThanOrEqual(label.width + 1);
+    }
     await page.screenshot({ path: testInfo.outputPath("party-dialog.png"), fullPage: false });
     await page.getByRole("button", { name: /Schließen|Close/i }).click();
 
@@ -198,17 +219,14 @@ test.describe("mobile layout geometry", () => {
     await expect(page.locator(".embed-live-preview iframe")).toBeVisible();
     await expect(page.locator(".embed-live-preview iframe")).toHaveAttribute("scrolling", "no");
     expect(await page.locator(".embed-live-preview iframe").evaluate((element) => getComputedStyle(element).pointerEvents)).toBe("none");
-    const verticalScrollAreas = await page.locator(".embed-modal").evaluate((modal) => [...modal.querySelectorAll("*")]
-      .filter((element) => {
-        const style = getComputedStyle(element);
-        return element.scrollHeight > element.clientHeight + 2 && ["auto", "scroll"].includes(style.overflowY);
-      })
-      .map((element) => element.className));
-    // The document preview is the only element allowed to scroll. On taller
-    // phones the complete preview may fit, in which case no scrollbar appears.
-    expect(verticalScrollAreas.length).toBeLessThanOrEqual(1);
-    if (verticalScrollAreas.length) expect(verticalScrollAreas[0]).toContain("static-embed-preview");
-    expect(await page.locator(".embed-modal").evaluate((modal) => modal.scrollHeight <= modal.clientHeight + 2)).toBe(true);
+    const modalScroll = await page.locator(".embed-modal").evaluate((modal) => ({
+      height: modal.getBoundingClientRect().height,
+      viewport: innerHeight,
+      overflowY: getComputedStyle(modal).overflowY,
+      scrollable: modal.scrollHeight > modal.clientHeight + 2,
+    }));
+    expect(modalScroll.height).toBeLessThanOrEqual((modalScroll.viewport * .75) + 2);
+    expect(["auto", "scroll"]).toContain(modalScroll.overflowY);
     // The preview document and its horizontal fit are covered by the complete
     // three-engine embed regression and the dedicated 320/760/1200px matrix.
     // Keep this device test focused on the host dialog: entering the same

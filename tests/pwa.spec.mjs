@@ -16,7 +16,7 @@ test.describe("installable Pollframe app", () => {
       expect.objectContaining({ sizes: "192x192", type: "image/png" }),
       expect.objectContaining({ sizes: "512x512", purpose: "maskable" }),
     ]));
-    for (const path of ["/manifest-context.js", "/sw.js", "/apple-touch-icon.png", "/pollframe-app-192.png", "/pollframe-app-512.png", "/pollframe-maskable-512.png"]) {
+    for (const path of ["/manifest-context.js", "/sw.js", "/apple-touch-icon-v2.png", "/pollframe-app-v2-192.png", "/pollframe-app-v2-512.png", "/pollframe-maskable-v2-512.png"]) {
       expect((await request.get(path)).ok(), `${path} should be available`).toBe(true);
     }
     const serviceWorker = await (await request.get("/sw.js")).text();

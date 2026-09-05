@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { PartyInfoButton, regionalSpainPartyProfile } from "./party-profiles.jsx";
-import { useDismissOnlyDetails } from "./pollframe-ui.jsx";
+import { InfoPopover, useDismissOnlyDetails } from "./pollframe-ui.jsx";
 import { PngExportButton } from "./png-export-button.jsx";
+import { publicCountryPath, publicRegionPath, publicViewPath } from "./public-routes.js";
 
 export const SPAIN_PARTY_DEFINITIONS = [
   { id: "405", slug: "podemos-up", name: "Podemos / UP", color: "#6d3b87" },
@@ -90,21 +91,19 @@ function language(locale) {
   return locale === "es" ? UI.es : locale === "de" ? UI.de : UI.en;
 }
 
-function MiniGraphInfo({ locale, title, text, paragraphs, dataDate = null }) {
+function MiniGraphInfo({ locale, title, text, paragraphs, source = null, sources = [], dataDate = null }) {
   const label = locale === "es" ? "Cómo leer este gráfico" : locale === "de" ? "So wird diese Grafik gelesen" : "How to read this chart";
   const close = locale === "es" ? "Cerrar explicación" : locale === "de" ? "Erklärung schließen" : "Close explanation";
   const status = locale === "es" ? "Fecha de los datos" : locale === "de" ? "Datenstand" : "Data status";
-  const closePopover = (event) => event.currentTarget.closest("details")?.removeAttribute("open");
+  const content = (paragraphs ?? [text]).filter((paragraph) => typeof paragraph === "string" && paragraph.trim());
+  const links = [...sources, source].filter((item, index, all) => item?.href && all.findIndex((candidate) => candidate?.href === item.href) === index);
+  const fallback = locale === "es" ? "Falta esta explicación. Informe del problema para que podamos completar la metodología y la fuente." : locale === "de" ? "Diese Erklärung fehlt. Bitte melde das Problem, damit wir Methode und Quelle ergänzen können." : "This explanation is unavailable. Please report the issue so we can add the method and source.";
   return (
-    <details className="graph-info-popover graph-info-compact" data-export-ignore="true">
-      <summary aria-label={label} title={label}><span className="info-glyph" aria-hidden="true">i</span></summary>
-      <button className="graph-info-backdrop" type="button" tabIndex="-1" aria-label={close} onClick={closePopover} />
-      <div className="graph-info-card" role="dialog" aria-modal="true" aria-label={`${title} · Info`}>
-        <header><strong>Info</strong><button type="button" aria-label={close} onClick={closePopover}>×</button></header>
-        <p>{(paragraphs ?? [text]).filter(Boolean).join(" ")}</p>
+    <InfoPopover label={label} closeLabel={close} className="graph-info-compact">
+        <p>{(content.length ? content : [fallback]).join(" ")}</p>
         {dataDate && <p className="graph-info-data-age"><strong>{status}:</strong> {new Intl.DateTimeFormat(locale === "de" ? "de-DE" : locale === "es" ? "es-ES" : "en-GB", { dateStyle: "medium" }).format(new Date(`${dataDate}T12:00:00Z`))} · {dataAgeLabel(dataDate, locale)}</p>}
-      </div>
-    </details>
+        {links.map((item) => <a key={item.href} href={item.href} target="_blank" rel="noreferrer">{item.label} ↗</a>)}
+    </InfoPopover>
   );
 }
 
@@ -115,6 +114,21 @@ const SPAIN_COMPARISON_GROUPS = [
   { id: "vox", name: "Vox", partyIds: ["403"], color: "#63a62f" },
   { id: "sumar-podemos", name: "Sumar + Podemos", partyIds: ["404", "405"], color: "#d454a0" },
 ];
+function SpainComparisonPartyLinks({ group, includeDot = false }) {
+  const parties = group.partyIds.map((id) => SPAIN_PARTY_DEFINITIONS.find((party) => party.id === id)).filter(Boolean);
+  if (!parties.length) return group.name;
+  return (
+    <span className="spain-comparison-party-links">
+      {includeDot && <i className="party-dot" aria-hidden="true" style={{ background: group.color }} />}
+      {parties.map((party, index) => (
+        <React.Fragment key={party.id}>
+          {index > 0 && <span aria-hidden="true"> + </span>}
+          <PartyInfoButton party={party} as="span" />
+        </React.Fragment>
+      ))}
+    </span>
+  );
+}
 
 const INSIGHT_UI = {
   es: {
@@ -122,7 +136,7 @@ const INSIGHT_UI = {
     compare: "Cambio desde", election: "23-J de 2023", year: "Hace 12 meses", yearStart: "Inicio de año", now: "ahora", electionResult: "resultado oficial", pollingAverage: "media comparable", currentAverage: "Media actual", points: "pp",
     raceEyebrow: "La carrera por el primer puesto", raceTitle: "Distancia PP–PSOE", ahead: "por delante", tied: "Empate técnico en la media", sinceElection: "Evolución de la diferencia desde el 23-J", ppLead: "PP por delante", psoeLead: "PSOE por delante",
     agreementEyebrow: "Comparación de encuestas", agreementTitle: "Dispersión entre institutos", agreementIntro: "Para cada partido, cada instituto aporta solo su encuesta más reciente de los últimos 45 días. Una línea corta significa resultados más parecidos.", polls: "institutos", range: "rango", spreadNote: "Línea: valor más bajo–más alto · punto: media simple. No es un margen de error.",
-    changeInfo: "Compara la media actual con el punto de referencia elegido. El valor de la derecha es la diferencia en puntos porcentuales, no el cambio relativo.", raceInfo: "Para cada mes se calcula una media comparable de PP y PSOE. El eje vertical es PP menos PSOE: valores positivos significan ventaja del PP y valores negativos, ventaja del PSOE. Mueva el cursor o toque para ver un mes exacto.", agreementInfo: "Esta vista no mide quién acierta más. Compara las últimas publicaciones disponibles dentro de la misma ventana de 45 días. Para cada partido, la línea va del resultado más bajo al más alto y el punto marca la media simple. Una línea más larga puede reflejar fechas, métodos o muestras distintas; no es un intervalo de confianza ni un margen de error.",
+    changeInfo: "Compara una media actual con el punto de referencia elegido. Para la media, cada instituto seleccionado aporta solo su última encuesta de los 45 días anteriores y todos tienen el mismo peso; no se pondera por muestra ni por precisión histórica. El valor de la derecha es una diferencia en puntos porcentuales, no un cambio relativo. La comparación electoral usa el resultado oficial del 23-J de 2023; las otras referencias usan la misma regla de 45 días. Sumar y Podemos se agrupan para mantener la comparabilidad con la candidatura conjunta de 2023. Redondeo, fechas de campo y efectos de instituto pueden explicar cambios pequeños; no es una prueba de significación ni una predicción.", raceInfo: "Para cada mes se calcula una media comparable de PP y PSOE usando la última encuesta de cada instituto seleccionado dentro de los 45 días anteriores, con el mismo peso para cada instituto. El eje vertical es PP menos PSOE: valores positivos significan ventaja del PP y negativos, ventaja del PSOE. Los puntos mensuales resumen encuestas publicadas y la línea solo los conecta; no mide lo ocurrido entre ellos. Mueva el cursor o toque para inspeccionar un mes. Las diferencias pequeñas pueden responder a incertidumbre muestral o efectos de instituto y no demuestran por sí solas un cambio real.", agreementInfo: "Esta vista no mide quién acierta más. Compara la última publicación de cada instituto seleccionado dentro de la misma ventana de 45 días. Para cada partido, la línea va del resultado más bajo al más alto y el punto es la media simple; el número indica cuántos institutos contribuyen. Una línea más larga puede reflejar fechas de campo, muestras, redondeo, métodos o efectos propios de los institutos. No es un intervalo de confianza, un margen de error combinado ni una prueba de desacuerdo estadísticamente significativo. Un instituto sin valor publicado para un partido se omite, no se trata como cero.",
     combinedNote: "Sumar + Podemos se agrupan para mantener una comparación coherente con la candidatura Sumar de 2023.", spreadValue: "puntos de dispersión", axisLabel: "Eje: PP menos PSOE", ppAlwaysAhead: "PP va por delante en todos los puntos mostrados", psoeAlwaysAhead: "PSOE va por delante en todos los puntos mostrados", leadChanged: "La ventaja cambia de partido", exportTitle: "Qué está cambiando en España",
   },
   de: {
@@ -130,7 +144,7 @@ const INSIGHT_UI = {
     compare: "Veränderung seit", election: "Wahl am 23. Juli 2023", year: "Vor 12 Monaten", yearStart: "Jahresbeginn", now: "jetzt", electionResult: "amtliches Ergebnis", pollingAverage: "vergleichbarer Durchschnitt", currentAverage: "Aktueller Durchschnitt", points: "Pkt.",
     raceEyebrow: "Rennen um Platz eins", raceTitle: "Abstand PP–PSOE", ahead: "vorn", tied: "Im Durchschnitt praktisch gleichauf", sinceElection: "Entwicklung des Abstands seit der Wahl 2023", ppLead: "PP vorn", psoeLead: "PSOE vorn",
     agreementEyebrow: "Umfragen vergleichen", agreementTitle: "Streuung zwischen Instituten", agreementIntro: "Für jede Partei zählt je Institut nur die jüngste Umfrage der letzten 45 Tage. Eine kurze Linie bedeutet ähnlichere Ergebnisse.", polls: "Institute", range: "Spanne", spreadNote: "Linie: niedrigster–höchster Wert · Punkt: einfacher Mittelwert. Keine Fehlerspanne.",
-    changeInfo: "Verglichen wird der aktuelle Mittelwert mit dem gewählten Ausgangspunkt. Rechts steht die Differenz in Prozentpunkten, nicht die relative Veränderung.", raceInfo: "Für jeden Monat wird ein vergleichbarer Mittelwert für PP und PSOE berechnet. Die Y-Achse zeigt PP minus PSOE: positive Werte sind ein PP-Vorsprung, negative ein PSOE-Vorsprung. Fahre über die Linie oder tippe sie an, um einen Monat genau zu sehen.", agreementInfo: "Diese Ansicht bewertet nicht, welches Institut genauer ist. Sie vergleicht die jüngsten Veröffentlichungen innerhalb desselben 45-Tage-Fensters. Für jede Partei reicht die Linie vom niedrigsten bis zum höchsten Wert; der Punkt ist der einfache Mittelwert. Eine längere Linie kann durch unterschiedliche Feldzeiten, Methoden oder Stichproben entstehen. Sie ist weder Konfidenzintervall noch Fehlerspanne.",
+    changeInfo: "Verglichen wird ein aktueller Durchschnitt mit dem gewählten Ausgangspunkt. Dafür zählt je ausgewähltem Institut nur die jüngste Umfrage der vorherigen 45 Tage; alle Institute haben dasselbe Gewicht, unabhängig von Stichprobengröße oder früherer Genauigkeit. Rechts steht die Differenz in Prozentpunkten, nicht die relative Veränderung. Der Wahlvergleich nutzt das amtliche Ergebnis vom 23. Juli 2023; die anderen Ausgangspunkte verwenden dieselbe 45-Tage-Regel. Sumar und Podemos werden für die Vergleichbarkeit mit der gemeinsamen Kandidatur 2023 zusammengefasst. Kleine Differenzen können durch Rundung, Feldzeit und Institutseffekte entstehen; die Darstellung ist weder Signifikanztest noch Prognose.", raceInfo: "Für jeden Monat wird ein vergleichbarer Durchschnitt für PP und PSOE gebildet: je ausgewähltem Institut die jüngste Umfrage der vorherigen 45 Tage, mit gleichem Gewicht. Die Y-Achse zeigt PP minus PSOE; positive Werte sind ein PP-Vorsprung, negative ein PSOE-Vorsprung. Die Monatswerte fassen veröffentlichte Umfragen zusammen, die Linie verbindet sie lediglich und misst nichts zwischen den Punkten. Fahre über die Linie oder tippe sie an, um einen Monat zu prüfen. Kleine Abstände können Stichprobenunsicherheit oder Institutseffekte spiegeln und belegen allein keinen echten Führungswechsel.", agreementInfo: "Diese Ansicht bewertet nicht, welches Institut genauer ist. Sie vergleicht die jüngste Veröffentlichung jedes ausgewählten Instituts im selben 45-Tage-Fenster. Für jede Partei reicht die Linie vom niedrigsten bis zum höchsten Wert; der Punkt ist der einfache Mittelwert, die Zahl nennt die beitragenden Institute. Eine längere Linie kann durch Feldzeiten, Stichproben, Rundung, Methoden oder typische Institutseffekte entstehen. Sie ist weder Konfidenzintervall noch kombinierte Fehlerspanne und kein Nachweis statistisch bedeutsamer Uneinigkeit. Fehlt bei einem Institut ein Parteiwert, wird er ausgelassen und nicht als null behandelt.",
     combinedNote: "Sumar und Podemos werden zusammengefasst, damit der Vergleich mit der gemeinsamen Sumar-Kandidatur von 2023 sinnvoll bleibt.", spreadValue: "Prozentpunkte Streuung", axisLabel: "Achse: PP minus PSOE", ppAlwaysAhead: "PP liegt an jedem gezeigten Messpunkt vorn", psoeAlwaysAhead: "PSOE liegt an jedem gezeigten Messpunkt vorn", leadChanged: "Die Führung wechselt im gezeigten Zeitraum", exportTitle: "Was sich in Spanien verändert",
   },
   en: {
@@ -138,7 +152,7 @@ const INSIGHT_UI = {
     compare: "Change since", election: "23 July 2023 election", year: "12 months ago", yearStart: "Start of year", now: "now", electionResult: "official result", pollingAverage: "comparable average", currentAverage: "Current average", points: "pts",
     raceEyebrow: "The race for first place", raceTitle: "PP–PSOE gap", ahead: "ahead", tied: "Effectively level in the average", sinceElection: "How the gap has moved since the 2023 election", ppLead: "PP ahead", psoeLead: "PSOE ahead",
     agreementEyebrow: "Poll comparison", agreementTitle: "Spread between pollsters", agreementIntro: "For each party, every pollster contributes only its latest poll from the last 45 days. A shorter line means more similar results.", polls: "pollsters", range: "range", spreadNote: "Line: lowest–highest result · dot: simple mean. This is not a margin of error.",
-    changeInfo: "The current average is compared with the selected baseline. The figure on the right is a percentage-point difference, not a relative change.", raceInfo: "A comparable PP and PSOE average is calculated for each month. The vertical axis is PP minus PSOE: positive values are a PP lead and negative values a PSOE lead. Hover or tap to inspect an exact month.", agreementInfo: "This view does not score which pollster is more accurate. It compares the latest releases available inside the same 45-day window. For each party, the line runs from the lowest to the highest result and the dot marks the simple mean. A longer line can reflect different fieldwork dates, methods or samples; it is neither a confidence interval nor a margin of error.",
+    changeInfo: "A current average is compared with the selected baseline. Each selected pollster contributes only its latest poll from the preceding 45 days and receives equal weight; sample size and past accuracy do not alter the weight. The figure on the right is a percentage-point difference, not a relative change. The election comparison uses the official 23 July 2023 result; the other baselines use the same 45-day rule. Sumar and Podemos are grouped to remain comparable with their joint 2023 candidacy. Rounding, fieldwork dates and house effects can explain small changes; this is neither a significance test nor a forecast.", raceInfo: "For each month, a comparable PP and PSOE average uses every selected pollster’s latest poll from the preceding 45 days, with equal pollster weights. The vertical axis is PP minus PSOE: positive values are a PP lead and negative values a PSOE lead. Monthly points summarise published polls and the line only connects them; it does not measure the period between points. Hover or tap to inspect a month. Small gaps can reflect sampling uncertainty or house effects and do not alone establish a real change in the lead.", agreementInfo: "This view does not score which pollster is more accurate. It compares each selected pollster’s latest release inside the same 45-day window. For each party, the line runs from the lowest to highest result, the dot is the simple mean and the count shows contributing pollsters. A longer line can reflect fieldwork dates, samples, rounding, modes or house effects. It is not a confidence interval, combined margin of error or proof of statistically meaningful disagreement. If a pollster did not report a party, that value is omitted rather than treated as zero.",
     combinedNote: "Sumar and Podemos are grouped to keep the comparison consistent with the joint Sumar candidacy in 2023.", spreadValue: "percentage points spread", axisLabel: "Axis: PP minus PSOE", ppAlwaysAhead: "PP leads at every point shown", psoeAlwaysAhead: "PSOE leads at every point shown", leadChanged: "The lead changes hands in this period", exportTitle: "What is changing in Spain",
   },
 };
@@ -178,15 +192,15 @@ function pollingSnapshot(polls, pollsterIds, date) {
   return { results, pollsterCount: latest.size, polls: [...latest.values()] };
 }
 
-export function buildSpainPollingInsights(pollData, currentResults, latestDate, selectedPollsters) {
+export function buildSpainPollingInsights(pollData, _currentResults, latestDate, selectedPollsters) {
   if (!pollData?.polls?.length || !latestDate) return null;
+  const latestSnapshot = pollingSnapshot(pollData.polls, selectedPollsters, latestDate);
   const groups = SPAIN_COMPARISON_GROUPS.map((group) => ({
     ...group,
-    current: groupValue(currentResults, group.partyIds),
+    current: latestSnapshot.results[group.id],
   })).filter((group) => Number.isFinite(group.current));
   const election = pollData.metadata?.electionResults?.["2023-07-23"] ?? {};
   const electionResults = Object.fromEntries(SPAIN_COMPARISON_GROUPS.map((group) => [group.id, groupValue(election, group.partyIds)]));
-  const latestSnapshot = pollingSnapshot(pollData.polls, selectedPollsters, latestDate);
   const spread = groups.map((group) => {
     const values = latestSnapshot.polls.map((poll) => groupValue(poll.results, group.partyIds)).filter(Number.isFinite);
     return values.length ? {
@@ -216,7 +230,7 @@ export function buildSpainPollingInsights(pollData, currentResults, latestDate, 
     electionResults,
     spread,
     raceSeries,
-    gap: (groupValue(currentResults, ["401"]) ?? 0) - (groupValue(currentResults, ["402"]) ?? 0),
+    gap: (latestSnapshot.results.pp ?? 0) - (latestSnapshot.results.psoe ?? 0),
   };
 }
 
@@ -302,6 +316,7 @@ function RaceSparkline({ series, locale, text }) {
 
 export function SpainPollingInsights({ locale, pollData, current, latestDate, selectedPollsters, exportControl = null }) {
   const text = insightLanguage(locale);
+  const source = { href: pollData.metadata?.sourceUrl, label: locale === "es" ? "Archivo de encuestas y fuentes originales" : locale === "de" ? "Umfragearchiv und Originalquellen" : "Polling archive and original sources" };
   const [comparison, setComparison] = useState("election");
   const insights = useMemo(() => buildSpainPollingInsights(pollData, current.results, latestDate, selectedPollsters), [pollData, current.results, latestDate, selectedPollsters]);
   const groups = insights?.groups ?? [];
@@ -325,25 +340,25 @@ export function SpainPollingInsights({ locale, pollData, current, latestDate, se
       <div className="spain-pulse-grid">
         <article className="spain-change-card">
           <small className="widget-data-age">{dataAgeLabel(latestDate, locale)}</small>
-          <header><div className="widget-info-heading"><MiniGraphInfo locale={locale} title={text.compare} text={text.changeInfo} dataDate={latestDate} /><div><span>{text.compare}</span><h3>{tabs.find(([id]) => id === comparison)?.[1]}</h3></div></div><div className="spain-period-tabs" data-export-ignore="true">{tabs.map(([id, label]) => <button key={id} type="button" className={comparison === id ? "active" : ""} aria-pressed={comparison === id} onClick={() => setComparison(id)}>{label}</button>)}</div></header>
+          <header><div className="widget-info-heading"><MiniGraphInfo locale={locale} title={text.compare} text={text.changeInfo} source={source} dataDate={latestDate} /><div><span>{text.compare}</span><h3>{tabs.find(([id]) => id === comparison)?.[1]}</h3></div></div><div className="spain-period-tabs" data-export-ignore="true">{tabs.map(([id, label]) => <button key={id} type="button" className={comparison === id ? "active" : ""} aria-pressed={comparison === id} onClick={() => setComparison(id)}>{label}</button>)}</div></header>
           <div className="spain-change-list">{groups.map((group) => {
             const baseline = activeSnapshot.results[group.id];
             const delta = Number.isFinite(baseline) ? group.current - baseline : null;
             const extent = Math.min(50, (Math.abs(delta ?? 0) / 12) * 50);
-            return <div className="spain-change-row" key={group.id}><span className="party-dot" style={{ background: group.color }} /><strong>{group.name}</strong><div className="delta-track" aria-hidden="true"><i className={delta >= 0 ? "positive" : "negative"} style={{ left: `${delta >= 0 ? 50 : 50 - extent}%`, width: `${extent}%`, background: group.color }} /></div><b>{formatNumber(group.current, locale)}%</b><em className={delta > 0 ? "up" : delta < 0 ? "down" : "flat"}>{Number.isFinite(delta) ? `${delta > 0 ? "+" : ""}${formatNumber(delta, locale)} ${text.points}` : "—"}</em></div>;
+            return <div className="spain-change-row" key={group.id}><strong><SpainComparisonPartyLinks group={group} includeDot /></strong><div className="delta-track" aria-hidden="true"><i className={delta >= 0 ? "positive" : "negative"} style={{ left: `${delta >= 0 ? 50 : 50 - extent}%`, width: `${extent}%`, background: group.color }} /></div><b>{formatNumber(group.current, locale)}%</b><em className={delta > 0 ? "up" : delta < 0 ? "down" : "flat"}>{Number.isFinite(delta) ? `${delta > 0 ? "+" : ""}${formatNumber(delta, locale)} ${text.points}` : "—"}</em></div>;
           })}</div>
           <footer><span>{activeSnapshot.kind === "election" ? text.electionResult : `${activeSnapshot.pollsterCount} ${text.polls} · ${text.pollingAverage}`}</span><small>{text.combinedNote}</small></footer>
         </article>
         <article className="spain-race-card">
           <small className="widget-data-age">{dataAgeLabel(latestDate, locale)}</small>
-          <div className="spain-race-summary"><div className="widget-info-heading"><MiniGraphInfo locale={locale} title={text.raceTitle} text={text.raceInfo} dataDate={latestDate} /><div><span>{text.raceEyebrow}</span><h3>{text.raceTitle}</h3><p>{text.sinceElection}</p></div></div><strong className={Math.abs(gap) < .15 ? "tied" : gap > 0 ? "pp" : "psoe"}>{Math.abs(gap) < .15 ? "≈ 0" : `${formatNumber(Math.abs(gap), locale)} ${text.points}`}<small>{Math.abs(gap) < .15 ? text.tied : `${gap > 0 ? "PP" : "PSOE"} ${text.ahead}`}</small></strong></div>
+          <div className="spain-race-summary"><div className="widget-info-heading"><MiniGraphInfo locale={locale} title={text.raceTitle} text={text.raceInfo} source={source} dataDate={latestDate} /><div><span>{text.raceEyebrow}</span><h3>{text.raceTitle}</h3><p>{text.sinceElection}</p></div></div><strong className={Math.abs(gap) < .15 ? "tied" : gap > 0 ? "pp" : "psoe"}>{Math.abs(gap) < .15 ? "≈ 0" : `${formatNumber(Math.abs(gap), locale)} ${text.points}`}<small>{Math.abs(gap) < .15 ? text.tied : <><PartyInfoButton party={SPAIN_PARTY_DEFINITIONS.find((party) => party.id === (gap > 0 ? "401" : "402"))} as="span" /> {text.ahead}</>}</small></strong></div>
           <RaceSparkline series={raceSeries} locale={locale} text={text} />
         </article>
         <article className="spain-agreement-card">
           <small className="widget-data-age">{dataAgeLabel(latestDate, locale)}</small>
-          <header><div className="widget-info-heading"><MiniGraphInfo locale={locale} title={text.agreementTitle} text={text.agreementInfo} dataDate={latestDate} /><div><span>{text.agreementEyebrow}</span><h3>{text.agreementTitle}</h3><p>{text.agreementIntro}</p></div></div></header>
+          <header><div className="widget-info-heading"><MiniGraphInfo locale={locale} title={text.agreementTitle} text={text.agreementInfo} source={source} dataDate={latestDate} /><div><span>{text.agreementEyebrow}</span><h3>{text.agreementTitle}</h3><p>{text.agreementIntro}</p></div></div></header>
           <div className="spain-range-axis" aria-hidden="true"><span>0%</span><span>{formatNumber(axisMax / 2, locale, 0)}%</span><span>{axisMax}%</span></div>
-          <div className="spain-range-list">{spread.map((item) => <div key={item.id}><div className="range-label"><span className="party-dot" style={{ background: item.color }} /><strong>{item.name}</strong><small>{item.count} {text.polls}</small><em>{formatNumber(item.max - item.min, locale)} {text.spreadValue}</em><b>{formatNumber(item.min, locale)}–{formatNumber(item.max, locale)}%</b></div><div className="range-track"><i style={{ left: `${(item.min / axisMax) * 100}%`, width: `${((item.max - item.min) / axisMax) * 100}%`, background: item.color }} /><span style={{ left: `${(item.mean / axisMax) * 100}%`, borderColor: item.color }} title={`${text.currentAverage}: ${formatNumber(item.mean, locale)}%`} /></div></div>)}</div>
+          <div className="spain-range-list">{spread.map((item) => <div key={item.id}><div className="range-label"><strong><SpainComparisonPartyLinks group={item} includeDot /></strong><small>{item.count} {text.polls}</small><em>{formatNumber(item.max - item.min, locale)} {text.spreadValue}</em><b>{formatNumber(item.min, locale)}–{formatNumber(item.max, locale)}%</b></div><div className="range-track"><i style={{ left: `${(item.min / axisMax) * 100}%`, width: `${((item.max - item.min) / axisMax) * 100}%`, background: item.color }} /><span style={{ left: `${(item.mean / axisMax) * 100}%`, borderColor: item.color }} title={`${text.currentAverage}: ${formatNumber(item.mean, locale)}%`} /></div></div>)}</div>
           <footer><small>{text.spreadNote}</small></footer>
         </article>
       </div>
@@ -588,13 +603,13 @@ function issuePageLanguage(locale) {
   };
 }
 
-function ConcernBars({ id, locale, title, intro, items, labels, info, dataDate }) {
+function ConcernBars({ id, locale, title, intro, items, labels, info, dataDate, sources = [] }) {
   const exportRef = useRef(null);
   const exportLabel = locale === "es" ? "Exportar PNG" : locale === "de" ? "PNG exportieren" : "Export PNG";
   return (
     <article ref={exportRef} id={id} className="spain-concern-panel">
       <small className="widget-data-age">{dataAgeLabel(dataDate, locale)}</small>
-      <header><div className="widget-info-heading"><MiniGraphInfo locale={locale} title={info.title} text={info.text} dataDate={dataDate} /><div><h2>{title}</h2><p>{intro}</p></div></div><PngExportButton elementRef={exportRef} filename={`pollframe-${id}`} title={title} subtitle="España · CIS" locale={locale} label={exportLabel} credit="Centro de Investigaciones Sociológicas · Pollframe" profile="issues" className="widget-share-trigger spain-concern-png" /></header>
+      <header><div className="widget-info-heading"><MiniGraphInfo locale={locale} title={info.title} paragraphs={info.paragraphs ?? [info.text]} sources={sources} dataDate={dataDate} /><div><h2>{title}</h2><p>{intro}</p></div></div><PngExportButton elementRef={exportRef} filename={`pollframe-${id}`} title={title} subtitle="España · CIS" locale={locale} label={exportLabel} credit="Centro de Investigaciones Sociológicas · Pollframe" profile="issues" className="widget-share-trigger spain-concern-png" /></header>
       <div className="spain-concern-ranking">{items.map((item, index) => <div key={item.id}><b>{index + 1}</b><span>{labels[item.id] ?? item.label}</span><div><i style={{ width: `${item.value}%`, background: item.color }} /></div><strong>{formatNumber(item.value, locale)}%</strong></div>)}</div>
     </article>
   );
@@ -626,17 +641,26 @@ export function SpainIssuesPage({ locale, summary, formatDate, numberLocale }) {
   const issue = summary.issues;
   const [economyDetail, setEconomyDetail] = useState(false);
   const fieldwork = `${formatDate(issue.fieldwork[0], locale, { year: true })} – ${formatDate(issue.fieldwork[1], locale, { year: true })}`;
+  const studyContext = locale === "es"
+    ? `Fuente: barómetro mensual del CIS, estudio ${issue.study}; ${issue.interviews.toLocaleString(numberLocale)} entrevistas telefónicas a población adulta residente en España, realizadas del ${fieldwork}. La fecha mostrada es el final del trabajo de campo, no la fecha de publicación. Pollframe reproduce y ordena los porcentajes publicados; no recalcula respuestas individuales. Los valores están redondeados y esta medición es una fotografía del periodo, no una tendencia ni una explicación causal.`
+    : locale === "de"
+      ? `Quelle ist das monatliche CIS-Barometer, Studie ${issue.study}: ${issue.interviews.toLocaleString(numberLocale)} Telefoninterviews mit Erwachsenen in Spanien vom ${fieldwork}. Der angezeigte Datenstand ist das Ende der Feldzeit, nicht das Veröffentlichungsdatum. Pollframe übernimmt und sortiert die veröffentlichten Prozentwerte, berechnet aber keine Individualdaten neu. Die Werte sind gerundet; diese Erhebung ist eine Momentaufnahme, kein Trend und keine Kausalerklärung.`
+      : `Source: monthly CIS barometer, study ${issue.study}; ${issue.interviews.toLocaleString(numberLocale)} telephone interviews with adults in Spain conducted ${fieldwork}. The displayed data date is the end of fieldwork, not publication. Pollframe reproduces and ranks the published percentages; it does not recalculate respondent-level data. Figures are rounded and this survey is a snapshot, not a trend or causal explanation.`;
+  const sources = [
+    { href: issue.sourceUrl, label: text.source },
+    { href: issue.studyUrl, label: text.study },
+  ];
   return (
     <main id="top" className="germany-country-overview spain-country-overview spain-issues-page">
-      <nav className="region-breadcrumb country-breadcrumb" aria-label="Navigation"><a href="/?country=es">← {text.back}</a></nav>
+      <nav className="region-breadcrumb country-breadcrumb" aria-label="Navigation"><a href={publicCountryPath("es")}>← {text.back}</a></nav>
       <section className="spain-issues-hero"><div><p className="section-label">{text.eyebrow}</p><h1>{text.title}</h1><p>{text.intro}</p></div><aside><span>{formatDate(issue.fieldwork[1], locale, { year: true })} · {dataAgeLabel(issue.fieldwork[1], locale)}</span><strong>{issue.interviews.toLocaleString(numberLocale)}</strong><small>{text.interviews}</small></aside></section>
       <section className="spain-concern-grid" aria-label={text.title}>
-        <ConcernBars id="spain-national-concerns" locale={locale} title={text.national} intro={text.nationalIntro} items={national.slice(0, 5)} labels={text.labels} info={{ title: text.nationalInfoTitle, text: text.nationalInfo }} dataDate={issue.fieldwork[1]} />
-        <ConcernBars id="spain-personal-concerns" locale={locale} title={text.personal} intro={text.personalIntro} items={issue.personal} labels={text.labels} info={{ title: text.personalInfoTitle, text: text.personalInfo }} dataDate={issue.fieldwork[1]} />
+        <ConcernBars id="spain-national-concerns" locale={locale} title={text.national} intro={text.nationalIntro} items={national.slice(0, 5)} labels={text.labels} info={{ title: text.nationalInfoTitle, paragraphs: [text.nationalInfo, studyContext, locale === "es" ? "La página principal muestra los cinco temas más citados; la clasificación completa disponible aparece en esta vista. Las categorías y su redacción proceden de la tabulación del CIS." : locale === "de" ? "Auf der Übersichtsseite stehen die fünf häufigsten Themen; diese Ansicht zeigt die vollständige verfügbare Rangfolge. Kategorien und Bezeichnungen folgen der CIS-Auswertung." : "The overview shows the five most-cited topics; this page provides the full available ranking. Categories and wording follow the CIS tables."] }} dataDate={issue.fieldwork[1]} sources={sources} />
+        <ConcernBars id="spain-personal-concerns" locale={locale} title={text.personal} intro={text.personalIntro} items={issue.personal} labels={text.labels} info={{ title: text.personalInfoTitle, paragraphs: [text.personalInfo, studyContext, locale === "es" ? "Solo se muestran las categorías personales publicadas e incorporadas a esta edición. No deben restarse de los porcentajes nacionales porque las preguntas y el significado son distintos." : locale === "de" ? "Gezeigt werden die für diese Ausgabe veröffentlichten und übernommenen persönlichen Kategorien. Sie dürfen nicht von den nationalen Werten abgezogen werden, weil Frage und Bedeutung verschieden sind." : "Only the personal categories published and included for this edition are shown. They should not be subtracted from national percentages because the questions and meaning differ."] }} dataDate={issue.fieldwork[1]} sources={sources} />
       </section>
       <section id="spain-economy" className="spain-economy-panel">
         <small className="widget-data-age">{dataAgeLabel(issue.fieldwork[1], locale)}</small>
-        <header><div className="widget-info-heading"><MiniGraphInfo locale={locale} title={text.economyInfoTitle} paragraphs={text.economyInfo} dataDate={issue.fieldwork[1]} /><div><p className="section-label">{text.economyEyebrow}</p><h2>{text.economyTitle}</h2><p className="spain-economy-summary">{text.economyGap}</p></div></div></header>
+        <header><div className="widget-info-heading"><MiniGraphInfo locale={locale} title={text.economyInfoTitle} paragraphs={[...text.economyInfo, studyContext]} sources={sources} dataDate={issue.fieldwork[1]} /><div><p className="section-label">{text.economyEyebrow}</p><h2>{text.economyTitle}</h2><p className="spain-economy-summary">{text.economyGap}</p></div></div></header>
         <div className="economy-view-toggle"><button type="button" className={!economyDetail ? "active" : ""} aria-pressed={!economyDetail} onClick={() => setEconomyDetail(false)}>{text.grouped}</button><button type="button" className={economyDetail ? "active" : ""} aria-pressed={economyDetail} onClick={() => setEconomyDetail(true)}>{text.allAnswers}</button></div>
         <EconomicPerception label={text.personalEconomy} values={issue.economy.personal} text={text} locale={locale} detailed={economyDetail} />
         <EconomicPerception label={text.countryEconomy} values={issue.economy.country} text={text} locale={locale} detailed={economyDetail} />
@@ -690,15 +714,20 @@ export function SpainRegionPage({ locale, regions, area, formatDate }) {
     live: "Regular polling", latest: "Latest published poll", noLive: "No continuous average", trend: "Recent movement", trendText: "The last twelve months only. Every point is a published poll and lines connect observations; this is not a forecast.", electionInfo: "Composition produced by the last regional election", majority: "Majority threshold", represented: "Parties with seats", cadence: "Verified publication cadence", cadenceGood: "Polls appeared in at least four months of the past year and none of the six latest intervals exceeds 120 days. A recent average and trend are therefore shown.", cadenceThin: "Polls exist, but arrive in bursts or with gaps longer than four months. The latest publication is shown as a single poll rather than being turned into a continuous trend.", cadenceArchive: "The available series ends at the election. It documents the campaign but does not describe politics now.", months: "months with data in 12 months", last12: "polls in 12 months", gap: "largest recent interval", days: "days", single: "One poll, not an average", electionWinner: "Largest party",
   };
   const cadenceText = trendEligible ? copy.cadenceGood : status === "archive" ? copy.cadenceArchive : copy.cadenceThin;
+  const trendMethod = locale === "es"
+    ? "La vista se limita a los doce meses anteriores al último dato. Cada marca es una encuesta autonómica publicada y cada instituto conserva su propio valor; las líneas solo conectan observaciones del mismo partido. No se pondera por tamaño de muestra ni precisión histórica. Una ausencia no equivale a cero y los movimientos pequeños pueden reflejar muestreo, método, fechas de campo o efectos de instituto. La fecha de datos es la última publicación incluida."
+    : locale === "de"
+      ? "Die Ansicht ist auf die zwölf Monate vor dem jüngsten Datenpunkt begrenzt. Jede Markierung ist eine veröffentlichte Regionalumfrage; die Linien verbinden lediglich Beobachtungen derselben Partei. Stichprobengröße und frühere Genauigkeit verändern das Gewicht nicht. Fehlende Werte sind keine Nullwerte, und kleine Bewegungen können Stichprobe, Methode, Feldzeit oder Institutseffekte spiegeln. Als Datenstand gilt die jüngste einbezogene Veröffentlichung."
+      : "The view is limited to the twelve months before the latest data point. Every marker is a published regional poll and lines only connect observations for the same party. Sample size and past accuracy do not alter weighting. Missing values are not zero, and small movements may reflect sampling, mode, fieldwork dates or house effects. The data date is the latest included publication.";
   return (
     <main id="top" className="germany-country-overview spain-country-overview spain-region-page">
-      <nav className="region-breadcrumb country-breadcrumb"><a href="/?country=es#spain-map">← {text.back}</a></nav>
+      <nav className="region-breadcrumb country-breadcrumb"><a href={`${publicCountryPath("es")}#spain-map`}>← {text.back}</a></nav>
       <section className="spain-region-hero"><p className="section-label">{text.eyebrow}</p><h1>{region.names[locale] ?? region.names.en}</h1><div className={`region-status ${status}`}><strong>{trendEligible ? copy.live : statusLabel}</strong><span>{region.coverage.usablePolls} {text.polls} · {region.coverage.postElectionPolls} {text.post}{currentAge ? ` · ${currentAge}` : ""}</span></div></section>
       <section className="spain-region-snapshot">
         <article><header><h2>{text.election}</h2><p>{region.lastElection ? formatDate(region.lastElection.date, locale, { year: true }) : "—"}</p></header>{region.lastElection ? <><RegionResults results={region.lastElection.results} seats={region.lastElection.seats} parties={region.parties} locale={locale} sourceUrl={region.sourceUrl} /><dl className="region-election-facts">{winner && <div><dt>{copy.electionWinner}</dt><dd><i style={{ background: winner.color }} /><PartyInfoButton {...spainPartyInfoProps(winner, region.sourceUrl)} as="span" /></dd></div>}{seatTotal > 0 && <><div><dt>{copy.majority}</dt><dd>{Math.floor(seatTotal / 2) + 1}</dd></div><div><dt>{copy.represented}</dt><dd>{Object.values(region.lastElection.seats).filter((value) => value > 0).length}</dd></div></>}</dl></> : <div className="region-empty">{text.unavailable}</div>}</article>
         <article><header><h2>{trendEligible ? text.current : latestPublished ? copy.latest : copy.noLive}</h2><p>{trendEligible ? `${text.currentText} ${currentAge}.` : latestPublished ? `${latestPublished.pollster} · ${formatDate(latestPublished.date, locale, { year: true })} · ${dataAgeLabel(latestPublished.date, locale)}. ${copy.single}.` : cadenceText}</p></header>{trendEligible ? <RegionResults results={region.current.results} parties={region.parties} locale={locale} sourceUrl={region.sourceUrl} /> : latestPublished ? <RegionResults results={latestPublished.results} parties={region.parties} locale={locale} sourceUrl={region.sourceUrl} /> : <div className="region-election-leader">{winner && <><i style={{ background: winner.color }} /><span>{copy.electionWinner}</span><strong><PartyInfoButton {...spainPartyInfoProps(winner, region.sourceUrl)} as="span" /></strong><b>{formatNumber(winner.value, locale)}%</b></>}</div>}</article>
       </section>
-      {trendEligible && <section className="spain-region-history is-recent"><header><div className="widget-info-heading"><MiniGraphInfo locale={locale} title={copy.trend} paragraphs={[copy.trendText, copy.cadenceGood]} dataDate={region.current?.date} /><div><h2>{copy.trend}</h2><p>{copy.trendText}</p></div></div><div className="current-widget-meta"><small className="data-age-label">{dataDateLabel(region.current?.date, locale)} · {dataAgeLabel(region.current?.date, locale)}</small></div></header><RegionTrend region={{ ...region, polls: recentTrendPolls }} locale={locale} /></section>}
+      {trendEligible && <section className="spain-region-history is-recent"><header><div className="widget-info-heading"><MiniGraphInfo locale={locale} title={copy.trend} paragraphs={[copy.trendText, copy.cadenceGood, trendMethod]} source={{ href: region.sourceUrl, label: text.source }} dataDate={region.current?.date} /><div><h2>{copy.trend}</h2><p>{copy.trendText}</p></div></div><div className="current-widget-meta"><small className="data-age-label">{dataDateLabel(region.current?.date, locale)} · {dataAgeLabel(region.current?.date, locale)}</small></div></header><RegionTrend region={{ ...region, polls: recentTrendPolls }} locale={locale} /></section>}
       <section className="spain-region-quality"><div><p className="section-label">{copy.cadence}</p><h2>{trendEligible ? copy.live : statusLabel}</h2><p>{cadenceText}</p><dl><div><dt>{copy.last12}</dt><dd>{region.coverage.pollsLast12Months ?? 0}</dd></div><div><dt>{copy.months}</dt><dd>{region.coverage.activeMonthsLast12Months ?? 0}</dd></div><div><dt>{copy.gap}</dt><dd>{region.coverage.maxRecentGapDays ? `${region.coverage.maxRecentGapDays} ${copy.days}` : "—"}</dd></div></dl></div><aside><h3>{text.alternatives}</h3><p>{text.alternativeText}</p><a href="https://www.cis.es/catalogo-estudios/resultados-definiciones-busqueda" target="_blank" rel="noreferrer">{text.cis} ↗</a><a href="https://www.ine.es/experimental/multidimensional-indicator-quality-life/index.html" target="_blank" rel="noreferrer">{text.ine} ↗</a></aside></section>
       <footer className="spain-region-source"><span>{text.updated}: {formatDate(regions.metadata.generatedAt.slice(0, 10), locale, { year: true })} · {dataAgeLabel(regions.metadata.generatedAt.slice(0, 10), locale)}</span><a href={region.sourceUrl} target="_blank" rel="noreferrer">{text.source} ↗</a></footer>
     </main>
@@ -713,8 +742,8 @@ export function SpainCountryOverview({ locale, summary, formatDate, numberLocale
       <nav className="region-breadcrumb country-breadcrumb" aria-label="Navigation"><strong>España</strong></nav>
       <section className="germany-country-hero spain-country-hero"><div><div className="eyebrow"><span />{text.label}</div><h1>🇪🇸 {text.title}</h1><p>{text.intro}</p></div></section>
       <section className="spain-overview-grid" aria-label={text.title}>
-        <a className="spain-polling-entry" href="/?region=spain-congress"><div><span>{text.pollingEyebrow}</span><h2>{text.pollingTitle}</h2><p>{text.pollingText}</p></div><dl><div><dt>{text.polls}</dt><dd>{congress.pollCount.toLocaleString(numberLocale)}</dd></div><div><dt>{text.since}</dt><dd>{congress.firstDate.slice(0, 4)}</dd></div><div><dt>{text.updated}</dt><dd>{formatDate(congress.latestDate, locale)}<small className="data-age-label">{dataAgeLabel(congress.latestDate, locale)}</small></dd></div></dl><b aria-hidden="true">→</b></a>
-        <a className="spain-polling-entry spain-issues-entry" href="/?country=es&view=spain-issues"><div><span>{text.issuesEyebrow}</span><h2>{text.issuesTitle}</h2><p>{text.issuesText}</p></div><b aria-hidden="true">→</b></a>
+        <a className="spain-polling-entry" href={publicRegionPath("spain-congress")}><div><span>{text.pollingEyebrow}</span><h2>{text.pollingTitle}</h2><p>{text.pollingText}</p></div><dl><div><dt>{text.polls}</dt><dd>{congress.pollCount.toLocaleString(numberLocale)}</dd></div><div><dt>{text.since}</dt><dd>{congress.firstDate.slice(0, 4)}</dd></div><div><dt>{text.updated}</dt><dd>{formatDate(congress.latestDate, locale)}<small className="data-age-label">{dataAgeLabel(congress.latestDate, locale)}</small></dd></div></dl><b aria-hidden="true">→</b></a>
+        <a className="spain-polling-entry spain-issues-entry" href={publicViewPath("spain-issues", "es")}><div><span>{text.issuesEyebrow}</span><h2>{text.issuesTitle}</h2><p>{text.issuesText}</p></div><b aria-hidden="true">→</b></a>
       </section>
       <SpainMap locale={locale} formatDate={formatDate} />
     </main>

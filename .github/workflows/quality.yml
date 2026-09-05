@@ -27,6 +27,8 @@ jobs:
           cache: npm
       - name: Install exact dependencies
         run: npm ci --ignore-scripts
+      - name: Check polling freshness parsing and notification deduplication
+        run: node --test tests/uk-supplement.test.mjs tests/watchlist-alerts.test.mjs tests/watchlist-reorder.test.mjs
       - name: Audit dependencies
         run: npm audit --audit-level=low
       - name: Validate and build production files
@@ -63,6 +65,8 @@ jobs:
         run: npx playwright test tests/mobile-layout.spec.mjs tests/pwa.spec.mjs tests/watchlist-visual.spec.mjs --project=pixel-5 --project=iphone-13 --project=ipad-mini --project=phone-landscape
       - name: Run the global pairwise layout auditor
         run: npx playwright test tests/layout-audit.spec.mjs --project=chromium-desktop --project=iphone-13-chromium
+      - name: Check approval dialogs and chart labels on phone and desktop
+        run: npx playwright test tests/mobile-fixes.spec.mjs tests/info-popovers.spec.mjs --project=chromium-desktop --project=iphone-13
       - name: Preserve failure screenshots, traces and report
         if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
