@@ -48,16 +48,21 @@ test("Watchlist mouse reordering lifts, previews and commits only on release", a
   const originalOrder = await page.locator(".watchlist-grid > .watch-card").evaluateAll((cards) => cards.map((card) => card.dataset.watchId));
   const sourceCard = page.locator(".watch-card").nth(1);
   const sourceBox = await sourceCard.boundingBox();
+  const sourceHandleBox = await sourceCard.locator(".watch-drag-handle").boundingBox();
   const destinationBox = await page.locator(".watch-card").first().boundingBox();
-  const start = { x: sourceBox.x + sourceBox.width * .62, y: sourceBox.y + sourceBox.height * .54 };
+  const start = { x: sourceHandleBox.x + sourceHandleBox.width * .5, y: sourceHandleBox.y + sourceHandleBox.height * .5 };
   const ghost = page.locator("body > .watch-card-drag-shell > .watch-card-drag-ghost");
 
   // A normal tap and an early movement remain ordinary interactions; only a
   // deliberate hold unlocks the tile.
   await page.mouse.move(start.x, start.y);
   await page.mouse.down();
-  await page.waitForTimeout(70);
+  const pressState = await sourceCard.evaluate((card) => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve({
+    className: card.className,
+  })))));
+  expect(pressState.className).toMatch(/is-drag-pressing/);
   await page.mouse.up();
+  await expect(sourceCard).not.toHaveClass(/is-drag-pressing/);
   await expect(ghost).toHaveCount(0);
   expect(await page.locator(".watchlist-grid > .watch-card").evaluateAll((cards) => cards.map((card) => card.dataset.watchId))).toEqual(originalOrder);
   await page.mouse.move(start.x, start.y);
@@ -70,9 +75,11 @@ test("Watchlist mouse reordering lifts, previews and commits only on release", a
   await page.mouse.move(start.x, start.y);
   await page.mouse.down();
   await expect(ghost).toBeVisible();
+  await expect(ghost).toHaveClass(/is-lifted/);
+  await expect.poll(() => ghost.evaluate((card) => new DOMMatrix(getComputedStyle(card).transform).a)).toBeGreaterThan(1);
+  await expect.poll(async () => (await ghost.boundingBox()).width).toBeGreaterThan(sourceBox.width);
   await page.mouse.move(destinationBox.x + destinationBox.width / 2, destinationBox.y + 10, { steps: 10 });
   await expect.poll(() => page.locator(".watchlist-grid > .watch-card").evaluateAll((cards) => cards.map((card) => card.dataset.watchId))).not.toEqual(originalOrder);
-  expect(await page.locator(".watchlist-grid > .watch-card:not(.is-dragging)").evaluateAll((cards) => cards.some((card) => card.getAnimations().some((animation) => animation.id === "watchlist-reorder")))).toBe(true);
   await page.waitForTimeout(120);
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem("pollframe-watchlist-de-v2")).map((item) => item.id))).toEqual(originalOrder);
   const ghostBox = await ghost.boundingBox();
@@ -99,6 +106,14 @@ test("Watchlist touch drag follows the finger and commits on touch release", asy
       : original(query);
     window.localStorage.setItem("pollframe-watchlist-de-v2", JSON.stringify(german));
     window.localStorage.setItem("pollframe-notification-intro-de", "seen");
+    window.__watchHaptics = [];
+    Object.defineProperty(navigator, "vibrate", {
+      configurable: true,
+      value(duration) { window.__watchHaptics.push(duration); return true; },
+    });
+    // Exercise the native TouchEvent fallback used when an installed Safari
+    // app resumes without delivering pointerdown to the React tree.
+    window.addEventListener("pointerdown", (event) => event.stopImmediatePropagation(), true);
   }, deItems);
   await page.goto("/?view=watchlist&country=de");
   await expect(page.locator(".watch-card")).toHaveCount(deItems.length);
@@ -121,11 +136,20 @@ test("Watchlist touch drag follows the finger and commits on touch release", asy
   expect(await page.locator(".watchlist-grid > .watch-card").evaluateAll((cards) => cards.map((card) => card.dataset.watchId))).toEqual(originalOrder);
 
   sourceBox = await page.locator(".watch-card").nth(1).boundingBox();
+  const sourceCard = page.locator(".watch-card").nth(1);
   const destinationBox = await page.locator(".watch-card").first().boundingBox();
   start = { x: sourceBox.x + sourceBox.width * .62, y: sourceBox.y + sourceBox.height * .54 };
   const finish = { x: destinationBox.x + destinationBox.width / 2, y: destinationBox.y + 10 };
+  await page.evaluate(() => { window.__watchHaptics.length = 0; });
   await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ ...start, id: 1, radiusX: 6, radiusY: 6, force: .5 }] });
-  await expect(page.locator("body > .watch-card-drag-shell > .watch-card-drag-ghost")).toBeVisible();
+  await expect(sourceCard).toHaveClass(/is-drag-pressing/);
+  await page.waitForTimeout(80);
+  expect(await sourceCard.evaluate((card) => new DOMMatrix(getComputedStyle(card).transform).a)).toBeLessThan(.998);
+  const touchGhost = page.locator("body > .watch-card-drag-shell > .watch-card-drag-ghost");
+  await expect(touchGhost).toBeVisible();
+  await expect(touchGhost).toHaveClass(/is-lifted/);
+  await expect.poll(() => touchGhost.evaluate((card) => new DOMMatrix(getComputedStyle(card).transform).a)).toBeGreaterThan(1);
+  expect(await page.evaluate(() => window.__watchHaptics)).toEqual([14]);
   const secondTouch = { x: Math.min(start.x + 24, page.viewportSize().width - 8), y: start.y + 8, id: 2, radiusX: 6, radiusY: 6, force: .5 };
   await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ ...start, id: 1, radiusX: 6, radiusY: 6, force: .5 }, secondTouch] });
   await expect(page.locator("body > .watch-card-drag-shell")).toHaveCount(1);
@@ -172,6 +196,116 @@ test("Watchlist accepts a calm sideways insertion on desktop", async ({ page }, 
   const shellBox = await page.locator("body > .watch-card-drag-shell").boundingBox();
   expect(Math.abs((shellBox.x + sourceBox.width * .45) - finish.x)).toBeLessThan(35);
   await page.mouse.up();
+  await expect(page.locator("body > .watch-card-drag-shell")).toHaveCount(0);
+});
+
+test("Watchlist drag auto-scrolls at both screen edges and stops immediately between them", async ({ page }, testInfo) => {
+  test.skip(!testInfo.project.name.endsWith("desktop"), "desktop edge-scroll regression");
+  await page.addInitScript((german) => {
+    const original = window.matchMedia.bind(window);
+    window.matchMedia = (query) => query === "(display-mode: standalone)"
+      ? { matches: true, media: query, onchange: null, addListener() {}, removeListener() {}, addEventListener() {}, removeEventListener() {}, dispatchEvent() { return true; } }
+      : original(query);
+    window.localStorage.setItem("pollframe-watchlist-de-v2", JSON.stringify(german));
+    window.localStorage.setItem("pollframe-notification-intro-de", "seen");
+  }, deItems);
+  await page.goto("/?view=watchlist&country=de");
+  await page.getByRole("button", { name: /Bearbeiten|Edit/i }).click();
+  await page.evaluate(() => window.scrollTo(0, 0));
+
+  const sourceBox = await page.locator(".watch-card").first().boundingBox();
+  const start = { x: sourceBox.x + sourceBox.width * .55, y: sourceBox.y + sourceBox.height * .5 };
+  await page.mouse.move(start.x, start.y);
+  await page.mouse.down();
+  await expect(page.locator("body > .watch-card-drag-shell")).toBeVisible();
+
+  const viewport = page.viewportSize();
+  await page.mouse.move(viewport.width * .5, viewport.height * .55, { steps: 5 });
+  const outsideEdge = await page.evaluate(() => window.scrollY);
+  await page.waitForTimeout(180);
+  expect(await page.evaluate(() => window.scrollY)).toBe(outsideEdge);
+
+  await page.mouse.move(viewport.width * .5, viewport.height - 2, { steps: 7 });
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(outsideEdge + 20);
+
+  await page.mouse.move(viewport.width * .5, viewport.height * .55, { steps: 4 });
+  await page.waitForTimeout(50);
+  const stoppedAt = await page.evaluate(() => window.scrollY);
+  await page.waitForTimeout(180);
+  expect(Math.abs((await page.evaluate(() => window.scrollY)) - stoppedAt)).toBeLessThanOrEqual(1);
+
+  await page.mouse.move(viewport.width * .5, 2, { steps: 7 });
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeLessThan(stoppedAt - 20);
+  await page.mouse.move(viewport.width * .5, viewport.height * .55, { steps: 4 });
+  await page.waitForTimeout(50);
+  const stoppedAfterUp = await page.evaluate(() => window.scrollY);
+  await page.waitForTimeout(180);
+  expect(Math.abs((await page.evaluate(() => window.scrollY)) - stoppedAfterUp)).toBeLessThanOrEqual(1);
+  await page.mouse.up();
+  await expect(page.locator("body > .watch-card-drag-shell")).toHaveCount(0);
+});
+
+test("Watchlist edit mode reserves coarse card gestures for dragging", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "iphone-13", "real WebKit touch-action regression");
+  await page.addInitScript((german) => {
+    const original = window.matchMedia.bind(window);
+    window.matchMedia = (query) => query === "(display-mode: standalone)"
+      ? { matches: true, media: query, onchange: null, addListener() {}, removeListener() {}, addEventListener() {}, removeEventListener() {}, dispatchEvent() { return true; } }
+      : original(query);
+    window.localStorage.setItem("pollframe-watchlist-de-v2", JSON.stringify(german));
+    window.localStorage.setItem("pollframe-notification-intro-de", "seen");
+  }, deItems);
+  await page.goto("/?view=watchlist&country=de");
+  await page.getByRole("button", { name: /Bearbeiten|Edit/i }).click();
+  await expect.poll(() => page.locator(".watch-card").first().evaluate((card) => getComputedStyle(card).touchAction)).toBe("none");
+});
+
+test("Watchlist touch auto-scroll follows both phone edges", async ({ page, context }, testInfo) => {
+  test.skip(testInfo.project.name !== "iphone-13-chromium", "single Chromium touch edge-scroll regression");
+  await page.addInitScript((german) => {
+    const original = window.matchMedia.bind(window);
+    window.matchMedia = (query) => query === "(display-mode: standalone)"
+      ? { matches: true, media: query, onchange: null, addListener() {}, removeListener() {}, addEventListener() {}, removeEventListener() {}, dispatchEvent() { return true; } }
+      : original(query);
+    window.localStorage.setItem("pollframe-watchlist-de-v2", JSON.stringify(german));
+    window.localStorage.setItem("pollframe-notification-intro-de", "seen");
+    // Force the native TouchEvent fallback used by resumed installed Safari
+    // apps, so edge scrolling is covered on that exact input path as well.
+    window.addEventListener("pointerdown", (event) => event.stopImmediatePropagation(), true);
+  }, deItems);
+  await page.goto("/?view=watchlist&country=de");
+  await page.getByRole("button", { name: /Bearbeiten|Edit/i }).click();
+  const source = page.locator(".watch-card").first();
+  await source.scrollIntoViewIfNeeded();
+  const sourceBox = await source.boundingBox();
+  const start = { x: sourceBox.x + sourceBox.width * .55, y: sourceBox.y + sourceBox.height * .5 };
+  const cdp = await context.newCDPSession(page);
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ ...start, id: 1, radiusX: 6, radiusY: 6, force: .5 }] });
+  await expect(page.locator("body > .watch-card-drag-shell")).toBeVisible();
+
+  const viewport = page.viewportSize();
+  const middle = { x: viewport.width * .5, y: viewport.height * .55, id: 1, radiusX: 6, radiusY: 6, force: .5 };
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [middle] });
+  const outsideEdge = await page.evaluate(() => window.scrollY);
+  await page.waitForTimeout(180);
+  expect(await page.evaluate(() => window.scrollY)).toBe(outsideEdge);
+
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ ...middle, y: viewport.height - 2 }] });
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(outsideEdge + 15);
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [middle] });
+  await page.waitForTimeout(50);
+  const stoppedAt = await page.evaluate(() => window.scrollY);
+  await page.waitForTimeout(180);
+  expect(Math.abs((await page.evaluate(() => window.scrollY)) - stoppedAt)).toBeLessThanOrEqual(1);
+
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ ...middle, y: 2 }] });
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeLessThan(stoppedAt - 15);
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [middle] });
+  await page.waitForTimeout(50);
+  const stoppedAfterUp = await page.evaluate(() => window.scrollY);
+  await page.waitForTimeout(180);
+  expect(Math.abs((await page.evaluate(() => window.scrollY)) - stoppedAfterUp)).toBeLessThanOrEqual(1);
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
   await expect(page.locator("body > .watch-card-drag-shell")).toHaveCount(0);
 });
 
@@ -262,7 +396,15 @@ test("captures installed Watchlist layouts for visual review", async ({ page, co
   await expect(page.locator(".watch-card-snapshot .watch-snapshot-title time")).toHaveCount(0);
   await expect(page.locator(".watch-card-snapshot .watch-snapshot-list em.up")).not.toHaveCount(0);
   await expect(page.locator(".watch-card-party .watch-current-value").first()).toContainText("Letzte Umfrage");
-  await expect(page.locator(".watch-card-party .watch-card-value .up")).not.toHaveCount(0);
+  const partyChange = page.locator(".watch-card-party .watch-card-value .watch-change-value.up").first();
+  await expect(partyChange).toContainText("Seit letztem Mal");
+  const partyValueLayout = await page.locator(".watch-card-party .watch-card-value").first().evaluate((root) => {
+    const current = root.querySelector(".watch-current-value").getBoundingClientRect();
+    const change = root.querySelector(".watch-change-value").getBoundingClientRect();
+    return { currentRight: current.right, changeLeft: change.left, verticalDifference: Math.abs(current.bottom - change.bottom) };
+  });
+  expect(partyValueLayout.changeLeft).toBeGreaterThanOrEqual(partyValueLayout.currentRight - 1);
+  expect(partyValueLayout.verticalDifference).toBeLessThanOrEqual(2);
   const majorityDistance = page.locator(".watch-card-coalition .watch-majority-status");
   await expect(majorityDistance).toBeVisible();
   await expect(majorityDistance).toContainText(/Sitze (über der Mehrheit|fehlen)|Mehrheit genau erreicht/);

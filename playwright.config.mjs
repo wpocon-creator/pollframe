@@ -4,6 +4,7 @@ const desktop = { viewport: { width: 1440, height: 900 } };
 const localChromium = process.env.POLLFRAME_CHROME_PATH
   ? { launchOptions: { executablePath: process.env.POLLFRAME_CHROME_PATH } }
   : {};
+const externalBaseUrl = process.env.POLLFRAME_TEST_BASE_URL;
 
 export default defineConfig({
   testDir: "./tests",
@@ -20,7 +21,7 @@ export default defineConfig({
   workers: 2,
   reporter: [["list"], ["html", { outputFolder: "test-results/report", open: "never" }]],
   use: {
-    baseURL: "http://127.0.0.1:4174",
+    baseURL: externalBaseUrl ?? "http://127.0.0.1:4174",
     actionTimeout: 15_000,
     navigationTimeout: 15_000,
     screenshot: "only-on-failure",
@@ -28,7 +29,7 @@ export default defineConfig({
     video: process.env.POLLFRAME_CHROME_PATH ? "off" : "retain-on-failure",
     reducedMotion: "reduce",
   },
-  webServer: {
+  webServer: externalBaseUrl ? undefined : {
     command: "npm run preview -- --port 4174",
     url: "http://127.0.0.1:4174",
     reuseExistingServer: true,

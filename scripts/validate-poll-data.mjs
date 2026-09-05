@@ -139,11 +139,15 @@ if (uk.metadata?.source !== "UK Election Data Vault") addError("UK source identi
 if (uk.metadata?.sourceUrl !== "https://electiondatavault.co.uk/data/") addError("UK source URL is invalid");
 if (uk.metadata?.licenseUrl !== "https://electiondatavault.co.uk/about/") addError("UK reuse statement URL is invalid");
 if (uk.metadata?.region?.slug !== "uk-westminster") addError("UK region metadata is invalid");
-if (!Array.isArray(uk.polls) || uk.polls.length < 500 || uk.polls.length > 6_000) addError("UK weighted archive size is implausible");
+const ukWeightedPolls = (uk.polls ?? []).filter((poll) => poll.pollster === uk.metadata?.weightedAveragePollsterId);
+if (ukWeightedPolls.length < 500 || ukWeightedPolls.length > 6_000) addError("UK weighted archive size is implausible");
+if (!Array.isArray(uk.polls) || uk.polls.length > 16_000) addError("UK combined archive size is implausible");
 if (!Array.isArray(ukRaw.polls) || ukRaw.polls.length < 4_000 || ukRaw.polls.length > 10_000) addError("UK individual-poll archive size is implausible");
 if (!isRecord(uk.pollsters) || !isRecord(uk.parties)) addError("UK metadata maps are missing");
 if (containsWithheldSource(uk) || containsWithheldSource(ukRaw)) addError("UK polling files still contain identifiable withheld-source polls");
-if (!Array.isArray(uk.metadata?.defaultPollsters) || uk.metadata.defaultPollsters[0] !== uk.metadata.weightedAveragePollsterId) addError("UK weighted default is not configured");
+if (!Array.isArray(uk.metadata?.defaultPollsters) || !uk.metadata.defaultPollsters.length || uk.metadata.defaultPollsters.some((id) => !uk.pollsters[id])) addError("UK default pollsters are invalid");
+if (uk.metadata?.rawPollsLoaded && !uk.polls.some((poll) => poll.pollster !== uk.metadata.weightedAveragePollsterId)) addError("UK default individual-poll data is missing");
+if (uk.metadata?.supplementarySource && (uk.metadata.supplementarySource.license !== "CC BY-SA 4.0" || uk.metadata.supplementarySource.licenseUrl !== "https://creativecommons.org/licenses/by-sa/4.0/")) addError("UK supplementary source licence is missing");
 let previousUkDate = "";
 const combinedUkPolls = [...(uk.polls ?? []), ...(ukRaw.polls ?? [])].sort((a, b) => a.date.localeCompare(b.date));
 for (const [index, poll] of combinedUkPolls.entries()) {

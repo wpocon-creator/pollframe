@@ -1,4 +1,4 @@
-const VERSION = "pollframe-app-v28";
+const VERSION = "pollframe-app-v33";
 const SHELL_CACHE = `${VERSION}-shell`;
 const RUNTIME_CACHE = `${VERSION}-runtime`;
 const DATA_CACHE = `${VERSION}-data`;
@@ -7,9 +7,9 @@ const SHELL = [
   "/manifest-context.js",
   "/manifest.webmanifest",
   "/pollframe-mark.svg",
-  "/pollframe-app-192.png",
-  "/pollframe-app-512.png",
-  "/pollframe-maskable-512.png"
+  "/pollframe-app-v2-192.png",
+  "/pollframe-app-v2-512.png",
+  "/pollframe-maskable-v2-512.png"
 ];
 const CORE_DATA = [
   "/regions.json",

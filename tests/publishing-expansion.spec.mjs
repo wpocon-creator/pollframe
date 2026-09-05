@@ -26,7 +26,44 @@ async function expectNoViewportOverflow(page, root) {
   expect(result.documentOverflow).toBeLessThanOrEqual(2);
 }
 
+async function expectWidgetCornerControls(root, infoSelector, toolsSelector) {
+  const geometry = await root.evaluate((node, selectors) => {
+    const bounds = node.getBoundingClientRect();
+    const info = node.querySelector(selectors.info)?.getBoundingClientRect();
+    const tools = node.querySelector(selectors.tools)?.getBoundingClientRect();
+    const age = node.querySelector(".widget-data-age")?.getBoundingClientRect();
+    const overlap = (first, second) => first && second
+      ? Math.max(0, Math.min(first.right, second.right) - Math.max(first.left, second.left))
+        * Math.max(0, Math.min(first.bottom, second.bottom) - Math.max(first.top, second.top))
+      : 0;
+    return {
+      info: info && { left: info.left - bounds.left, top: info.top - bounds.top },
+      tools: tools && { right: bounds.right - tools.right, top: tools.top - bounds.top },
+      ageOverlap: overlap(info, age) + overlap(tools, age),
+    };
+  }, { info: infoSelector, tools: toolsSelector });
+  expect(geometry.info).toBeTruthy();
+  expect(geometry.tools).toBeTruthy();
+  expect(geometry.info.left).toBeLessThanOrEqual(24);
+  expect(geometry.info.top).toBeLessThanOrEqual(24);
+  expect(geometry.tools.right).toBeLessThanOrEqual(24);
+  expect(geometry.tools.top).toBeLessThanOrEqual(24);
+  expect(geometry.ageOverlap).toBe(0);
+}
+
 test.describe("expanded publishing tools", () => {
+  test("publishing and info controls stay in consistent widget corners", async ({ page }) => {
+    await page.goto("/?region=bundestag&lang=de");
+    await settle(page);
+    await expectWidgetCornerControls(page.locator(".results-card"), ".graph-info-popover", ".widget-share-tools");
+    await expectWidgetCornerControls(page.locator(".historical-main-chart"), ".graph-info-popover", ".historical-main-publish-tools");
+    await expectWidgetCornerControls(page.locator(".projection-section"), ".graph-info-popover", ".widget-share-tools");
+
+    await page.goto("/?view=approval&country=de&lang=de");
+    await settle(page);
+    await expectWidgetCornerControls(page.locator(".approval-main-chart"), ".graph-info-popover", ".approval-main-publish-tools");
+  });
+
   test("German approval has two compact independently publishable current cards", async ({ page }, testInfo) => {
     await page.goto("/?view=approval&country=de&lang=de");
     await settle(page);
@@ -37,6 +74,29 @@ test.describe("expanded publishing tools", () => {
     for (const card of await cards.all()) {
       await expect(card.locator(".approval-current-tools .widget-share-trigger")).toHaveCount(2);
       await expectNoViewportOverflow(page, card);
+      const geometry = await card.evaluate((node) => {
+        const root = node.getBoundingClientRect();
+        const info = node.querySelector(".approval-current-corner-info").getBoundingClientRect();
+        const tools = node.querySelector(".approval-current-tools").getBoundingClientRect();
+        const age = node.querySelector(".widget-data-age").getBoundingClientRect();
+        const footer = node.querySelector("footer").getBoundingClientRect();
+        const overlap = (a, b) => Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left)) * Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top));
+        return {
+          infoLeft: info.left - root.left,
+          infoTop: info.top - root.top,
+          toolsRight: root.right - tools.right,
+          toolsTop: tools.top - root.top,
+          ageInfoOverlap: overlap(age, info),
+          ageToolsOverlap: overlap(age, tools),
+          footerHeight: footer.height,
+        };
+      });
+      expect(geometry.infoLeft).toBeLessThanOrEqual(18);
+      expect(geometry.infoTop).toBeLessThanOrEqual(18);
+      expect(geometry.toolsRight).toBeLessThanOrEqual(18);
+      expect(geometry.toolsTop).toBeLessThanOrEqual(18);
+      expect(geometry.ageInfoOverlap + geometry.ageToolsOverlap).toBe(0);
+      expect(geometry.footerHeight).toBeLessThan(52);
     }
     await page.screenshot({ path: testInfo.outputPath("approval-current-page.png"), fullPage: false });
 

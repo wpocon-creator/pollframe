@@ -1,8 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Icon, MultiSelect, SelectControl, StaticEmbedPreview } from "./pollframe-ui.jsx";
+import { createPortal } from "react-dom";
+import { Icon, InfoPopover, MultiSelect, SelectControl, StaticEmbedPreview } from "./pollframe-ui.jsx";
+import { PartyInfoButton } from "./party-profiles.jsx";
 import { includeHistoricalEvent, isPrimaryElectionEvent, rankHistoricalEvents } from "./event-selection.js";
 import { PngExportButton } from "./png-export-button.jsx";
 import { trackAggregateEvent } from "./aggregateAnalytics.js";
+import "./approval-cards.css";
 
 const DAY = 86_400_000;
 const COUNTRY_IDS = ["de", "uk"];
@@ -36,7 +39,7 @@ const APPROVAL_NOTES = {
 const COPY = {
   de: {
     eyebrow: "Regierung & Regierungschef",
-    title: { de: "Wie zufrieden ist Deutschland mit Regierung und Kanzler?", uk: "Wie zufrieden ist das UK mit Regierung und Premierminister?", es: "Wie zufrieden ist Spanien mit Regierung und Ministerpräsident?" },
+    title: { de: "Zufriedenheit mit Regierung und Kanzler", uk: "Zufriedenheit mit Regierung und Premierminister", es: "Zufriedenheit mit Regierung und Ministerpräsident" },
     intro: "Aktuelle Bewertung und historischer Verlauf – mit Originalfrage, Amtswechseln, Ereignissen und nachvollziehbarer Quelle.",
     back: "Zurück zur Länderübersicht", current: "Aktueller Stand", government: "Regierung", leader: "Regierungschef", chancellor: "Bundeskanzler", primeMinister: "Premierminister", president: "Ministerpräsident",
     positive: "Zufrieden / positiv", negative: "Unzufrieden / negativ", middle: "Weder noch / keine Angabe", net: "Saldo", published: "Veröffentlicht", previousMeasurement: "Seit der vorherigen Messung", previousMeasurementHelp: "Verglichen werden zwei tatsächlich veröffentlichte Messpunkte.",
@@ -50,7 +53,7 @@ const COPY = {
   },
   en: {
     eyebrow: "Government & national leader",
-    title: { de: "How satisfied is Germany with its government and Chancellor?", uk: "How satisfied is the UK with its government and Prime Minister?", es: "How satisfied is Spain with its government and Prime Minister?" },
+    title: { de: "Government and Chancellor approval in Germany", uk: "Government and Prime Minister approval in the UK", es: "Government and Prime Minister approval in Spain" },
     intro: "The latest rating and its historical path, with the original question, changes of office, events and a traceable source.",
     back: "Back to the country overview", current: "Latest rating", government: "Government", leader: "National leader", chancellor: "Chancellor", primeMinister: "Prime Minister", president: "Prime Minister",
     positive: "Satisfied / positive", negative: "Dissatisfied / negative", middle: "Neither / don't know", net: "Net rating", published: "Published", previousMeasurement: "Since the previous measurement", previousMeasurementHelp: "This compares two genuinely published measurements.",
@@ -64,7 +67,7 @@ const COPY = {
   },
   es: {
     eyebrow: "Gobierno y presidencia",
-    title: { de: "¿Cuál es la satisfacción con el Gobierno y el canciller de Alemania?", uk: "¿Cuál es la satisfacción con el Gobierno y el primer ministro británico?", es: "¿Cuál es la satisfacción con el Gobierno y el presidente de España?" },
+    title: { de: "Valoración del Gobierno y el canciller en Alemania", uk: "Valoración del Gobierno y el primer ministro británico", es: "Valoración del Gobierno y el presidente de España" },
     intro: "La valoración actual y su evolución histórica, con pregunta original, cambios de mandato, acontecimientos y fuente trazable.",
     back: "Volver al resumen del país", current: "Última valoración", government: "Gobierno", leader: "Presidencia", chancellor: "Canciller", primeMinister: "Primer ministro", president: "Presidente",
     positive: "Satisfecho / positivo", negative: "Insatisfecho / negativo", middle: "Intermedio / no sabe", net: "Saldo", published: "Publicado", previousMeasurement: "Desde la medición anterior", previousMeasurementHelp: "Se comparan dos mediciones realmente publicadas.",
@@ -130,6 +133,17 @@ function answerUnit(answer) { return answer === "net" ? "pp" : "%"; }
 function leaderLabel(country, text) { return country === "de" ? text.chancellor : country === "uk" ? text.primeMinister : text.president; }
 function endedSeries(country, metric) { return country === "es" && metric === "government"; }
 function partyColor(color) { return color?.toLowerCase() === "#181818" ? "var(--approval-conservative)" : color ?? "#687582"; }
+
+const APPROVAL_PARTIES = {
+  de: {
+    "CDU/CSU": { id: "1", slug: "union", name: "CDU/CSU", color: "var(--party-union)" },
+    SPD: { id: "2", slug: "spd", name: "SPD", color: "#d9485f" },
+  },
+  es: {
+    PSOE: { id: "402", slug: "psoe", name: "PSOE", color: "#e0272f" },
+    PP: { id: "401", slug: "pp", name: "PP", color: "#1479c9" },
+  },
+};
 
 function useCompactLayout() {
   const query = "(max-width: 680px)";
@@ -276,21 +290,18 @@ function categoryLabel(category, locale) {
   return known[language(locale)][category] ?? category.replaceAll("-", " ").replace(/^./, (letter) => letter.toUpperCase());
 }
 
-function InfoDialog({ data, countries, metric, locale }) {
+function InfoDialog({ data, countries, metric, locale, currentOnly = false }) {
   const text = textFor(locale);
-  const close = (event) => event.currentTarget.closest("details")?.removeAttribute("open");
   const calculation = locale === "de"
-    ? "Die Linien übernehmen die veröffentlichten Anteile positiver oder negativer Antworten; der Saldo ist positiv minus negativ in Prozentpunkten. Der kompakte Balken im aktuellen Stand verteilt nur diese beiden Antwortgruppen auf 100 Prozent, damit ihr Verhältnis lesbar bleibt. Neutrale Antworten und fehlende Angaben werden dort nicht als eigene Gruppe gezeigt, bleiben aber Bestandteil der Originalerhebung."
+    ? `${currentOnly ? "Die Werte" : "Die Linien"} übernehmen die veröffentlichten Anteile positiver oder negativer Antworten; der Saldo ist positiv minus negativ in Prozentpunkten. Der kompakte Balken im aktuellen Stand verteilt nur diese beiden Antwortgruppen auf 100 Prozent, damit ihr Verhältnis lesbar bleibt. Neutrale Antworten und fehlende Angaben werden dort nicht als eigene Gruppe gezeigt, bleiben aber Bestandteil der Originalerhebung.`
     : locale === "es"
-      ? "Las líneas reproducen los porcentajes publicados de respuestas positivas o negativas; el saldo es el porcentaje positivo menos el negativo, en puntos porcentuales. La barra compacta del dato actual reparte solo esos dos grupos hasta el 100 % para mostrar su relación. Las respuestas neutras y la falta de respuesta no aparecen como grupo separado, pero siguen formando parte del estudio original."
-      : "The lines reproduce the published positive or negative response shares; net rating is positive minus negative in percentage points. The compact current bar rescales only those two answer groups to 100% so their relationship is readable. Neutral and missing answers are not shown as a separate group there, but remain part of the original study.";
+      ? `${currentOnly ? "Los valores" : "Las líneas"} reproducen los porcentajes publicados de respuestas positivas o negativas; el saldo es el porcentaje positivo menos el negativo, en puntos porcentuales. La barra compacta del dato actual reparte solo esos dos grupos hasta el 100 % para mostrar su relación. Las respuestas neutras y la falta de respuesta no aparecen como grupo separado, pero siguen formando parte del estudio original.`
+      : `${currentOnly ? "The figures" : "The lines"} reproduce the published positive or negative response shares; net rating is positive minus negative in percentage points. The compact current bar rescales only those two answer groups to 100% so their relationship is readable. Neutral and missing answers are not shown as a separate group there, but remain part of the original study.`;
   return (
-    <details className="approval-info graph-info-popover graph-info-compact" data-export-ignore="true">
-      <summary aria-label={text.methodology}><span className="info-glyph">i</span></summary>
-      <button className="graph-info-backdrop" type="button" tabIndex="-1" onClick={close} aria-label={text.closeEditor} />
-      <div className="graph-info-card approval-info-card" role="dialog" aria-modal="true">
-        <header><strong>{text.methodology}</strong><button type="button" onClick={close} aria-label={text.closeEditor}><Icon name="close" size={16} /></button></header>
-        <p className="approval-info-prose">{countries.length > 1 ? text.chartCompare : text.chartSingle} {calculation} {locale === "de" ? "Pollframe führt nur die redaktionell ausgewählten Ereignisse für diesen Zeitraum auf. Jedes davon hat im Diagramm eine Markierung: Wahlen erscheinen als durchgezogene Linien, die wichtigsten Ereignisse als Beschriftungen und alle übrigen als kleine hohle Punkte auf der interaktiven Website. Das liefert zeitlichen Kontext, aber keinen Beleg für Ursache und Wirkung." : locale === "es" ? "Pollframe solo enumera los acontecimientos seleccionados editorialmente para este periodo. Cada uno tiene una marca en el gráfico: las elecciones aparecen como líneas continuas, los acontecimientos principales como etiquetas y los demás como pequeños puntos huecos en la web interactiva. Aportan contexto temporal, no demuestran causalidad." : "Pollframe lists only the editorially selected events for this period. Every one has a chart marker: elections use solid lines, the leading events receive labels, and all others use small hollow dots on the interactive website. They provide timing context, not evidence of causation."} {countries.map((country, index) => {
+    <InfoPopover label={text.methodology} closeLabel={text.closeEditor} className="approval-info graph-info-compact" cardClassName="approval-info-card">
+        <p className="approval-info-prose">{currentOnly
+          ? (locale === "de" ? "Der aktuelle Stand zeigt die jüngste veröffentlichte Messung, keinen Durchschnitt mehrerer Umfragen." : locale === "es" ? "El dato actual muestra la medición publicada más reciente, no un promedio de varias encuestas." : "The current status shows the latest published measurement, not an average of several polls.")
+          : countries.length > 1 ? text.chartCompare : text.chartSingle} {calculation} {!currentOnly && (locale === "de" ? "Pollframe führt nur die redaktionell ausgewählten Ereignisse für diesen Zeitraum auf. Jedes davon hat im Diagramm eine Markierung: Wahlen erscheinen als durchgezogene Linien, die wichtigsten Ereignisse als Beschriftungen und alle übrigen als kleine hohle Punkte auf der interaktiven Website. Das liefert zeitlichen Kontext, aber keinen Beleg für Ursache und Wirkung." : locale === "es" ? "Pollframe solo enumera los acontecimientos seleccionados editorialmente para este periodo. Cada uno tiene una marca en el gráfico: las elecciones aparecen como líneas continuas, los acontecimientos principales como etiquetas y los demás como pequeños puntos huecos en la web interactiva. Aportan contexto temporal, no demuestran causalidad." : "Pollframe lists only the editorially selected events for this period. Every one has a chart marker: elections use solid lines, the leading events receive labels, and all others use small hollow dots on the interactive website. They provide timing context, not evidence of causation.")} {countries.map((country, index) => {
           const item = data.countries[country];
           const series = item.series[metric];
           const latest = series.at(-1);
@@ -298,8 +309,7 @@ function InfoDialog({ data, countries, metric, locale }) {
             <React.Fragment key={country}>{index ? " " : " "}<strong>{item.flag} {countryName(country, locale)}.</strong> {text.originalQuestion}: “{item.questions[metric]}” {text.latestPoint}: {formatDate(latest.date, locale)}; {text.age(dataAge(latest.date))}{endedSeries(country, metric) ? `; ${text.archiveSeries}` : ""}. {approvalNotes(country, locale, item.notes).join(" ")} {text.source}: <a href={item.source.href} target="_blank" rel="noreferrer">{item.source.label} ↗</a>.</React.Fragment>
           );
         })}</p>
-      </div>
-    </details>
+    </InfoPopover>
   );
 }
 
@@ -328,14 +338,16 @@ function CurrentApprovalCard({ data, country, metric, locale, embed = false }) {
   const embedUrl = `${window.location.origin}/embed.html?view=approval&country=${country}&widget=current-approval&metric=${metric}&lang=${locale}&theme=${shareTheme}`;
   return (
     <aside ref={exportRef} id={`approval-current-${metric}`} className={`approval-current-card approval-current-${metric} ${ended ? "is-archive" : ""}`} aria-labelledby={`approval-current-${metric}-title`}>
+      {!embed && <div className="approval-current-corner-info"><InfoDialog data={data} countries={[country]} metric={metric} locale={locale} currentOnly /></div>}
       <small className="widget-data-age">{ended ? text.archiveSeries : text.age(age)}</small>
+      {!embed && <div className="approval-current-tools" data-export-ignore="true"><button className="widget-share-trigger" type="button" onClick={() => setShareOpen(true)} aria-label={`${text.share}: ${title}`} title={text.share}><Icon name="share" size={15}/></button><PngExportButton elementRef={exportRef} filename={`pollframe-${country}-${metric}-current`} title={title} subtitle={countryName(country, locale)} locale={locale} label={text.png} credit={`${item.source.label} · Pollframe`} profile="approval-current" className="widget-share-trigger widget-png-trigger"/></div>}
       <header>
-        <div><p className="section-label">{text.current} · {subject}</p><h2 id={`approval-current-${metric}-title`}>{metric === "government" ? countryName(country, locale) : latest.leader}</h2></div>
-        <div className="approval-current-header-side"><span className={`approval-series-status ${ended || age > 120 || supersededLeader ? "stale" : "live"}`}>{ended ? text.archiveSeries : age > 120 || supersededLeader ? text.staleSeries : text.currentSeries}</span>{!embed && <div className="approval-current-tools" data-export-ignore="true"><button className="widget-share-trigger" type="button" onClick={() => setShareOpen(true)} aria-label={`${text.share}: ${title}`} title={text.share}><Icon name="share" size={15}/></button><PngExportButton elementRef={exportRef} filename={`pollframe-${country}-${metric}-current`} title={title} subtitle={countryName(country, locale)} locale={locale} label={text.png} credit={`${item.source.label} · Pollframe`} profile="approval-current" className="widget-share-trigger widget-png-trigger"/></div>}</div>
+        <div><p className="section-label">{subject}</p><h2 id={`approval-current-${metric}-title`}>{metric === "government" ? countryName(country, locale) : latest.leader}</h2></div>
+        <div className="approval-current-header-side"><span className={`approval-series-status ${ended || age > 120 || supersededLeader ? "stale" : "live"}`}>{ended ? text.archiveSeries : age > 120 || supersededLeader ? text.staleSeries : text.currentSeries}</span></div>
       </header>
       {supersededLeader && <p className="approval-current-caveat">{text.noCurrentLeaderRating(currentOfficeholder)}</p>}
       <div className="approval-current-values">
-        {rows.map(([answer, value]) => <div key={answer} data-answer={answer} data-value={value}><span><i className={answer} />{answer === "net" ? text.net : answerLabel(answer, text)}</span><strong>{answer === "net" ? `${value > 0 ? "+" : ""}${formatValue(value, locale)} pp` : `${formatValue(value, locale)}%`}</strong></div>)}
+        {rows.map(([answer, value]) => <div key={answer} data-answer={answer} data-value={value} className={answer === "net" ? `approval-net-value ${value >= 0 ? "positive" : "negative"}` : ""}><span><i className={answer} />{answer === "net" ? text.net : locale === "de" ? (answer === "positive" ? "Gute Arbeit" : "Schlechte Arbeit") : locale === "es" ? (answer === "positive" ? "Buena gestión" : "Mala gestión") : (answer === "positive" ? "Good performance" : "Poor performance")}</span><strong>{answer === "net" ? `${value > 0 ? "+" : ""}${formatValue(value, locale)} ${locale === "de" ? "Pp." : "pp"}` : `${formatValue(value, locale)}%`}</strong></div>)}
       </div>
       <div className="approval-response-bar" aria-hidden="true"><i className="positive" style={{ width: `${(latest.positive / Math.max(1, answered)) * 100}%` }} /><i className="negative" style={{ width: `${(latest.negative / Math.max(1, answered)) * 100}%` }} /></div>
       <footer><span>{text.published}: <time dateTime={latest.date}>{formatDate(latest.date, locale)}</time></span><a href={item.source.href} target="_blank" rel="noreferrer">{item.source.label} ↗</a></footer>
@@ -380,7 +392,7 @@ function ApprovalSnapshotShareDialog({ open, onClose, url, embedUrl, elementRef,
       window.setTimeout(() => setCopied(""), 1800);
     } catch { setCopyError(true); window.setTimeout(() => setCopyError(false), 2400); }
   };
-  return <div className="overlay modal-overlay approval-share-modal" role="presentation" data-export-ignore="true" onMouseDown={(event) => event.target === event.currentTarget && onClose()}><section ref={dialogRef} className="embed-modal approval-share-card approval-snapshot-share-card" role="dialog" aria-modal="true" aria-labelledby="approval-snapshot-share-title" tabIndex={-1}>
+  return createPortal(<div className="overlay modal-overlay approval-share-modal" role="presentation" data-export-ignore="true" onMouseDown={(event) => event.target === event.currentTarget && onClose()}><section ref={dialogRef} className="embed-modal approval-share-card approval-snapshot-share-card" role="dialog" aria-modal="true" aria-labelledby="approval-snapshot-share-title" tabIndex={-1}>
     <div className="panel-header"><div><span className="section-label">{countryName(country, locale)}</span><h2 id="approval-snapshot-share-title">{text.share}</h2></div><button className="icon-button" type="button" onClick={onClose} aria-label={text.closeEditor}><Icon name="close" /></button></div>
     <p className="modal-intro">{locale === "de" ? "Der aktuelle Stand bleibt im Embed kompakt, responsiv und mit Originalquelle gekennzeichnet." : locale === "es" ? "El dato actual conserva un diseño compacto y adaptable, con la fuente original identificada." : "The latest rating stays compact and responsive in the embed, with its original source identified."}</p>
     <div className="embed-options embed-options-single"><div><span>{text.appearance}</span><div className="segmented">{[["light",text.light],["dark",text.dark],["system",text.system]].map(([value,label]) => <button key={value} className={theme===value?"selected":""} type="button" aria-pressed={theme===value} onClick={() => setTheme(value)}>{label}</button>)}</div></div></div>
@@ -389,7 +401,7 @@ function ApprovalSnapshotShareDialog({ open, onClose, url, embedUrl, elementRef,
     <label className="code-label">{labels.code}<code>{code}</code></label>
     <div className="embed-actions approval-share-actions"><button className="secondary-button" type="button" onClick={() => copy(url,"link")}><Icon name="share" size={16}/>{copied==="link"?text.copied:text.copyLink}</button><button className="primary-button" type="button" onClick={() => copy(code,"embed")}><Icon name="code" size={16}/>{copied==="embed"?text.copied:text.copyEmbed}</button><PngExportButton elementRef={elementRef} filename={`pollframe-${country}-${metric}-current`} title={title} subtitle={countryName(country, locale)} locale={locale} label={text.png} credit={`${source.label} · Pollframe`} profile="approval-current"/><button className="secondary-button" type="button" onClick={() => copy(sourceNote,"credit")}><Icon name="check" size={16}/>{copied==="credit"?labels.creditDone:labels.credit}</button><a className="secondary-button" href={`/?page=bug-report&from=${encodeURIComponent(url)}`}><Icon name="info" size={16}/>{labels.bug}</a></div>
     {copyError && <p className="embed-copy-error" role="status">{labels.copyFailed}</p>}
-  </section></div>;
+  </section></div>, document.body);
 }
 
 function ApprovalSnapshotEmbed({ data, country, metric, locale }) {
@@ -608,7 +620,7 @@ function ApprovalHistoryChart({ data, countries, metric, range, display, answers
     ? countries.map((country) => ({ key: country, label: `${data.countries[country].flag} ${countryName(country, locale)}`, color: COUNTRY_COLORS[country] }))
     : data.countries[countries[0]].administrations
       .filter((term) => parseTime(term.start) <= latestTime && parseTime(term.end ?? "2100-01-01") >= startTime)
-      .map((term) => ({ key: term.start, label: `${term.leader} · ${term.party}`, color: partyColor(term.color) }));
+      .map((term) => ({ key: term.start, label: `${term.leader} · ${term.party}`, leader: term.leader, party: APPROVAL_PARTIES[countries[0]]?.[term.party] ?? null, country: countries[0], color: partyColor(term.color) }));
   const legendTitle = compare ? (locale === "de" ? "Länder" : locale === "es" ? "Países" : "Countries") : text.terms;
   const tooltipHeight = hover ? 38 + hover.values.reduce((height) => height + 21 + (answers.length * 15), 0) : 0;
   const tooltipX = hover ? (hover.x > W - 340 ? hover.x - 320 : hover.x + 15) : 0;
@@ -616,7 +628,7 @@ function ApprovalHistoryChart({ data, countries, metric, range, display, answers
     <div className="chart-region approval-chart-region">
       <div className="line-legend approval-line-legend" aria-label={legendTitle}>
         <strong>{legendTitle}:</strong>
-        {legendItems.map((item) => <span key={item.key}><i style={{ background: item.color }} />{item.label}</span>)}
+        {legendItems.map((item) => <span key={item.key}><i style={{ background: item.color }} />{item.party ? <>{item.leader} · <PartyInfoButton party={item.party} country={item.country} as="span" /></> : item.label}</span>)}
         <span className="axis-range-note">Y: {minY}–{maxY} {answerUnit(answers[0])}</span>
       </div>
       {answers.length > 1 && <div className="line-legend approval-answer-legend" aria-label={text.answers}><strong>{text.answers}:</strong>{answers.map((answer) => <span className={`answer-${answer}`} key={answer}><i />{answerLabel(answer, text)}</span>)}</div>}
@@ -802,7 +814,7 @@ function ShareDialog({ open, onClose, url, embedUrl, chartRef, data, countries, 
     window.setTimeout(() => URL.revokeObjectURL(objectUrl), 30_000);
     trackAggregateEvent("csv_downloaded");
   };
-  return (
+  return createPortal(
     <div className="overlay modal-overlay approval-share-modal" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
       <section ref={dialogRef} className="embed-modal approval-share-card" role="dialog" aria-modal="true" aria-labelledby="approval-share-title" tabIndex={-1}>
         <div className="panel-header"><div><span className="section-label">{text.share}</span><h2 id="approval-share-title">{text.preview}</h2></div><button className="icon-button" type="button" onClick={onClose} aria-label={text.closeEditor}><Icon name="close" /></button></div>
@@ -823,7 +835,7 @@ function ShareDialog({ open, onClose, url, embedUrl, chartRef, data, countries, 
         </div>
         {copyError && <p className="embed-copy-error" role="status">{labels.copyFailed}</p>}
       </section>
-    </div>
+    </div>, document.body
   );
 }
 
@@ -901,8 +913,10 @@ export function ApprovalPage({ data, locale, embed = false, eventCatalog = {} })
         {!embed && <div className="chart-actions" data-export-ignore="true">
           <button className={`secondary-button ${customizeOpen ? "active" : ""}`} type="button" onClick={() => setCustomizeOpen((value) => !value)} aria-expanded={customizeOpen}><Icon name="sliders" />{text.customize}</button>
           {canCompare && <button className={`secondary-button approval-compare-toggle ${compare ? "active" : ""}`} type="button" aria-pressed={compare} onClick={() => setCompare((value) => !value)}><Icon name="globe" />{text.compareShort}</button>}
-          <button className="primary-button" type="button" onClick={() => setShareOpen(true)}><Icon name="share" />{text.share}</button>
-          <PngExportButton elementRef={chartRef} filename={`pollframe-approval-${requestedCountry}-${metric}`} title={graphTitle} subtitle={countryName(requestedCountry, locale)} locale={locale} label={text.png} credit={`${countries.map((country) => data.countries[country].source.label).join(" · ")} · Pollframe`} profile="approval" />
+          <div className="approval-main-publish-tools">
+            <button className="primary-button widget-share-trigger approval-share-trigger" type="button" onClick={() => setShareOpen(true)} aria-label={text.share} title={text.share}><Icon name="share" /><span>{text.share}</span></button>
+            <PngExportButton elementRef={chartRef} filename={`pollframe-approval-${requestedCountry}-${metric}`} title={graphTitle} subtitle={countryName(requestedCountry, locale)} locale={locale} label={text.png} credit={`${countries.map((country) => data.countries[country].source.label).join(" · ")} · Pollframe`} profile="approval" className="widget-share-trigger widget-png-trigger approval-publish-trigger" />
+          </div>
         </div>}
       </div>
       {customizeOpen && !embed && <div className="customize-panel approval-customize-panel" data-export-ignore="true">

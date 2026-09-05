@@ -19,7 +19,7 @@ const PROFILES = {
   approval: { formats: ["landscape", "square"], recommended: "landscape", copyKey: "approval" },
   "approval-current": { formats: ["landscape", "square"], recommended: "square", copyKey: "approvalCurrent" },
   "party-history": { formats: ["landscape", "square"], recommended: "landscape", copyKey: "partyHistory" },
-  map: { formats: ["landscape"], recommended: "landscape", copyKey: "map" },
+  map: { formats: ["portrait"], recommended: "portrait", copyKey: "map" },
   "current-poll": { formats: ["landscape", "square", "portrait"], recommended: "landscape", copyKey: "currentPoll" },
   "party-grid": { formats: ["landscape", "square", "portrait"], recommended: "square", copyKey: "partyGrid" },
   "seat-grid": { formats: ["landscape", "square", "portrait"], recommended: "landscape", copyKey: "seatGrid" },

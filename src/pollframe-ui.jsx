@@ -1,5 +1,36 @@
 import React, { useEffect, useRef, useState } from "react";
 
+// Native modal dialogs enter the browser's top layer, so transformed widgets,
+// sticky headers and scrolling ancestors cannot clip or reposition the info.
+export function InfoPopover({ label = "Info", closeLabel = "Close", className = "", cardClassName = "", children }) {
+  const detailsRef = useRef(null);
+  const dialogRef = useRef(null);
+  const close = () => {
+    dialogRef.current?.close();
+    detailsRef.current?.removeAttribute("open");
+  };
+  const sync = () => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    if (detailsRef.current?.open) {
+      if (!dialog.open) dialog.showModal();
+      dialog.scrollTop = 0;
+    } else if (dialog.open) dialog.close();
+  };
+  useEffect(() => () => dialogRef.current?.close(), []);
+  return <details ref={detailsRef} className={`graph-info-popover ${className}`.trim()} data-export-ignore="true" onToggle={sync}>
+    <summary aria-label={label} title={label}><span className="info-glyph" aria-hidden="true">i</span></summary>
+    <dialog ref={dialogRef} className={`graph-info-card ${cardClassName}`.trim()} aria-label="Info" onClose={() => detailsRef.current?.removeAttribute("open")} onClick={(event) => {
+      if (event.target !== event.currentTarget) return;
+      const bounds = event.currentTarget.getBoundingClientRect();
+      if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) close();
+    }}>
+      <header><strong>Info</strong><button type="button" onClick={close} aria-label={closeLabel} autoFocus><Icon name="close" size={16} /></button></header>
+      {children}
+    </dialog>
+  </details>;
+}
+
 export function Icon({ name, size = 20 }) {
   const paths = {
     settings: <><circle cx="12" cy="12" r="3" /><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.09a2 2 0 0 1 1 1.74v.5a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.09a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2Z" /></>,

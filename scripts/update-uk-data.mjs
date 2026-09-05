@@ -1,6 +1,8 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { load as loadHtml } from "cheerio/slim";
+import { fetchTextWithRetry } from "./lib/resilient-source.mjs";
+import { parseUkSupplement, assertFreshUkPolls, UK_WIKI_PAGE, UK_WIKI_URL } from "./lib/uk-supplement.mjs";
 
 const INCLUDE_IPSOS = process.env.POLLFRAME_INCLUDE_IPSOS === "1";
 
@@ -144,9 +146,7 @@ function parseCsv(text) {
 
 async function load(key) {
   if (process.argv.includes("--local")) return readFile(LOCAL[key], "utf8");
-  const response = await fetch(SOURCES[key], { headers: { "user-agent": "Pollframe data updater/1.0" } });
-  if (!response.ok) throw new Error(`${key}: HTTP ${response.status}`);
-  return response.text();
+  return fetchTextWithRetry(SOURCES[key], { attempts: 2, timeoutMs: 20_000, headers: { "user-agent": "Pollframe data updater/1.0" } });
 }
 
 const ISSUE_NAMES = new Map([
@@ -275,6 +275,20 @@ function latestByDate(rows) {
 const [rawPollRows, averageRows, electionRows, ratingRows, constituencyRows] = await Promise.all(
   ["polls", "averages", "elections", "ratings", "constituencies"].map(async (key) => parseCsv(await load(key))),
 );
+const vaultLatest = rawPollRows.map((row) => row.end_date).sort().at(-1);
+let supplemented = false;
+try {
+  const body = await fetchTextWithRetry(`https://en.wikipedia.org/w/api.php?action=parse&page=${UK_WIKI_PAGE}&prop=text&format=json&formatversion=2`, {
+    attempts: 2, timeoutMs: 20_000,
+    fallbackUrl: `${UK_WIKI_URL}?action=render`,
+    headers: { "User-Agent": "Pollframe/1.0 (political polling visualisation; de.pollframe.workers.dev)" },
+  });
+  const html = body.trimStart().startsWith("{") ? JSON.parse(body).parse.text : body;
+  const extra = parseUkSupplement(html, vaultLatest);
+  rawPollRows.push(...extra);
+  supplemented = extra.length > 0;
+  console.log(`UK supplementary table: ${extra.length} party observations after ${vaultLatest}`);
+} catch (error) { console.warn(`UK supplementary source unavailable: ${error.message}`); }
 let issuesIndex = null;
 const previousSummary = JSON.parse(await readFile(resolve("public/uk-summary.json"), "utf8").catch(() => "{}"));
 if (INCLUDE_IPSOS) {
@@ -295,6 +309,7 @@ const sourceMetadata = {
   generatedAt,
   derivativeDatabaseNotice: "Pollframe normalises, groups and republishes selected Election Data Vault fields.",
   changes: "Great Britain rows selected; party names consolidated; weighted series and individual polls combined. Individual polls from a rights-pending source are temporarily excluded.",
+  ...(supplemented ? { supplementarySource: { name: "Wikipedia contributors", url: UK_WIKI_URL, license: "CC BY-SA 4.0", licenseUrl: "https://creativecommons.org/licenses/by-sa/4.0/", changes: "National GB polls only; original references retained; parties not separately tracked are included in Other. Rights-pending sources excluded." } } : {}),
 };
 
 const averageGroups = new Map();
@@ -338,18 +353,32 @@ for (const row of rawPollRows) {
   rawGroups.get(key).push(row);
 }
 const pollsterNames = [...new Set([...rawGroups.values()].map((rows) => rows[0].pollster_name))].sort();
-const pollsterIds = Object.fromEntries(pollsterNames.map((name, index) => [name, String(index + 1)]));
+// These IDs have appeared in saved settings and embed URLs. New pollsters must
+// never shift existing IDs merely because their name sorts earlier.
+const establishedPollsters = ["Angus Reid", "Audience Selection", "BMG", "BPIX", "Business Decisions", "Centre of Public Opinion", "Communicate", "Daily Express", "Daily Mail", "Deltapoll", "FindOutNow", "Focaldata", "Forecasting", "Gallup", "GfK", "Hanbury Strategy", "Harris", "ICM", "JL Partners", "Lord Ashcroft", "Marketing Sciences", "Marplan", "More in Common", "NMR", "NOP", "Neilsen", "Norstat", "Number Cruncher Politics", "ORB", "ORC", "Omnisis", "Opinium", "PeoplePolling", "Populus", "Qriously", "Rasmussen", "Redfield & Wilton", "Research Services", "Savanta ComRes", "Sky Data", "Survation", "SurveyMonkey", "TNS-BMRB", "Techne", "Verian", "Whitestone Insight", "YouGov"];
+const pollsterIds = Object.fromEntries(establishedPollsters.map((name, index) => [name, String(index + 1)]));
+const previousPollData = JSON.parse(await readFile(resolve("public/data/uk-westminster.json"), "utf8"));
+let nextPollsterId = establishedPollsters.length + 1;
+for (const [id, name] of Object.entries(previousPollData.pollsters ?? {})) {
+  if (Number(id) >= nextPollsterId && Number(id) < 9000 && !pollsterIds[name]) {
+    pollsterIds[name] = id;
+    nextPollsterId = Number(id) + 1;
+  }
+}
+for (const name of pollsterNames) if (!pollsterIds[name]) pollsterIds[name] = String(nextPollsterId++);
 const individualPolls = [...rawGroups.values()].map((rows) => {
   const first = rows[0];
   const sample = Number(first.sample_size);
   return {
-    date: first.end_date,
+    date: first.published ?? first.end_date,
+    dateType: first.published ? "published" : "fieldwork",
     fieldwork: [first.start_date, first.end_date],
     sample: Number.isInteger(sample) && sample > 0 ? sample : null,
     pollster: pollsterIds[first.pollster_name],
     method: [first.poll_series, first.client && `client: ${first.client}`].filter(Boolean).join(" · ") || "Published voting-intention poll",
     results: consolidate(rows, "party_name", "voting_intention"),
-    sourceUrl: "https://electiondatavault.co.uk/polling/",
+    sourceUrl: first.sourceUrl ?? "https://electiondatavault.co.uk/polling/",
+    ...(first.compilationUrl ? { compilationUrl: first.compilationUrl, license: "CC BY-SA 4.0" } : {}),
   };
 }).filter((poll) => {
   const total = Object.values(poll.results).reduce((sum, value) => sum + value, 0);
@@ -359,6 +388,8 @@ const individualPolls = [...rawGroups.values()].map((rows) => {
     && Object.values(poll.results).every((value) => value >= 0 && value <= 100);
 });
 const polls = latestByDate([...weightedPolls, ...individualPolls]);
+assertFreshUkPolls(individualPolls);
+const weightedIsStale = Date.parse(polls.at(-1).date) - Date.parse(weightedPolls.at(-1).date) > 21 * 86_400_000;
 const databaseUpdated = `${polls.at(-1).date}T00:00:00.000Z`;
 
 const electionResults = {};
@@ -392,7 +423,9 @@ const pollData = {
     databaseUpdated,
     region: { slug: "uk-westminster", name: "Great Britain", type: "uk-federal" },
     geographyNote: "Westminster voting-intention polling covers Great Britain (England, Scotland and Wales), not Northern Ireland.",
-    defaultPollsters: ["9000"],
+    defaultPollsters: weightedIsStale ? pollsterNames.map((name) => pollsterIds[name]) : ["9000"],
+    weightedTrendThrough: weightedPolls.at(-1).date,
+    rawPollsLoaded: weightedIsStale,
     weightedAveragePollsterId: "9000",
     pollsterRatings: ratings,
     electionResults,
@@ -407,7 +440,7 @@ const pollData = {
   },
   pollsters: { "9000": "Poll of polls · weighted trend", ...Object.fromEntries(pollsterNames.map((name) => [pollsterIds[name], name])) },
   parties: PARTY_LABELS,
-  polls: weightedPolls,
+  polls: weightedIsStale ? polls : weightedPolls,
 };
 const rawPollData = {
   metadata: {
@@ -416,6 +449,7 @@ const rawPollData = {
     license: sourceMetadata.license,
     licenseUrl: sourceMetadata.licenseUrl,
     generatedAt,
+    ...(sourceMetadata.supplementarySource ? { supplementarySource: sourceMetadata.supplementarySource } : {}),
   },
   polls: individualPolls,
 };
@@ -452,7 +486,7 @@ for (const countryName of ["Scotland", "Wales", "Northern Ireland"]) {
 const summary = {
   metadata: { ...sourceMetadata, databaseUpdated, electionSourceUrl: "https://commonslibrary.parliament.uk/research-briefings/cbp-10009/" },
   westminster: { firstDate: polls[0].date, latestDate: polls.at(-1).date, pollCount: individualPolls.length, trendPointCount: weightedPolls.length },
-  current: weightedPolls.at(-1),
+  current: weightedIsStale ? polls.at(-1) : weightedPolls.at(-1),
   ...(issuesIndex ? {
     issuesIndex,
     personalIssues: PERSONAL_ISSUES,

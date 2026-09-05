@@ -15,19 +15,19 @@
   "categories": ["news", "reference"],
   "icons": [
     {
-      "src": "/pollframe-app-192.png",
+      "src": "/pollframe-app-v2-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/pollframe-app-512.png",
+      "src": "/pollframe-app-v2-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/pollframe-maskable-512.png",
+      "src": "/pollframe-maskable-v2-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
@@ -38,25 +38,25 @@
       "name": "Bundestagsumfragen",
       "short_name": "Bundestag",
       "url": "/?region=bundestag&source=shortcut",
-      "icons": [{ "src": "/pollframe-app-192.png", "sizes": "192x192" }]
+      "icons": [{ "src": "/pollframe-app-v2-192.png", "sizes": "192x192" }]
     },
     {
       "name": "Deutschlandkarte",
       "short_name": "Karte",
       "url": "/?view=map&source=shortcut",
-      "icons": [{ "src": "/pollframe-app-192.png", "sizes": "192x192" }]
+      "icons": [{ "src": "/pollframe-app-v2-192.png", "sizes": "192x192" }]
     },
     {
       "name": "UK Westminster polling",
       "short_name": "Westminster",
       "url": "/?region=uk-westminster&source=shortcut",
-      "icons": [{ "src": "/pollframe-app-192.png", "sizes": "192x192" }]
+      "icons": [{ "src": "/pollframe-app-v2-192.png", "sizes": "192x192" }]
     },
     {
       "name": "Encuestas de España",
       "short_name": "España",
       "url": "/?region=spain-congress&source=shortcut",
-      "icons": [{ "src": "/pollframe-app-192.png", "sizes": "192x192" }]
+      "icons": [{ "src": "/pollframe-app-v2-192.png", "sizes": "192x192" }]
     }
   ]
 }

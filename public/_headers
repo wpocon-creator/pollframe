@@ -64,7 +64,7 @@ https://:branch.pollframe-test.pages.dev/*
   Cross-Origin-Resource-Policy: same-origin
   Cache-Control: public, max-age=31536000, immutable
 
-/apple-touch-icon.png
+/apple-touch-icon*.png
   Cross-Origin-Resource-Policy: same-origin
   Cache-Control: public, max-age=31536000, immutable
 
