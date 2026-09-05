@@ -4,10 +4,10 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "prebuild": "node scripts/validate-poll-data.mjs",
+    "prebuild": "node scripts/validate-poll-data.mjs && node scripts/generate-seo-assets.mjs",
     "dev": "vite",
     "build": "vite build",
-    "postbuild": "node scripts/validate-security.mjs && node scripts/validate-performance.mjs && node scripts/validate-aggregate-analytics.mjs && node --test tests/seo-routes.test.mjs tests/domain-migration.test.mjs",
+    "postbuild": "node scripts/validate-security.mjs && node scripts/validate-performance.mjs && node scripts/validate-aggregate-analytics.mjs && node --test tests/seo-routes.test.mjs tests/domain-migration.test.mjs tests/seo-content.test.mjs",
     "deploy": "npm run build && wrangler deploy",
     "preview": "vite preview --host 127.0.0.1",
     "check": "npm run build",

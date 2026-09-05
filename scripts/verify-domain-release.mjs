@@ -45,7 +45,7 @@ for (const from of [old, "https://www.pollframe.com", "http://pollframe.com"]) {
   assert.equal(response.status, 308, from);
   assert.equal(response.headers.get("location"), `${origin}/de/bundestag/umfragen?range=year&lang=en-GB`);
 }
-for (const path of [...assets, "/sw.js", "/manifest.webmanifest", "/pollframe-social.png"]) {
+for (const path of [...assets, "/sw.js", "/manifest.webmanifest", "/pollframe-social.png", "/favicon.ico", "/pollframe-app-v2-192.png"]) {
   const response = await get(origin + path);
   assert.equal(response.status, 200, path);
   const live = Buffer.from(await response.arrayBuffer());
@@ -75,6 +75,20 @@ assert.ok(robots.includes(`Sitemap: ${origin}/sitemap.xml`));
 const sitemap = await (await get(`${origin}/sitemap.xml`)).text();
 assert.ok(!sitemap.includes("workers.dev"));
 assert.equal((sitemap.match(/<loc>/g) ?? []).length, 29);
+for (const [path, locale] of [["/uk", "de"], ["/es/encuestas", "en-US"], ["/de/bundestag/umfragen", "es"]]) {
+  const response = await get(`${origin}${path}?lang=${locale}`);
+  assert.equal(response.status, 200);
+  const html = await response.text();
+  assert.equal(response.headers.get("content-language"), locale);
+  assert.ok(html.includes(`rel="canonical" href="${origin}${path}?lang=${locale}"`));
+  assert.ok(html.includes('id="seo-initial-content"'));
+  assert.ok(html.includes('<th scope="row">'));
+  assert.equal((html.match(/hreflang="x-default"/g) ?? []).length, 1);
+  assert.ok(html.includes('"@type":"WebSite","name":"Pollframe"'));
+}
+for (const path of ["/missing-pollframe-page", "/uk/missing", "/de/landtagswahl/nowhere/umfragen"]) {
+  assert.equal((await get(origin + path)).status, 404, path);
+}
 const { verifyLiveRelease } = await import("./verify-live-release.mjs");
 await verifyLiveRelease(origin);
 console.log("Domain release verified: HTTPS, redirects, metadata, asset bytes, analytics isolation, protected APIs, old apps/embeds and live polling data.");

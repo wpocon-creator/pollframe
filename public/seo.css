@@ -1,0 +1,4 @@
+#seo-initial-content h1{font-size:clamp(1.8rem,4vw,3rem);line-height:1.15}
+#seo-initial-content table{width:100%;max-width:34rem;margin:1rem 0;border-collapse:collapse;font-variant-numeric:tabular-nums}
+#seo-initial-content th,#seo-initial-content td{padding:.4rem .6rem;text-align:left;border-bottom:1px solid var(--line)}
+#seo-initial-content td,#seo-initial-content thead th:last-child{text-align:right}

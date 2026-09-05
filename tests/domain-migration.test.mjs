@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import test, { mock } from "node:test";
 import { readFile } from "node:fs/promises";
 import worker, { domainRedirect } from "../worker/index.js";
 import { SITE_ORIGIN, LEGACY_SITE_ORIGIN, publicShareOrigin } from "../src/site-origin.js";
+mock.method(globalThis, "fetch", async () => new Response("", { status: 503 }));
 
 const shell = await readFile(new URL("../index.html", import.meta.url), "utf8");
 const env = { ASSETS: { fetch: async () => new Response(shell, { headers: { "content-type": "text/html", etag: "original-shell" } }) } };

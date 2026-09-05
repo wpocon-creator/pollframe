@@ -28,6 +28,7 @@
       "/embed.html",
       "/robots.txt",
       "/sitemap.xml",
+      "/pf-ops/*",
       "/countries",
       "/de/*",
       "/uk",
@@ -38,7 +39,7 @@
       "/editorial-standards"
     ],
     "html_handling": "none",
-    "not_found_handling": "single-page-application"
+    "not_found_handling": "404-page"
   },
   "durable_objects": {
     "bindings": [

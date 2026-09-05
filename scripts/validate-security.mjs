@@ -175,7 +175,7 @@ requireCondition(viteConfig.includes('host: "127.0.0.1"'), "Vite server is not r
 requireCondition(viteConfig.includes("sourcemap: false"), "production source maps are not explicitly disabled");
 requireCondition(wranglerConfig.assets?.directory === "./dist", "Cloudflare does not deploy the checked production directory");
 requireCondition(wranglerConfig.assets?.html_handling === "none", "Cloudflare HTML rewriting would break the dedicated embed path");
-requireCondition(wranglerConfig.assets?.not_found_handling === "single-page-application", "Cloudflare does not serve the app shell at the site root");
+requireCondition(wranglerConfig.assets?.not_found_handling === "404-page", "unknown routes must return real 404 responses");
 requireCondition(wranglerConfig.preview_urls === false, "Cloudflare version preview URLs are publicly enabled");
 requireCondition(wranglerConfig.main === "worker/index.js", "Cloudflare API Worker entry point is missing or unexpected");
 requireCondition(wranglerConfig.assets?.binding === "ASSETS", "Cloudflare static-assets binding is missing");
@@ -208,7 +208,9 @@ for (const route of ["/countries", "/de/bundestag/umfragen", "/de/regierung/zufr
   requireCondition(sitemap.includes(`https://pollframe.com${route}`), `sitemap is missing public route: ${route}`);
   requireCondition(wranglerConfig.assets.run_worker_first.some((pattern) => pattern === route || (pattern.endsWith("/*") && route.startsWith(pattern.slice(0, -1)))), `SEO shell does not run for public route: ${route}`);
 }
-requireCondition(workerSource.includes("seoPageResponse") && workerSource.includes("seoFallback"), "public routes lack server-readable metadata and no-JavaScript explanatory content");
+requireCondition(workerSource.includes("seoPageResponse") && (await read("worker/seo-response.js")).includes("seoFallback"), "public routes lack server-readable metadata and no-JavaScript explanatory content");
+requireCondition(mainHtml.includes('type="image/png" sizes="192x192"') && mainHtml.includes('href="/favicon.ico"'), "search favicon lacks raster and conventional ICO fallbacks");
+requireCondition(mainHtml.includes('"@type":"WebSite"') && mainHtml.includes('"name":"Pollframe"'), "the public site identity is missing");
 requireCondition(wranglerConfig.assets.run_worker_first.includes("/") && workerSource.includes("legacyPublicRedirect"), "legacy query routes are not normalised before the application shell");
 requireCondition(mainHtml.includes('property="og:title"'), "main HTML lacks Open Graph metadata");
 requireCondition(
@@ -262,7 +264,7 @@ requireCondition(sitemapUrls.includes("https://pollframe.com/de/regierung/zufrie
 requireCondition(!sitemapUrls.includes("https://pollframe.com/uk/government/approval"), "sitemap still exposes the withheld UK approval page");
 requireCondition(sitemapUrls.includes("https://pollframe.com/editorial-standards"), "sitemap omits the public editorial standards and correction log");
 requireCondition(!sitemapUrls.some((url) => url.includes("view=spain-region")), "sitemap exposes Spanish regional compilations before per-source rights review");
-requireCondition((sitemap.match(/<lastmod>2026-08-30<\/lastmod>/g) ?? []).length === sitemapUrls.length, "sitemap last-modified dates are incomplete");
+requireCondition(!sitemap.includes("<lastmod>"), "do not advertise a stale fixed modification date for automatically updated pages");
 requireCondition(new Set(sitemapUrls).size === sitemapUrls.length, "sitemap contains duplicate URLs");
 requireCondition(
   sitemapUrls.every((url) => url.startsWith("https://pollframe.com/")),

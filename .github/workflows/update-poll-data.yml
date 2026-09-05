@@ -130,6 +130,7 @@ jobs:
           cp incoming-poll-data/public/spain-summary.json public/spain-summary.json
           cp -R incoming-poll-data/public/data/. public/data/
           node scripts/validate-poll-data.mjs
+          node scripts/generate-seo-assets.mjs --check
           git diff --check
 
       - name: Commit a real data change
