@@ -137,10 +137,16 @@ test.describe("installable Pollframe app", () => {
     }
     await page.waitForFunction(() => Boolean(navigator.serviceWorker.controller));
     await page.evaluate(() => fetch("/regions.json").then((response) => response.json()));
+    // Chromium's DevTools offline emulation can reset navigator.onLine to true
+    // on a service-worker-served reload. Keep that signal deterministic while
+    // still disabling the actual network and verifying it separately below.
+    await page.addInitScript(() => Object.defineProperty(Navigator.prototype, "onLine", { configurable: true, get: () => false }));
     await context.setOffline(true);
     await page.reload({ waitUntil: "domcontentloaded" });
     await expect(page.getByRole("heading", { level: 1, name: /Deutschland im Überblick|Germany at a glance/i })).toBeVisible();
     await expect(page.getByRole("status")).toContainText(/Offline|Gespeicherter Datenstand|Saved data shown/);
+    expect(await page.evaluate(() => fetch("/api/analytics").then(() => false, () => true))).toBe(true);
+    expect(await page.evaluate(() => fetch("/manifest-context.js").then((response) => response.ok))).toBe(true);
     await context.setOffline(false);
   });
 

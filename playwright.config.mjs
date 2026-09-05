@@ -1,8 +1,13 @@
 import { defineConfig, devices } from "@playwright/test";
 
 const desktop = { viewport: { width: 1440, height: 900 } };
-const localChromium = process.env.POLLFRAME_CHROME_PATH
-  ? { launchOptions: { executablePath: process.env.POLLFRAME_CHROME_PATH } }
+const localChromium = process.env.POLLFRAME_CHROME_PATH || process.env.POLLFRAME_TEST_HOST_RULES
+  ? { launchOptions: {
+    ...(process.env.POLLFRAME_CHROME_PATH ? { executablePath: process.env.POLLFRAME_CHROME_PATH } : {}),
+    // Useful during a domain cutover when the host OS still caches NXDOMAIN.
+    // This only controls DNS in test Chromium; TLS verification remains enabled.
+    ...(process.env.POLLFRAME_TEST_HOST_RULES ? { args: [`--host-resolver-rules=${process.env.POLLFRAME_TEST_HOST_RULES}`] } : {}),
+  } }
   : {};
 const externalBaseUrl = process.env.POLLFRAME_TEST_BASE_URL;
 

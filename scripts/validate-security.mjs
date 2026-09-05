@@ -196,32 +196,33 @@ requireCondition(
   wranglerConfig.migrations?.some((migration) => migration.new_sqlite_classes?.includes("BugReportStore")),
   "bug-report Durable Object migration is missing",
 );
-requireCondition(wranglerConfig.name === "de", "Cloudflare Worker name does not match de.pollframe.workers.dev");
+requireCondition(wranglerConfig.name === "de", "the existing Cloudflare Worker identity changed during domain migration");
 requireCondition(mainHtml.includes('name="referrer" content="no-referrer"'), "main HTML lacks a no-referrer fallback");
-requireCondition(mainHtml.includes('rel="canonical" href="https://de.pollframe.workers.dev/"'), "main HTML lacks the production canonical URL");
+requireCondition(mainHtml.includes('rel="canonical" href="https://pollframe.com/"'), "main HTML lacks the production canonical URL");
 requireCondition(mainHtml.includes('<script src="/manifest-context.js"></script>'), "main HTML lacks the app manifest loader");
 requireCondition(mainHtml.includes('rel="apple-touch-icon" href="/apple-touch-icon-v2.png"'), "main HTML lacks the iOS app icon");
 requireCondition(mainHtml.includes('name="apple-mobile-web-app-capable" content="yes"'), "main HTML lacks iOS standalone support");
 requireCondition(mainHtml.includes("<noscript>") && mainHtml.includes("/de/bundestag/umfragen") && mainHtml.includes("/uk/westminster/polls") && mainHtml.includes("/es/encuestas"), "main HTML lacks a crawlable no-JavaScript navigation fallback");
 requireCondition(!/<loc>[^<]*\?/.test(sitemap), "sitemap still exposes query-string routes instead of stable public paths");
 for (const route of ["/countries", "/de/bundestag/umfragen", "/de/regierung/zufriedenheit", "/uk/westminster/polls", "/uk/constituencies", "/es/encuestas", "/es/preocupaciones", "/sources", "/editorial-standards"]) {
-  requireCondition(sitemap.includes(`https://de.pollframe.workers.dev${route}`), `sitemap is missing public route: ${route}`);
+  requireCondition(sitemap.includes(`https://pollframe.com${route}`), `sitemap is missing public route: ${route}`);
   requireCondition(wranglerConfig.assets.run_worker_first.some((pattern) => pattern === route || (pattern.endsWith("/*") && route.startsWith(pattern.slice(0, -1)))), `SEO shell does not run for public route: ${route}`);
 }
 requireCondition(workerSource.includes("seoPageResponse") && workerSource.includes("seoFallback"), "public routes lack server-readable metadata and no-JavaScript explanatory content");
 requireCondition(wranglerConfig.assets.run_worker_first.includes("/") && workerSource.includes("legacyPublicRedirect"), "legacy query routes are not normalised before the application shell");
 requireCondition(mainHtml.includes('property="og:title"'), "main HTML lacks Open Graph metadata");
 requireCondition(
-  mainHtml.includes('property="og:image" content="https://de.pollframe.workers.dev/pollframe-social.png"')
+  mainHtml.includes('property="og:image" content="https://pollframe.com/pollframe-social.png"')
     && mainHtml.includes('property="og:image:width" content="1200"')
     && mainHtml.includes('property="og:image:height" content="630"')
     && mainHtml.includes('name="twitter:card" content="summary_large_image"'),
   "main HTML lacks the production social-preview metadata",
 );
 requireCondition(
-  mainHtml.includes("https://static.cloudflareinsights.com/beacon.min.js")
-    && mainHtml.includes('4e1831c7e0754afa811e25e2a7a07943'),
-  "main HTML lacks the configured Cloudflare Web Analytics beacon",
+  mainHtml.includes("<!-- pollframe-web-analytics -->")
+    && workerSource.includes("env.WEB_ANALYTICS_TOKEN")
+    && workerSource.includes("https://static.cloudflareinsights.com/beacon.min.js"),
+  "domain-specific Cloudflare Web Analytics configuration is missing",
 );
 requireCondition(embedHtml.includes('name="robots" content="noindex, nofollow, noarchive"'), "embed HTML lacks noindex");
 requireCondition(!embedHtml.includes("cloudflareinsights.com"), "journalist embed unexpectedly contains analytics");
@@ -236,7 +237,7 @@ requireCondition(
 requireCondition(robots.includes("Disallow: /embed.html"), "robots.txt does not exclude the embed entry");
 requireCondition(robots.includes("Disallow: /api/"), "robots.txt does not exclude private and transactional API routes");
 requireCondition(
-  robots.includes("Sitemap: https://de.pollframe.workers.dev/sitemap.xml"),
+  robots.includes("Sitemap: https://pollframe.com/sitemap.xml"),
   "robots.txt does not advertise the production sitemap",
 );
 requireCondition(headers.includes("X-Robots-Tag: noindex, noarchive"), "raw JSON responses are not marked noindex");
@@ -257,14 +258,14 @@ requireCondition(serviceWorker.includes("POLLFRAME_CACHED_DATA"), "service worke
 
 const sitemapUrls = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => match[1]);
 requireCondition(sitemapUrls.length === 29, `sitemap contains ${sitemapUrls.length} URLs instead of 29`);
-requireCondition(sitemapUrls.includes("https://de.pollframe.workers.dev/de/regierung/zufriedenheit"), "sitemap omits the German government and leader evaluation page");
-requireCondition(!sitemapUrls.includes("https://de.pollframe.workers.dev/uk/government/approval"), "sitemap still exposes the withheld UK approval page");
-requireCondition(sitemapUrls.includes("https://de.pollframe.workers.dev/editorial-standards"), "sitemap omits the public editorial standards and correction log");
+requireCondition(sitemapUrls.includes("https://pollframe.com/de/regierung/zufriedenheit"), "sitemap omits the German government and leader evaluation page");
+requireCondition(!sitemapUrls.includes("https://pollframe.com/uk/government/approval"), "sitemap still exposes the withheld UK approval page");
+requireCondition(sitemapUrls.includes("https://pollframe.com/editorial-standards"), "sitemap omits the public editorial standards and correction log");
 requireCondition(!sitemapUrls.some((url) => url.includes("view=spain-region")), "sitemap exposes Spanish regional compilations before per-source rights review");
 requireCondition((sitemap.match(/<lastmod>2026-08-30<\/lastmod>/g) ?? []).length === sitemapUrls.length, "sitemap last-modified dates are incomplete");
 requireCondition(new Set(sitemapUrls).size === sitemapUrls.length, "sitemap contains duplicate URLs");
 requireCondition(
-  sitemapUrls.every((url) => url.startsWith("https://de.pollframe.workers.dev/")),
+  sitemapUrls.every((url) => url.startsWith("https://pollframe.com/")),
   "sitemap contains a URL outside the production origin",
 );
 requireCondition(!sitemap.includes("/embed.html"), "sitemap exposes the noindex embed entry");
@@ -273,11 +274,11 @@ requireCondition(
   "sitemap exposes the paused Europe overview",
 );
 requireCondition(
-  sitemapUrls.includes("https://de.pollframe.workers.dev/"),
+  sitemapUrls.includes("https://pollframe.com/"),
   "sitemap is missing the German overview root",
 );
 requireCondition(
-  sitemapUrls.includes("https://de.pollframe.workers.dev/countries"),
+  sitemapUrls.includes("https://pollframe.com/countries"),
   "sitemap is missing the country selector",
 );
 requireCondition(
@@ -286,14 +287,14 @@ requireCondition(
 );
 requireCondition(
   sitemapUrls.filter((url) => url.includes("?country=")).every((url) => [
-    "https://de.pollframe.workers.dev/?country=uk",
-    "https://de.pollframe.workers.dev/?country=es",
-    "https://de.pollframe.workers.dev/?country=es&amp;view=spain-issues",
+    "https://pollframe.com/?country=uk",
+    "https://pollframe.com/?country=es",
+    "https://pollframe.com/?country=es&amp;view=spain-issues",
   ].includes(url) || /^https:\/\/de\.pollframe\.workers\.dev\/\?country=es&amp;view=spain-region&amp;area=[a-z-]+$/.test(url)),
   "sitemap exposes an unfinished country route",
 );
 requireCondition(
-  sitemapUrls.includes("https://de.pollframe.workers.dev/es/encuestas"),
+  sitemapUrls.includes("https://pollframe.com/es/encuestas"),
   "sitemap is missing the Spanish Congress archive",
 );
 
@@ -333,8 +334,8 @@ if (distInfo?.isDirectory()) {
     requireCondition(!html.includes("/src/"), `${index ? "embed" : "main"} production HTML references source files`);
   }
   requireCondition(
-    builtEntries[0].includes("https://static.cloudflareinsights.com/beacon.min.js"),
-    "main production HTML lacks Web Analytics",
+    builtEntries[0].includes("<!-- pollframe-web-analytics -->"),
+    "main production HTML lacks the domain-specific Web Analytics insertion point",
   );
   requireCondition(!builtEntries[1].includes("cloudflareinsights.com"), "production embed contains Web Analytics");
   const socialPng = await readFile(resolve(root, "dist/pollframe-social.png"));

@@ -8,7 +8,7 @@
   Strict-Transport-Security: max-age=31536000
   Origin-Agent-Cluster: ?1
   Cross-Origin-Opener-Policy: same-origin
-  Content-Security-Policy: default-src 'none'; base-uri 'none'; connect-src 'self' https://cloudflareinsights.com https://api.postcodes.io; font-src 'self'; frame-src 'self'; img-src 'self' data:; manifest-src 'self'; media-src 'none'; object-src 'none'; script-src 'self' https://static.cloudflareinsights.com; script-src-attr 'none'; style-src 'self'; style-src-elem 'self'; style-src-attr 'unsafe-inline'; worker-src 'self'; form-action 'none'; require-trusted-types-for 'script'; trusted-types pollframe-sw; upgrade-insecure-requests
+  Content-Security-Policy: default-src 'none'; base-uri 'none'; connect-src 'self' https://cloudflareinsights.com https://api.postcodes.io; font-src 'self'; frame-src 'self' https://pollframe.com; img-src 'self' data:; manifest-src 'self'; media-src 'none'; object-src 'none'; script-src 'self' https://static.cloudflareinsights.com; script-src-attr 'none'; style-src 'self'; style-src-elem 'self'; style-src-attr 'unsafe-inline'; worker-src 'self'; form-action 'none'; require-trusted-types-for 'script'; trusted-types pollframe-sw; upgrade-insecure-requests
 
 https://pollframe-test.pollframe.workers.dev/*
   X-Robots-Tag: noindex, nofollow, noarchive

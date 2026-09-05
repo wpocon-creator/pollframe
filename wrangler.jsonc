@@ -5,6 +5,13 @@
   "compatibility_date": "2026-07-30",
   "workers_dev": true,
   "preview_urls": false,
+  "vars": {
+    "WEB_ANALYTICS_TOKEN": "3c576ccf9ab3417b8a6a33bb8b22bb07"
+  },
+  "routes": [
+    { "pattern": "pollframe.com", "custom_domain": true },
+    { "pattern": "www.pollframe.com", "custom_domain": true }
+  ],
   "assets": {
     "directory": "./dist",
     "binding": "ASSETS",
@@ -17,6 +24,10 @@
       "/spain-summary.json",
       "/data/*",
       "/",
+      "/index.html",
+      "/embed.html",
+      "/robots.txt",
+      "/sitemap.xml",
       "/countries",
       "/de/*",
       "/uk",

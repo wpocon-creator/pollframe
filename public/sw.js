@@ -1,4 +1,4 @@
-const VERSION = "pollframe-app-v35";
+const VERSION = "pollframe-app-v37";
 const SHELL_CACHE = `${VERSION}-shell`;
 const RUNTIME_CACHE = `${VERSION}-runtime`;
 const DATA_CACHE = `${VERSION}-data`;
@@ -87,7 +87,7 @@ async function cacheDataPaths(paths) {
 async function installAppShell() {
   const shellCache = await caches.open(SHELL_CACHE);
   await shellCache.addAll(SHELL);
-  const rootResponse = await fetch("/");
+  const rootResponse = await fetch("/", { headers: { "X-Pollframe-App": "1" } });
   if (!rootResponse.ok) throw new Error(`App shell returned ${rootResponse.status}`);
   await shellCache.put("/", rootResponse.clone());
   const html = await rootResponse.text();
@@ -158,7 +158,8 @@ function isDataRequest(url) {
 }
 
 function isStaticAsset(url) {
-  return url.pathname.startsWith("/assets/")
+  return url.pathname === "/manifest-context.js"
+    || url.pathname.startsWith("/assets/")
     || /\.(?:png|svg|webmanifest)$/.test(url.pathname);
 }
 
@@ -196,7 +197,11 @@ async function navigationResponse(event) {
     }
     return preloaded;
   }
-  return networkFirst(event.request, SHELL_CACHE);
+  // Keep installed legacy-origin apps in their own storage/scope after a domain
+  // migration, including browsers without navigation preload (notably Safari).
+  const headers = new Headers(event.request.headers);
+  headers.set("X-Pollframe-App", "1");
+  return networkFirst(new Request(event.request, { headers }), SHELL_CACHE);
 }
 
 async function cacheFirst(request) {

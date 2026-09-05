@@ -29,13 +29,13 @@ test("the Worker serves route-specific metadata and readable fallback copy", asy
     ["/es/encuestas", "es", "Encuestas electorales", "Encuestas electorales de España"],
     ["/de/landtagswahl/berlin/umfragen", "de", "Berlin", "Landtagswahl-Umfragen in Berlin"],
   ]) {
-    const response = await worker.fetch(new Request(`https://de.pollframe.workers.dev${path}`), env);
+    const response = await worker.fetch(new Request(`https://pollframe.com${path}`), env);
     const html = await response.text();
     assert.equal(response.status, 200);
     assert.equal(response.headers.get("content-language"), language);
     assert.ok(html.includes(`<meta property="og:locale" content="${language === "es" ? "es_ES" : language === "en" ? "en_GB" : "de_DE"}"`));
     assert.match(html, new RegExp(`<title>[^<]*${titleText}`));
-    assert.ok(html.includes(`<link rel="canonical" href="https://de.pollframe.workers.dev${path}"`));
+    assert.ok(html.includes(`<link rel="canonical" href="https://pollframe.com${path}"`));
     assert.ok(html.includes(`<h1>${headingText}`));
     assert.ok(html.includes("<noscript><main>"));
   }
@@ -43,11 +43,11 @@ test("the Worker serves route-specific metadata and readable fallback copy", asy
 
 test("legacy public query URLs redirect without losing shared chart settings", async () => {
   const env = { ASSETS: { fetch: async () => new Response("unused") } };
-  const response = await worker.fetch(new Request("https://de.pollframe.workers.dev/?region=bundestag&range=year&lang=en-GB"), env);
+  const response = await worker.fetch(new Request("https://pollframe.com/?region=bundestag&range=year&lang=en-GB"), env);
   assert.equal(response.status, 308);
-  assert.equal(response.headers.get("location"), "https://de.pollframe.workers.dev/de/bundestag/umfragen?range=year&lang=en-GB");
+  assert.equal(response.headers.get("location"), "https://pollframe.com/de/bundestag/umfragen?range=year&lang=en-GB");
 
-  const countryResponse = await worker.fetch(new Request("https://de.pollframe.workers.dev/?country=es"), env);
+  const countryResponse = await worker.fetch(new Request("https://pollframe.com/?country=es"), env);
   assert.equal(countryResponse.status, 308);
-  assert.equal(countryResponse.headers.get("location"), "https://de.pollframe.workers.dev/es");
+  assert.equal(countryResponse.headers.get("location"), "https://pollframe.com/es");
 });

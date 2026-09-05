@@ -3,4 +3,4 @@ Allow: /
 Disallow: /api/
 Disallow: /embed.html
 
-Sitemap: https://de.pollframe.workers.dev/sitemap.xml
+Sitemap: https://pollframe.com/sitemap.xml

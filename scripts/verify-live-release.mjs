@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 
-const baseUrl = (process.argv[2] ?? "https://de.pollframe.workers.dev").replace(/\/$/, "");
 const files = [
   "poll-data.json",
   "regions.json",
@@ -20,6 +20,8 @@ function stable(value) {
   return Object.fromEntries(Object.keys(value).sort().map((key) => [key, stable(value[key])]));
 }
 
+export async function verifyLiveRelease(origin = "https://pollframe.com") {
+const baseUrl = origin.replace(/\/$/, "");
 const differences = [];
 for (const file of files) {
   const local = JSON.parse(await readFile(resolve("public", file), "utf8"));
@@ -36,3 +38,8 @@ for (const file of files) {
 }
 if (differences.length) throw new Error(`Live release verification failed:\n- ${differences.join("\n- ")}`);
 console.log(`Live release matches ${files.length} critical data files at ${baseUrl}`);
+}
+
+if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
+  await verifyLiveRelease(process.argv[2]);
+}
