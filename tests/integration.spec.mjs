@@ -209,7 +209,7 @@ test.describe("core routes", () => {
     await page.mouse.click(5, 5); // Outside the native modal's bounds.
     await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
       "href",
-      "https://de.pollframe.workers.dev/de/bundestag/umfragen",
+      "https://pollframe.com/de/bundestag/umfragen",
     );
     await expectDocumentFits(page);
 
@@ -242,8 +242,13 @@ test.describe("core routes", () => {
     } else {
       await page.mouse.move(inspectX, inspectY);
     }
-    await expect(page.locator(".chart-cursor-line")).toHaveCount(1);
-    await expect(page.locator(".chart-tooltip")).toBeVisible();
+    if (testInfo.project.use.hasTouch) {
+      await expect(page.locator(".chart-cursor-line")).toHaveCount(0);
+      await expect(page.locator(".chart-tooltip")).toHaveCount(0);
+    } else {
+      await expect(page.locator(".chart-cursor-line")).toHaveCount(1);
+      await expect(page.locator(".chart-tooltip")).toBeVisible();
+    }
 
     await page.getByRole("button", { name: /Information about data|Daten und Methodik|Methodik|Methodology|Info/i }).first().click();
     await expect(page.getByRole("dialog", { name: /Daten und Methodik|Data and methodology/i })).toBeVisible();
@@ -284,6 +289,7 @@ test.describe("core routes", () => {
     await page.getByRole("button", { name: /Schließen|Close/i }).click();
 
     const pollTable = page.locator(".poll-table-section");
+    await expect(pollTable.locator(".poll-table-body")).toHaveCount(0);
     await pollTable.locator("summary").click();
     await expect(pollTable).toHaveAttribute("open", "");
     const sourceLink = page.viewportSize().width <= 700
@@ -540,18 +546,18 @@ test.describe("core routes", () => {
       const widgetBox = widget.getBoundingClientRect();
       const iconBox = widget.querySelector(".graph-info-popover summary").getBoundingClientRect();
       const titleBox = widget.querySelector("h2").getBoundingClientRect();
-      return { inset: iconBox.left - widgetBox.left, iconRight: iconBox.right, titleLeft: titleBox.left };
+      return { inset: iconBox.left - widgetBox.left, clear: titleBox.left >= iconBox.right || titleBox.top >= iconBox.bottom || titleBox.right <= iconBox.left || titleBox.bottom <= iconBox.top };
     });
     expect(infoCorner.inset).toBeLessThan(32);
-    expect(infoCorner.titleLeft).toBeGreaterThan(infoCorner.iconRight);
+    expect(infoCorner.clear).toBe(true);
     await page.locator(".spain-concern-panel .graph-info-popover summary").first().click();
     await expect(page.locator(".spain-concern-panel .graph-info-card").first()).toBeVisible();
-    await expect(page.locator(".spain-concern-panel .graph-info-card").first()).toHaveAttribute("role", "dialog");
+    await expect(page.getByRole("dialog", { name: "Info", exact: true })).toBeVisible();
     await expect(page.locator(".spain-concern-panel .info-glyph").first()).toHaveText("i");
     await expectDocumentFits(page);
     await page.screenshot({ path: testInfo.outputPath("spain-issues.png"), fullPage: true });
     await page.mouse.click(5, 5);
-    await page.getByRole("link", { name: /Volver a España/i }).click();
+    await page.getByRole("link", { name: "Pollframe España", exact: true }).first().click();
     await settle(page);
 
     await page.goto("/?country=es&lang=es&view=spain-region&area=cataluna");

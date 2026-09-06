@@ -200,7 +200,17 @@ test.describe("installable Pollframe app", () => {
         .reduce((sum, size) => sum + size, 0);
     });
     expect(offlineBytes).toBeLessThan(10 * 1024 * 1024);
+    const cachedAssets = await page.evaluate(async () => {
+      const names = (await caches.keys()).filter((name) => /^pollframe-app-v\d+-shell$/.test(name));
+      return (await Promise.all(names.map(async (name) => (await (await caches.open(name)).keys()).map((request) => request.url)))).flat();
+    });
+    expect(cachedAssets.some((url) => /\/assets\/approval-.*\.css$/.test(url))).toBe(true);
+    expect(cachedAssets.some((url) => /\/assets\/party-profile-content-.*\.js$/.test(url))).toBe(true);
+    expect(cachedAssets.some((url) => /\/assets\/spain-.*\.js$/.test(url))).toBe(true);
 
+    // Keep navigator.onLine aligned with the real disabled network across
+    // service-worker-served reloads (Chromium emulation can reset the flag).
+    await page.addInitScript(() => Object.defineProperty(Navigator.prototype, "onLine", { configurable: true, get: () => false }));
     await context.setOffline(true);
     await page.goto("/?country=es", { waitUntil: "domcontentloaded" });
     await expect(page.getByRole("heading", { level: 1, name: /España de un vistazo|Spain at a glance|Spanien im Überblick/i })).toBeVisible();
@@ -219,7 +229,7 @@ test.describe("installable Pollframe app", () => {
     await page.goto("/?region=bayern", { waitUntil: "domcontentloaded" });
     await expect(page.locator(".chart-card").first()).toBeVisible();
     await page.goto("/?view=approval&country=de", { waitUntil: "domcontentloaded" });
-    await expect(page.getByRole("heading", { level: 1, name: /Wie zufrieden ist Deutschland|How satisfied is Germany/i })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: /Zufriedenheit mit Regierung und Kanzler|Government and Chancellor approval/i })).toBeVisible();
     await expect(page.getByRole("status")).toContainText(/Offline|Gespeicherter Datenstand|Saved data shown/);
     await context.setOffline(false);
   });

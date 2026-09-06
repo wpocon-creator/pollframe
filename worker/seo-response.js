@@ -1,6 +1,26 @@
 import { LEGACY_SITE_ORIGIN } from "../src/site-origin.js";
 import { pageLocale, localizedCanonical } from "../src/seo-locale.js";
 import { routeContent, escapeHtml, alternateLinks, seoFallback } from "./seo-content.js";
+import { routeQueryForLocation } from "../src/public-routes.js";
+
+// Start the exact route's public data requests while the browser downloads JS.
+// These are hints, not a second data cache: normal freshness and offline rules
+// continue to apply. Never interpolate an unchecked query into an HTML URL.
+export function initialDataHints(url, stateNames) {
+  const query = routeQueryForLocation(url);
+  if (query.has("page") || query.get("view") === "watchlist") return [];
+  const region = query.get("region");
+  if (region) return ["bundestag", "uk-westminster", "spain-congress", ...Object.keys(stateNames)].includes(region) ? [`/data/${region}.json`] : [];
+  const view = query.get("view");
+  if (view === "approval") return ["/data/approval.json"];
+  if (view === "uk-constituencies") return ["/uk-summary.json", "/data/uk-constituencies.json"];
+  if (view === "countries") return ["/regions.json", "/uk-summary.json", "/spain-summary.json"];
+  if (query.get("country") === "es") return ["/spain-summary.json"];
+  if (query.get("country") === "uk") return ["/uk-summary.json"];
+  if (view === "map" || view === "states") return ["/regions.json"];
+  if (url.pathname === "/") return ["/regions.json", "/data/bundestag.json"];
+  return [];
+}
 
 function validSnapshot(value) {
   return value && typeof value.pollster === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value.date)
@@ -46,6 +66,8 @@ export async function seoPageResponse(request, env, stateNames, domainHtml) {
   ]);
   if (!shell.ok || !(shell.headers.get("content-type") ?? "").includes("text/html")) return shell;
   let html = domainHtml(await shell.text(), url, env);
+  const preload = initialDataHints(url, stateNames).map((href) => `<link rel="preload" as="fetch" href="${href}" crossorigin="anonymous" />`).join("");
+  html = html.replace("</head>", `${preload}</head>`);
   if (content) {
     const openGraphLocale = { de: "de_DE", "en-GB": "en_GB", "en-US": "en_US", es: "es_ES" }[locale];
     html = html

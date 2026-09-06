@@ -1,4 +1,4 @@
-const VERSION = "pollframe-app-v39";
+const VERSION = "pollframe-app-v40";
 const SHELL_CACHE = `${VERSION}-shell`;
 const RUNTIME_CACHE = `${VERSION}-runtime`;
 const DATA_CACHE = `${VERSION}-data`;
@@ -63,8 +63,12 @@ async function cacheBuiltAssetGraph(cache, initialPaths) {
     await cache.put(absolute.href, response.clone());
     if (!absolute.pathname.endsWith(".js")) continue;
     const source = await response.text();
-    for (const match of source.matchAll(/["'](\.?\/[^"']+\.(?:js|css))["']/g)) {
-      queue.push(new URL(match[1], absolute.href).href);
+    for (const match of source.matchAll(/["']((?:\.?\/|assets\/)[^"']+\.(?:js|css))["']/g)) {
+      // Vite's dependency map uses root-relative "assets/..." entries, while
+      // imports use "./...". Both include lazy CSS needed on a cold offline
+      // visit; resolving the former beside the JS would duplicate /assets/.
+      const dependency = match[1].startsWith("assets/") ? `/${match[1]}` : match[1];
+      queue.push(new URL(dependency, absolute.href).href);
     }
   }
 }

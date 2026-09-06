@@ -26,12 +26,19 @@ import {
   SPAIN_PARTY_DEFINITIONS,
   SPAIN_POLITICAL_EVENTS,
   buildSpainPollingInsights,
-  SpainCountryOverview,
-  SpainIssuesPage,
-  SpainMiniMap,
-  SpainPollingInsights,
-  SpainRegionPage,
-} from "./spain.jsx";
+} from "./spain-data.js";
+// Country-specific views are not part of every visitor's initial download.
+function lazySpainView(name) {
+  const View = lazy(() => import("./spain.jsx").then((module) => ({ default: module[name] })));
+  return function SpainView(props) {
+    return <Suspense fallback={<div className="embed-loading" role="status">…</div>}><View {...props} /></Suspense>;
+  };
+}
+const SpainCountryOverview = lazySpainView("SpainCountryOverview");
+const SpainIssuesPage = lazySpainView("SpainIssuesPage");
+const SpainMiniMap = lazySpainView("SpainMiniMap");
+const SpainPollingInsights = lazySpainView("SpainPollingInsights");
+const SpainRegionPage = lazySpainView("SpainRegionPage");
 import "./styles.css";
 
 const DAY = 86_400_000;
@@ -1197,189 +1204,6 @@ copy.es = {
   methodTitle: "Datos y metodología de España", methodIntro: "La vista separa encuestas publicadas, medias calculadas y resultados oficiales.", meanTitle: "Cómo se calcula la media", meanText: "En cada fecha cuenta la última encuesta de cada instituto seleccionado dentro de los 45 días anteriores. Pollframe calcula la media aritmética simple: cada instituto pesa lo mismo, con independencia de la frecuencia de publicación.", selectionTitle: "Selección de institutos", selectionText: "La vista inicial incluye todos los institutos válidos del archivo. Pueden compararse por separado; su inclusión no equivale a una clasificación de calidad.", limitsTitle: "Qué no muestra el gráfico", limitsText: "Las encuestas son estimaciones con incertidumbre. El promedio no corrige efectos propios de cada instituto ni escaños por provincia. No es una previsión electoral.", sourceTitle: "Fuente y licencia", sourceText: "Pollframe normaliza las tablas de encuestas citadas en Wikipedia bajo CC BY-SA 4.0 y conserva el enlace a la publicación original de cada fila cuando está disponible. Los resultados electorales proceden del Ministerio del Interior.", electionSource: "Resultados electorales", lastPoll: "Última encuesta incluida", basedOn: (count) => `Media de ${count} institutos`, onePollster: "Un instituto seleccionado", loading: "Cargando datos…", error: "No se pudieron cargar los datos.", footerLine: "Resumen basado en datos · no es una previsión", privacy: "Privacidad", licences: "Licencias", editorialStandards: "Criterios editoriales", impressum: "Aviso legal", contact: "Contacto", reportBug: "Informar de un problema", info: "Información",
 };
 
-copy.tr = {
-  ...copy["en-GB"],
-  settings: "Ayarlar",
-  dataInfo: "Veri ve yöntem bilgileri",
-  overview: "Bundestag · Oy tercihi",
-  title: "Almanya federal seçim anketleri",
-  intro: "Güncel değerler ve uzun vadeli görünüm — karşılaştırılabilir, izlenebilir ve siyasi yorum içermeden.",
-  current: "Son anket",
-  currentNote: "Seçilenler arasındaki en son yayımlanan anket",
-  compared: "7 gün öncesine göre değişim",
-  chartTitle: "Oy tercihlerinin zaman içindeki gelişimi",
-  chartSubtitle: "Seçilen her araştırma şirketi eşit ağırlıktadır. Çizgiler hesaplanan değerleri, noktalar yayın tarihlerini gösterir.",
-  chartSwipe: "↔ İncelemek için yatay kaydırın",
-  customize: "Grafiği özelleştir",
-  share: "Paylaş ve yerleştir",
-  exportPng: "PNG indir",
-  exportPreparing: "PNG hazırlanıyor …",
-  exportReady: "PNG kaydedildi",
-  exportError: "Dışa aktarma başarısız",
-  display: "Görünüm",
-  trend: "Yumuşatılmış eğilim",
-  linear: "Birleştirilmiş ortalamalar",
-  polls: "Ortalama noktaları",
-  both: "Eğilim + ortalama noktaları",
-  timeRange: "Zaman aralığı",
-  oneMonthLong: "1 ay",
-  threeMonths: "3 ay",
-  sixMonths: "6 ay",
-  yearToDate: "Yıl başından beri",
-  year: "1 yıl",
-  twoYears: "2 yıl",
-  sinceElection: "2025 seçiminden beri",
-  fiveYearsLong: "5 yıl",
-  fullArchive: "Tüm arşiv · 2017'den beri",
-  events: "Olaylar",
-  eventCount: (count) => count === 0 ? "Gizli" : `${count} kategori`,
-  eventsShown: "Gösterilen olaylar",
-  eventsNote: "İşaretler kronolojik bağlam sunar; anket değişikliklerinin nedenini kanıtlamaz.",
-  eventEntries: (count) => `Seçilen dönemde ${count} kayıt`,
-  lineLegend: "Çizgiler",
-  axisRange: (min, max) => `Ölçek %${min}–${max}${min > 0 ? " · sıfır gösterilmiyor" : ""}`,
-  axisStart: (min) => `Eksen %${min}'ten başlıyor`,
-  pollsters: "Araştırma şirketleri",
-  pollsterCount: (count, total) => count === total ? `Tümü (${total})` : `${count} seçili`,
-  parties: "Partiler",
-  sourcePrefix: "Veri kaynağı",
-  dataUpdated: "Veri tarihi",
-  raw: "Veriyi indir (JSON)",
-  csv: "CSV indir",
-  pollTable: "Yayımlanan tekil anketler",
-  pollTableIntro: "Seçilen şirketlerin son anketleri. Bunlar Pollframe ortalaması değil, şirketlerin yayımladığı değerlerdir.",
-  pollTableCount: (shown, total) => `${total} anketin ${shown} tanesi gösteriliyor`,
-  pollDate: "Yayınlandı",
-  fieldwork: "Saha çalışması",
-  sample: "Örneklem",
-  method: "Yöntem",
-  openSource: "DAWUM'da aç",
-  showMorePolls: "Daha fazla anket göster",
-  methodology: "Yöntem",
-  pollRecords: "yayımlanmış anket",
-  archiveCoverage: "Arşiv dönemi",
-  dataStandard: "Açık veri · şeffaf yöntem",
-  tendencies: "Parti eğilimleri",
-  tendenciesIntro: "En son anket, en az 90 gün önceki tarihte bulunan son anketle karşılaştırılır; bu yalnızca sayısal bir karşılaştırmadır.",
-  tendencyRising: "yükseliyor",
-  tendencySlightRising: "hafif yükseliyor",
-  tendencyStable: "büyük ölçüde sabit",
-  tendencySlightFalling: "hafif düşüyor",
-  tendencyFalling: "düşüyor",
-  tendencyUnavailable: "Karşılaştırılabilir temel yok",
-  openParty: (party) => `${party} ayrıntılarını aç`,
-  percentagePoints90: (delta) => `90 günde ${delta > 0 ? "+" : ""}${delta.toLocaleString("tr-TR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} puan`,
-  partyDetail: "Parti geçmişi",
-  partyDetailTitle: (party) => `${party}: zaman içindeki değişim`,
-  partyDetailIntro: "Seçili araştırma şirketlerinin yumuşatılmış ortalaması.",
-  oneMonth: "1A", sixMonthsShort: "6A", yearToDateShort: "YBB", twoYearsShort: "2Y", fiveYears: "5Y", maximum: "Tümü",
-  currentValue: "Güncel", changeInPeriod: "Değişim", relativeChange: "Göreli", periodHigh: "En yüksek", periodLow: "En düşük",
-  percentagePoints: "puan", ppShort: " puan", versusPeriodStart: "dönem başlangıcına göre",
-  notEnoughData: "Bu dönem için yeterli karşılaştırılabilir veri yok.",
-  language: "Dil ve bölge", languageHelp: "Dil, tarih ve sayı biçimini belirler.",
-  appearance: "Görünüm", appearanceHelp: "Cihazınızın görünümünü otomatik olarak izleyebilir.",
-  system: "Sistem", light: "Açık", dark: "Koyu",
-  textSize: "Metin boyutu", textSizeHelp: "İçeriği değiştirmeden arayüzü büyütür.", standard: "Standart · 17 px", larger: "Büyük · 19 px",
-  motion: "Hareket", motionHelp: "Daha sakin kullanım için geçişleri ve animasyonları azaltır.", reduced: "Azaltılmış",
-  electionTomorrow: "Güncel anket ortalamasına göre modellenmiş sandalye dağılımı",
-  projectionLabel: "Matematiksel model", projectionIntro: "En son ankete dayalı basitleştirilmiş sandalye dağılımı; bir tahmin değildir.",
-  seats: "Sandalye", majority: "Çoğunluk", partiesInParliament: "Parlamentodaki partiler", representedVotes: "temsil edilen oylar",
-  thresholdWatch: "%5 barajının altında", noThresholdParties: "Gösterilen tüm partiler en az %5 seviyesinde.", arithmeticMajorities: "Aritmetik çoğunluklar",
-  seatsOutOf: (seats) => `630 sandalyenin ${seats} tanesi`,
-  close: "Kapat", settingsTitle: "Ayarlar",
-  embedTitle: "Grafiği paylaş", embedText: "Güncel görünümü reklamsız ve duyarlı bir grafik olarak kullanın. Kaynak ve lisans görünür kalır.",
-  embedPreview: "Yerleştirme kodu", copyCode: "Kodu kopyala", copied: "Kopyalandı", embedTheme: "Görünüm", embedHeight: "Yükseklik",
-  embedLight: "Açık", embedDark: "Koyu", embedAuto: "Otomatik", embedCompact: "Kompakt", embedStandard: "Standart", embedLarge: "Büyük",
-  embedOpen: "Önizlemeyi aç", copyLink: "Görünüm bağlantısını kopyala", linkCopied: "Bağlantı kopyalandı",
-  embedPrivacy: "Yerleştirmede çerez, izleme veya üçüncü taraf betiği yoktur.", embedByline: "Etkileşimli Almanya federal seçim anketleri",
-  methodTitle: "Veri ve yöntem", methodIntro: "Yayımlanan anketler, yumuşatılmış ortalama ve resmî seçim sonuçları ayrı gösterilir.",
-  sourceTitle: "Kaynak ve lisans", electionSource: "Seçim sonuçları", lastPoll: "Dahil edilen son anket",
-  basedOn: (count) => `${count} araştırma şirketinin ortalaması`, onePollster: "Bir araştırma şirketi seçili",
-  loading: "Anket verileri yükleniyor …", error: "Anket verileri yüklenemedi.", footerLine: "Veriye dayalı görünüm · Seçim tahmini değildir",
-  privacy: "Gizlilik", licences: "Lisanslar", contact: "İletişim", info: "Bilgi",
-};
-
-copy.ru = {
-  ...copy["en-GB"],
-  settings: "Настройки", dataInfo: "Данные и методика", overview: "Бундестаг · Рейтинги партий",
-  title: "Опросы перед выборами в Бундестаг", intro: "Текущие значения и долгосрочная динамика — сопоставимо, прозрачно и без политических оценок.",
-  current: "Последний опрос", currentNote: "Самый свежий опубликованный опрос среди выбранных", compared: "Изменение за 7 дней",
-  chartTitle: "Динамика электоральных предпочтений", chartSubtitle: "Каждый выбранный институт имеет одинаковый вес. Линии соединяют расчётные значения, точки отмечают даты публикаций.",
-  chartSwipe: "↔ Проведите по горизонтали", customize: "Настроить график", share: "Поделиться и встроить",
-  exportPng: "Скачать PNG", exportPreparing: "Создаём PNG …", exportReady: "PNG сохранён", exportError: "Ошибка экспорта",
-  display: "Вид", trend: "Сглаженный тренд", linear: "Соединённые средние", polls: "Средние точки", both: "Тренд + средние точки", timeRange: "Период",
-  oneMonthLong: "1 месяц", threeMonths: "3 месяца", sixMonths: "6 месяцев", yearToDate: "С начала года", year: "1 год", twoYears: "2 года",
-  sinceElection: "После выборов 2025", fiveYearsLong: "5 лет", fullArchive: "Весь архив · с 2017 года",
-  events: "События", eventCount: (count) => count === 0 ? "Скрыты" : `${count} категорий`, eventsShown: "Показанные события",
-  eventsNote: "Метки дают хронологический контекст, но не доказывают причинную связь.", eventEntries: (count) => `${count} событий за выбранный период`,
-  lineLegend: "Линии", axisRange: (min, max) => `Шкала ${min}–${max}%${min > 0 ? " · без нуля" : ""}`, axisStart: (min) => `Ось начинается с ${min}%`,
-  pollsters: "Институты", pollsterCount: (count, total) => count === total ? `Все (${total})` : `Выбрано: ${count}`, parties: "Партии",
-  sourcePrefix: "Источник данных", dataUpdated: "Данные на", raw: "Скачать данные (JSON)", csv: "Скачать CSV",
-  pollTable: "Опубликованные опросы", pollTableIntro: "Последние опросы выбранных институтов. Это опубликованные значения, а не среднее Pollframe.",
-  pollTableCount: (shown, total) => `Показано ${shown} из ${total}`, pollDate: "Опубликовано", fieldwork: "Полевой период", sample: "Выборка", method: "Метод",
-  openSource: "Открыть на DAWUM", showMorePolls: "Показать ещё", methodology: "Методика", pollRecords: "опубликованных опросов", archiveCoverage: "Период архива",
-  dataStandard: "Открытые данные · прозрачная методика", tendencies: "Тенденции партий",
-  tendenciesIntro: "Последний опрос сравнивается с последним доступным опросом на дату не менее чем 90 дней назад; это только числовое сравнение.",
-  tendencyRising: "растёт", tendencySlightRising: "слегка растёт", tendencyStable: "почти без изменений", tendencySlightFalling: "слегка снижается", tendencyFalling: "снижается", tendencyUnavailable: "Нет базы для сравнения",
-  openParty: (party) => `Открыть данные ${party}`, percentagePoints90: (delta) => `${delta > 0 ? "+" : ""}${delta.toLocaleString("ru-RU", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} п. п. за 90 дней`,
-  partyDetail: "История партии", partyDetailTitle: (party) => `${party}: динамика`, partyDetailIntro: "Сглаженное среднее выбранных институтов.",
-  oneMonth: "1М", sixMonthsShort: "6М", yearToDateShort: "СГ", twoYearsShort: "2Г", fiveYears: "5Л", maximum: "Макс.",
-  currentValue: "Сейчас", changeInPeriod: "Изменение", relativeChange: "Относительно", periodHigh: "Максимум", periodLow: "Минимум", percentagePoints: "процентных пункта", ppShort: " п. п.", versusPeriodStart: "к началу периода", notEnoughData: "Недостаточно сопоставимых данных за этот период.",
-  language: "Язык и регион", languageHelp: "Определяет язык, формат дат и чисел.", appearance: "Оформление", appearanceHelp: "Может соответствовать настройкам устройства.",
-  system: "Система", light: "Светлая", dark: "Тёмная", textSize: "Размер текста", textSizeHelp: "Увеличивает интерфейс без изменения содержания.", standard: "Обычный · 17 px", larger: "Крупный · 19 px",
-  motion: "Анимация", motionHelp: "Уменьшает переходы и анимацию.", reduced: "Уменьшена", electionTomorrow: "Расчётное распределение мест по текущему среднему",
-  projectionLabel: "Математическая модель", projectionIntro: "Упрощённое распределение мест на основе последнего опроса; это не прогноз.", seats: "Места", majority: "Большинство", partiesInParliament: "Партии в парламенте", representedVotes: "учтённых голосов", thresholdWatch: "Ниже барьера 5%", noThresholdParties: "Все показанные партии набирают не менее 5%.", arithmeticMajorities: "Арифметические большинства", seatsOutOf: (seats) => `${seats} из 630 мест`,
-  close: "Закрыть", settingsTitle: "Настройки", embedTitle: "Поделиться графиком", embedText: "Используйте текущий вид как адаптивный график без рекламы. Источник и лицензия остаются видимыми.",
-  embedPreview: "Код для встраивания", copyCode: "Копировать код", copied: "Скопировано", embedTheme: "Оформление", embedHeight: "Высота", embedLight: "Светлая", embedDark: "Тёмная", embedAuto: "Авто", embedCompact: "Компактно", embedStandard: "Стандарт", embedLarge: "Крупно", embedOpen: "Открыть предпросмотр", copyLink: "Копировать ссылку", linkCopied: "Ссылка скопирована", embedPrivacy: "Без файлов cookie, отслеживания и сторонних скриптов.", embedByline: "Опросы перед выборами в Бундестаг",
-  methodTitle: "Данные и методика", methodIntro: "Опубликованные опросы, сглаженное среднее и официальные итоги показаны отдельно.", sourceTitle: "Источник и лицензия", electionSource: "Итоги выборов", lastPoll: "Последний учтённый опрос", basedOn: (count) => `Среднее ${count} институтов`, onePollster: "Выбран один институт", loading: "Загрузка данных …", error: "Не удалось загрузить данные.", footerLine: "Обзор на основе данных · Не прогноз выборов", privacy: "Конфиденциальность", licences: "Лицензии", contact: "Контакты", info: "Информация",
-};
-
-copy.ar = {
-  ...copy["en-GB"],
-  settings: "الإعدادات", dataInfo: "معلومات البيانات والمنهجية", overview: "البوندستاغ · نوايا التصويت",
-  title: "استطلاعات الانتخابات الاتحادية الألمانية", intro: "الأرقام الحالية والاتجاه طويل المدى — قابلة للمقارنة وشفافة ومن دون تعليق سياسي.",
-  current: "أحدث استطلاع", currentNote: "أحدث استطلاع منشور ضمن الاختيار", compared: "التغير مقارنةً بما قبل 7 أيام",
-  chartTitle: "تطور نوايا التصويت", chartSubtitle: "تحصل كل مؤسسة مختارة على الوزن نفسه. تصل الخطوط القيم المحسوبة وتشير النقاط إلى تواريخ النشر.",
-  chartSwipe: "↔ اسحب أفقياً للاستكشاف", customize: "تخصيص الرسم", share: "مشاركة وتضمين",
-  exportPng: "تنزيل PNG", exportPreparing: "جارٍ إنشاء PNG …", exportReady: "تم حفظ PNG", exportError: "فشل التصدير",
-  display: "العرض", trend: "اتجاه سلس", linear: "متوسطات متصلة", polls: "نقاط المتوسط", both: "الاتجاه + نقاط المتوسط", timeRange: "الفترة الزمنية",
-  oneMonthLong: "شهر", threeMonths: "3 أشهر", sixMonths: "6 أشهر", yearToDate: "منذ بداية السنة", year: "سنة", twoYears: "سنتان", sinceElection: "منذ انتخابات 2025", fiveYearsLong: "5 سنوات", fullArchive: "الأرشيف الكامل · منذ 2017",
-  events: "الأحداث", eventCount: (count) => count === 0 ? "مخفية" : `${count} فئات`, eventsShown: "الأحداث المعروضة", eventsNote: "توفر العلامات سياقاً زمنياً ولا تثبت وجود علاقة سببية.", eventEntries: (count) => `${count} أحداث في الفترة المختارة`,
-  lineLegend: "الخطوط", axisRange: (min, max) => `المقياس ${min}–${max}%${min > 0 ? " · الصفر غير معروض" : ""}`, axisStart: (min) => `يبدأ المحور عند ${min}%`,
-  pollsters: "مؤسسات الاستطلاع", pollsterCount: (count, total) => count === total ? `الكل (${total})` : `${count} محددة`, parties: "الأحزاب",
-  sourcePrefix: "مصدر البيانات", dataUpdated: "تاريخ البيانات", raw: "تنزيل البيانات (JSON)", csv: "تنزيل CSV", pollTable: "الاستطلاعات المنشورة",
-  pollTableIntro: "أحدث استطلاعات المؤسسات المختارة. هذه قيم منشورة وليست متوسط Pollframe.", pollTableCount: (shown, total) => `عرض ${shown} من ${total}`, pollDate: "النشر", fieldwork: "العمل الميداني", sample: "العينة", method: "المنهج", openSource: "فتح في DAWUM", showMorePolls: "عرض المزيد", methodology: "المنهجية", pollRecords: "استطلاعات منشورة", archiveCoverage: "فترة الأرشيف", dataStandard: "بيانات مفتوحة · منهج شفاف",
-  tendencies: "اتجاهات الأحزاب", tendenciesIntro: "تُقارن أحدث نتيجة بآخر استطلاع متاح في تاريخ يسبقها بتسعين يوماً على الأقل؛ وهي مقارنة رقمية لا تفسر الأسباب.",
-  tendencyRising: "صاعد", tendencySlightRising: "صاعد قليلاً", tendencyStable: "مستقر إلى حد كبير", tendencySlightFalling: "منخفض قليلاً", tendencyFalling: "منخفض", tendencyUnavailable: "لا توجد قاعدة مقارنة",
-  openParty: (party) => `فتح تفاصيل ${party}`, percentagePoints90: (delta) => `${delta > 0 ? "+" : ""}${delta.toLocaleString("ar", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} نقطة خلال 90 يوماً`, partyDetail: "سجل الحزب", partyDetailTitle: (party) => `${party} عبر الزمن`, partyDetailIntro: "متوسط سلس لمؤسسات الاستطلاع المختارة.",
-  oneMonth: "شهر", sixMonthsShort: "6ش", yearToDateShort: "السنة", twoYearsShort: "2س", fiveYears: "5س", maximum: "الكل", currentValue: "حالياً", changeInPeriod: "التغير", relativeChange: "نسبي", periodHigh: "الأعلى", periodLow: "الأدنى", percentagePoints: "نقاط مئوية", ppShort: " نقطة", versusPeriodStart: "مقارنة ببداية الفترة", notEnoughData: "لا توجد بيانات كافية قابلة للمقارنة لهذه الفترة.",
-  language: "اللغة والمنطقة", languageHelp: "تحدد اللغة وتنسيق التاريخ والأرقام.", appearance: "المظهر", appearanceHelp: "يمكنه اتباع مظهر جهازك تلقائياً.", system: "النظام", light: "فاتح", dark: "داكن", textSize: "حجم النص", textSizeHelp: "يكبر الواجهة من دون تغيير المحتوى.", standard: "عادي · 17 px", larger: "كبير · 19 px", motion: "الحركة", motionHelp: "يقلل الانتقالات والحركة.", reduced: "مخفضة",
-  electionTomorrow: "توزيع مقاعد محسوب من أحدث استطلاع", projectionLabel: "نموذج رياضي", projectionIntro: "توزيع مبسط للمقاعد استناداً إلى أحدث استطلاع، وليس توقعاً.", seats: "مقاعد", majority: "الأغلبية", partiesInParliament: "الأحزاب في البرلمان", representedVotes: "الأصوات الممثلة", thresholdWatch: "دون عتبة 5%", noThresholdParties: "كل الأحزاب المعروضة عند 5% أو أكثر.", arithmeticMajorities: "الأغلبيات الحسابية", seatsOutOf: (seats) => `${seats} من 630 مقعداً`,
-  close: "إغلاق", settingsTitle: "الإعدادات", embedTitle: "مشاركة الرسم", embedText: "استخدم العرض الحالي كرسم متجاوب بلا إعلانات. يبقى المصدر والترخيص ظاهرين.", embedPreview: "رمز التضمين", copyCode: "نسخ الرمز", copied: "تم النسخ", embedTheme: "المظهر", embedHeight: "الارتفاع", embedLight: "فاتح", embedDark: "داكن", embedAuto: "تلقائي", embedCompact: "مضغوط", embedStandard: "عادي", embedLarge: "كبير", embedOpen: "فتح المعاينة", copyLink: "نسخ رابط العرض", linkCopied: "تم نسخ الرابط", embedPrivacy: "لا ملفات تعريف ارتباط أو تتبع أو نصوص خارجية في التضمين.", embedByline: "استطلاعات الانتخابات الاتحادية الألمانية",
-  methodTitle: "البيانات والمنهجية", methodIntro: "تُعرض نتائج الاستطلاعات والمتوسط السلس والنتائج الرسمية بصورة منفصلة.", sourceTitle: "المصدر والترخيص", electionSource: "نتائج الانتخابات", lastPoll: "آخر استطلاع مشمول", basedOn: (count) => `متوسط ${count} مؤسسات`, onePollster: "مؤسسة واحدة محددة", loading: "جارٍ تحميل البيانات …", error: "تعذر تحميل البيانات.", footerLine: "عرض قائم على البيانات · ليس توقعاً انتخابياً", privacy: "الخصوصية", licences: "التراخيص", contact: "اتصال", info: "معلومات",
-};
-
-Object.assign(copy.tr, {
-  app: "Uygulama", appSettingsTitle: "Bu cihazda Pollframe", appSettingsHelp: "Daha hızlı açılış, özel gezinme ve bağlantı sorunlarında son yüklenen görünüm için yükleyin.",
-  installApp: "Pollframe'ı yükle", installNow: "Ücretsiz yükle", showInstallSteps: "Yükleme adımlarını göster", appInstalled: "Bu cihaza yüklendi", appUnavailable: "Tarayıcınız desteklediğinde yükleme seçeneği görünecektir.",
-  iosInstallTitle: "iPhone veya iPad'e yükle", iosInstallStepOne: "Pollframe'ı Safari'de açın ve Paylaş'a dokunun.", iosInstallStepTwo: "‘Ana Ekrana Ekle’yi, ardından ‘Ekle’yi seçin.",
-  offlineStatus: "Çevrimdışı · Son yüklenen değerler gösteriliyor ve güncel olmayabilir.", cachedDataStatus: "Kaydedilmiş veriler gösteriliyor · yayımlamadan önce bağlantınızı kontrol edin.", updateReady: "Yeni bir Pollframe sürümü hazır.", updateNow: "Şimdi güncelle",
-  navOverview: "Genel", navAdd: "Ekle", navPolling: "Anketler", navMap: "Harita", navCountries: "Ülkeler", navSettings: "Daha fazla",
-});
-Object.assign(copy.ru, {
-  app: "Приложение", appSettingsTitle: "Pollframe на этом устройстве", appSettingsHelp: "Установите для быстрого запуска, удобной навигации и доступа к последнему загруженному виду при проблемах с сетью.",
-  installApp: "Установить Pollframe", installNow: "Установить бесплатно", showInstallSteps: "Показать шаги установки", appInstalled: "Установлено на этом устройстве", appUnavailable: "Установка появится, когда её поддержит браузер.",
-  iosInstallTitle: "Установка на iPhone или iPad", iosInstallStepOne: "Откройте Pollframe в Safari и нажмите «Поделиться».", iosInstallStepTwo: "Выберите «На экран Домой», затем «Добавить».",
-  offlineStatus: "Нет сети · Показаны последние загруженные данные, они могут устареть.", cachedDataStatus: "Показаны сохранённые данные · перед публикацией проверьте соединение.", updateReady: "Доступна новая версия Pollframe.", updateNow: "Обновить",
-  navOverview: "Обзор", navAdd: "Добавить", navPolling: "Опросы", navMap: "Карта", navCountries: "Страны", navSettings: "Ещё",
-});
-Object.assign(copy.ar, {
-  app: "التطبيق", appSettingsTitle: "Pollframe على هذا الجهاز", appSettingsHelp: "ثبّته لفتح أسرع وتنقل مخصص والوصول إلى آخر عرض محمّل عند تعذر الاتصال.",
-  installApp: "تثبيت Pollframe", installNow: "تثبيت مجاناً", showInstallSteps: "عرض خطوات التثبيت", appInstalled: "مثبّت على هذا الجهاز", appUnavailable: "سيظهر خيار التثبيت عندما يدعمه متصفحك.",
-  iosInstallTitle: "التثبيت على iPhone أو iPad", iosInstallStepOne: "افتح Pollframe في Safari واضغط على مشاركة.", iosInstallStepTwo: "اختر «إضافة إلى الشاشة الرئيسية» ثم «إضافة».",
-  offlineStatus: "غير متصل · تظهر آخر بيانات حُمّلت وقد تكون قديمة.", cachedDataStatus: "تظهر بيانات محفوظة · تحقق من الاتصال قبل نشر الأرقام.", updateReady: "إصدار جديد من Pollframe جاهز.", updateNow: "تحديث الآن",
-  navOverview: "نظرة عامة", navAdd: "إضافة", navPolling: "استطلاعات", navMap: "الخريطة", navCountries: "الدول", navSettings: "المزيد",
-});
 
 function stateLocaleOverrides() { return null; }
 
@@ -3033,7 +2857,7 @@ function ResultsCard({ t, locale, current, previous, date, partyDefinitions = PA
   const collapsedCount = region.type === "spain-federal" ? 5 : rows.length;
 
   return (
-    <section ref={exportRef} data-publication-date={current.synthetic ? undefined : date} className={`results-card ${region.type === "spain-federal" ? "spain-results-card" : ""}`} aria-labelledby="snapshot-title">
+    <section ref={exportRef} data-publication-date={date} data-source-date-kind={recencyKind} className={`results-card ${region.type === "spain-federal" ? "spain-results-card" : ""}`} aria-labelledby="snapshot-title">
       <small className="widget-data-age">{formatCurrentRecency(date, locale, recencyKind)}</small>
       <div className="card-heading">
         <div className="widget-info-heading">
@@ -3573,7 +3397,7 @@ function ParliamentProjection({
   if (!parties.length) return null;
 
   return (
-    <section ref={exportRef} data-publication-date={current.synthetic ? undefined : date} className="projection-section has-data-age" aria-labelledby="projection-title">
+    <section ref={exportRef} data-publication-date={date} data-source-date-kind={currentPollRecencyKind(region, current)} className="projection-section has-data-age" aria-labelledby="projection-title">
       <small className="widget-data-age">{formatDataAge(date, locale)}</small>
       <div className="projection-heading">
         <div className="widget-info-heading">
@@ -4516,6 +4340,7 @@ function WidgetEmbedView({ widget, t, locale, pollData, latestDate, current, pre
 
 function PollTable({ t, locale, pollData, selectedPollsters, selectedParties, partyDefinitions, regionSlug }) {
   const [visibleCount, setVisibleCount] = useState(12);
+  const [opened, setOpened] = useState(false);
   const numberLocale = getNumberLocale(locale);
   const weightedSelected = selectedPollsters.includes(pollData.metadata?.weightedAveragePollsterId);
   const ratings = pollData.metadata?.pollsterRatings ?? {};
@@ -4540,12 +4365,12 @@ function PollTable({ t, locale, pollData, selectedPollsters, selectedParties, pa
     : "–";
 
   return (
-    <details className="poll-table-section">
+    <details className="poll-table-section" onToggle={(event) => setOpened(event.currentTarget.open)}>
       <summary>
         <span><span className="section-label">{t.dataStandard}</span><strong>{t.pollTable}</strong><small>{t.pollTableCount(Math.min(visibleCount, polls.length), polls.length)}</small></span>
         <Icon name="chevron" size={18} />
       </summary>
-      <div className="poll-table-body">
+      {opened && <div className="poll-table-body">
         <div className="poll-table-heading">
           <p>{t.pollTableIntro}</p>
           <button
@@ -4589,7 +4414,7 @@ function PollTable({ t, locale, pollData, selectedPollsters, selectedParties, pa
         </div>
         {visibleCount < polls.length && <button className="poll-table-more secondary-button" type="button" onClick={() => setVisibleCount((count) => count + 24)}>{t.showMorePolls}</button>}
         <p className="poll-table-source"><DataAttribution locale={locale} metadata={pollData.metadata} /></p>
-      </div>
+      </div>}
     </details>
   );
 }
