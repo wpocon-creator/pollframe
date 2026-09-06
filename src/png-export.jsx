@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "./pollframe-ui.jsx";
 import { trackAggregateEvent } from "./aggregateAnalytics.js";
+import { layoutPublishingColumns } from "./publishing-layout.js";
 
 const PRESETS = {
   content: { width: 1600, height: null, pixelRatio: 2 },
@@ -254,7 +255,7 @@ function exportCloneWidth(format, profile, preset) {
   const horizontalPadding = format.height ? 80 : 104;
   const available = Math.max(320, format.width - horizontalPadding);
   if (profile === "current-poll") {
-    const compactWidth = preset === "landscape" ? 1400 : preset === "portrait" ? 760 : 820;
+    const compactWidth = preset === "landscape" ? 1400 : preset === "portrait" ? 980 : 820;
     return Math.min(available, compactWidth);
   }
   if (profile === "issues") {
@@ -268,26 +269,25 @@ function exportCloneWidth(format, profile, preset) {
   return available;
 }
 
-function balancedPortraitColumnCount(count) {
-  if (count <= 5) return Math.max(1, count);
-  let best = { columns: 3, score: Number.POSITIVE_INFINITY };
-  for (let columns = 3; columns <= Math.min(5, count); columns += 1) {
-    const rowCount = Math.ceil(count / columns);
-    const remainder = count % columns;
-    const orphanPenalty = remainder === 1 ? 100 : 0;
-    const unusedSlots = remainder ? columns - remainder : 0;
-    const score = orphanPenalty + rowCount * 10 + unusedSlots;
-    if (score < best.score) best = { columns, score };
-  }
-  return best.columns;
-}
-
-function prepareExportClone(clone, { format, preset, profile }) {
+function prepareExportClone(clone, { format, preset, profile, locale }) {
   clone.dataset.pngPreset = preset;
   clone.dataset.pngProfile = profile;
   clone.style.setProperty("width", `${exportCloneWidth(format, profile, preset)}px`);
   clone.style.setProperty("max-width", "none");
   clone.style.setProperty("margin", "0");
+  if (clone.dataset.publicationDate) {
+    const date = new Date(`${clone.dataset.publicationDate}T12:00:00Z`);
+    const label = locale === "de" ? "Veröffentlicht" : locale === "es" ? "Publicada" : "Published";
+    const age = clone.querySelector(".widget-data-age");
+    if (age && Number.isFinite(date.getTime())) age.textContent = `${label}: ${new Intl.DateTimeFormat(numberLocale(locale), { dateStyle: "medium", timeZone: "UTC" }).format(date)}`;
+  }
+  if (profile === "approval-current") {
+    // The website's two-answer bar is renormalised to 100%; omit it in a
+    // standalone graphic so it cannot be mistaken for the original shares.
+    clone.querySelector(".approval-response-bar")?.remove();
+    const netLabel = clone.querySelector('.approval-net-value>span');
+    if (netLabel) netLabel.textContent = locale === "de" ? "Saldo · positiv minus negativ" : locale === "es" ? "Saldo · positivo menos negativo" : "Net · positive minus negative";
+  }
   clone.querySelectorAll(".chart-wrap, .party-selector, .party-detail-chart").forEach((node) => node.style.setProperty("overflow", "visible"));
   clone.querySelectorAll(".poll-chart, .approval-poll-chart").forEach((node) => {
     node.style.setProperty("width", "100%");
@@ -309,24 +309,9 @@ function prepareExportClone(clone, { format, preset, profile }) {
     });
     if (profile === "current-poll") {
       const list = clone.querySelector(".result-list");
-      const rows = [...(list?.querySelectorAll(":scope > .result-row") ?? [])];
-      const count = rows.length;
-      const columns = balancedPortraitColumnCount(count);
-      const rowCount = Math.max(1, Math.ceil(count / columns));
-      if (list) {
-        // Use twice as many grid tracks as visual columns. This lets an
-        // incomplete final row begin on a half-column and remain centred.
-        list.style.setProperty("grid-template-columns", `repeat(${columns * 2},minmax(0,1fr))`, "important");
-        list.style.setProperty("grid-template-rows", `repeat(${rowCount},minmax(0,1fr))`, "important");
-        list.dataset.pngPortraitColumns = String(columns);
-        list.dataset.pngPortraitRows = String(rowCount);
-        rows.forEach((row) => row.style.setProperty("grid-column", "span 2"));
-        const remainder = count % columns;
-        if (remainder) {
-          const finalRowStart = count - remainder;
-          rows[finalRowStart]?.style.setProperty("grid-column", `${columns - remainder + 1} / span 2`);
-        }
-      }
+      list?.classList.add("publishing-columns");
+    } else {
+      clone.querySelector(".spain-concern-ranking")?.classList.add("publishing-columns");
     }
   }
   return clone;
@@ -465,12 +450,13 @@ function createExportSurface({ element, title, subtitle, locale, credit, preset,
   context.textContent = subtitle;
   identity.append(brand, context);
   const date = document.createElement("time");
-  date.textContent = new Intl.DateTimeFormat(numberLocale(locale), { dateStyle: "medium" }).format(new Date());
+  const dateLabel = locale === "de" ? "Exportiert" : locale === "es" ? "Exportado" : "Exported";
+  date.textContent = `${dateLabel}: ${new Intl.DateTimeFormat(numberLocale(locale), { dateStyle: "medium" }).format(new Date())}`;
   header.append(identity, date);
 
   const content = document.createElement("div");
   content.className = "png-export-content";
-  const clone = prepareExportClone(cleanExportClone(element.cloneNode(true)), { format, preset, profile });
+  const clone = prepareExportClone(cleanExportClone(element.cloneNode(true)), { format, preset, profile, locale });
   clone.classList.add("png-export-clone");
   content.append(clone);
 
@@ -506,6 +492,7 @@ async function waitForProfileLayout(element, profile) {
 
 async function fitExportSurfaceContent({ content, clone, format, profile }) {
   await nextLayoutFrame();
+  clone.querySelectorAll(".publishing-columns").forEach(layoutPublishingColumns);
   if (format.height) {
     clone.style.setProperty("transform", "none");
     const natural = clone.getBoundingClientRect();

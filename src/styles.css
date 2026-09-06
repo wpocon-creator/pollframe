@@ -8236,53 +8236,6 @@ body > #root > footer nav .footer-action:hover {
 :is(.png-export-clone,.png-preview-clone).results-card[data-png-profile="current-poll"][data-png-preset="portrait"] {
   padding:34px 30px 28px!important;
 }
-:is(.png-export-clone,.png-preview-clone).results-card[data-png-profile="current-poll"][data-png-preset="portrait"] .result-list {
-  height:720px;
-  min-height:0;
-  margin-top:28px;
-  display:grid!important;
-  align-items:stretch;
-  gap:13px;
-}
-:is(.png-export-clone,.png-preview-clone).results-card[data-png-profile="current-poll"][data-png-preset="portrait"] .result-row {
-  min-width:0;
-  min-height:0;
-  display:grid!important;
-  grid-template-columns:1fr!important;
-  grid-template-rows:minmax(32px,auto) minmax(105px,1fr) auto auto;
-  grid-template-areas:"name" "bar" "value" "delta";
-  align-items:end;
-  justify-items:center;
-  gap:9px!important;
-  border:0;
-}
-:is(.png-export-clone,.png-preview-clone).results-card[data-png-profile="current-poll"][data-png-preset="portrait"] .party-name {
-  grid-area:name;
-  max-width:100%;
-  align-self:start;
-  justify-content:center;
-  text-align:center;
-}
-:is(.png-export-clone,.png-preview-clone).results-card[data-png-profile="current-poll"][data-png-preset="portrait"] .party-name .party-info-trigger {
-  overflow:visible;
-  text-overflow:clip;
-  white-space:normal;
-}
-:is(.png-export-clone,.png-preview-clone).results-card[data-png-profile="current-poll"][data-png-preset="portrait"] .result-bar {
-  grid-area:bar;
-  width:44px;
-  height:100%;
-  align-self:stretch;
-  justify-self:center;
-  border-radius:10px 10px 4px 4px;
-}
-:is(.png-export-clone,.png-preview-clone).results-card[data-png-profile="current-poll"][data-png-preset="portrait"] .result-bar>i {
-  inset:auto 0 0!important;
-  width:100%!important;
-  height:var(--png-column-level,0)!important;
-}
-:is(.png-export-clone,.png-preview-clone).results-card[data-png-profile="current-poll"][data-png-preset="portrait"] .result-row>strong { grid-area:value; text-align:center; font-size:1.04rem; }
-:is(.png-export-clone,.png-preview-clone).results-card[data-png-profile="current-poll"][data-png-preset="portrait"] .result-row>.delta { grid-area:delta; text-align:center; }
 
 :is(.png-export-clone,.png-preview-clone).spain-concern-panel[data-png-profile="issues"] {
   padding:32px 34px 27px!important;

@@ -141,6 +141,89 @@ async function downloadPngSample(page, button, expectedFormats, outputPath, expe
 }
 
 test.describe("PNG export chooser", () => {
+  test("column embeds reflow on resize without losing values or overflowing labels", async ({ page }, testInfo) => {
+    for (const region of ["bundestag", "uk-westminster"]) {
+      await page.goto(`/embed.html?widget=current-average&region=${region}&lang=de&layout=columns&theme=dark`);
+      const list = page.locator(".publishing-columns");
+      await expect(list).toHaveAttribute("data-png-portrait-rows", /[12]/);
+      const values = await list.locator(".result-row>strong").allTextContents();
+      for (const width of [1180, 700, 390, 320]) {
+        await page.setViewportSize({ width, height: 900 });
+        await expect.poll(() => list.evaluate((node) => {
+          const count = node.children.length;
+          const expected = count * 108 + (count - 1) * 12 <= node.clientWidth ? 1 : 2;
+          return Number(node.dataset.pngPortraitRows) === expected;
+        })).toBe(true);
+        const geometry = await list.evaluate((node) => {
+          const groups = new Map();
+          const rows = [...node.children];
+          rows.forEach((row) => {
+            const top = Math.round(row.getBoundingClientRect().top);
+            groups.set(top, (groups.get(top) ?? 0) + 1);
+          });
+          return {
+            groups: [...groups.values()],
+            overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+            clipped: rows.flatMap((row) => [...row.querySelectorAll(".party-name, strong, .delta")]).filter((item) => item.scrollWidth > item.clientWidth + 2 || item.scrollHeight > item.clientHeight + 2).length,
+            barHeights: rows.map((row) => row.querySelector(".result-bar").getBoundingClientRect().height),
+          };
+        });
+        expect(geometry.overflow, `${region} at ${width}`).toBeLessThanOrEqual(2);
+        expect(geometry.clipped, `${region} at ${width}`).toBe(0);
+        expect(Math.max(...geometry.groups) - Math.min(...geometry.groups)).toBeLessThanOrEqual(1);
+        expect(Math.max(...geometry.barHeights) - Math.min(...geometry.barHeights)).toBeLessThan(1);
+        expect(await list.locator(".result-row>strong").allTextContents()).toEqual(values);
+      }
+      await page.screenshot({ path: testInfo.outputPath(`${region}-columns-phone-dark.png`), fullPage: true });
+    }
+  });
+
+  test("current polling publishes a dated source, a defined delta and a working embed layout option", async ({ page }, testInfo) => {
+    await installPngCapture(page);
+    await page.goto("/?region=bundestag&lang=de");
+    await settle(page);
+    const card = page.locator(".results-card");
+    const date = await card.getAttribute("data-publication-date");
+    expect(date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    await card.locator(".widget-share-trigger:not(.widget-png-trigger)").click();
+    const share = page.locator(".widget-share-modal");
+    await share.getByRole("button", { name: "Säulen", exact: true }).click();
+    await expect(share.locator("code")).toContainText("layout=columns");
+    await expect(share.locator("iframe")).toHaveAttribute("src", /layout=columns/);
+    await share.screenshot({ path: testInfo.outputPath("column-embed-options.png") });
+    await share.getByRole("button", { name: "Schließen", exact: true }).click();
+    await card.locator(".widget-png-trigger").click();
+    const modal = await auditPngDialog(page, ["landscape", "square", "portrait"]);
+    const clone = modal.locator(".png-preview-clone");
+    await expect(clone.locator(".widget-data-age")).toContainText("Veröffentlicht:");
+    await expect(clone.locator(".widget-data-age")).toBeVisible();
+    await expect(clone.locator(".results-note")).toContainText("Prozentpunkten");
+    await expect(modal.locator(".png-preview-surface header time")).toContainText("Exportiert:");
+    await modal.getByRole("button", { name: /Schließen|Close|Cerrar/i }).click();
+    await downloadPngSample(page, card.locator(".widget-png-trigger"), ["landscape", "square", "portrait"], testInfo.outputPath("current-portrait-final.png"), [1080, 1350], "portrait");
+  });
+
+  test("issue columns fit two equal-height rows inside their export card", async ({ page }, testInfo) => {
+    await installPngCapture(page);
+    await page.goto("/?country=es&view=spain-issues&lang=es");
+    await settle(page);
+    await page.locator(".spain-concern-panel .png-export-button").first().click();
+    const modal = await auditPngDialog(page, ["landscape", "square", "portrait"]);
+    await modal.locator(".png-format-shape.is-portrait").locator("..").click();
+    await waitForPreview(modal, { preset: "portrait" });
+    const geometry = await modal.locator(".publishing-columns").evaluate((list) => {
+      const bounds = list.getBoundingClientRect();
+      const boxes = [...list.children].map((node) => node.getBoundingClientRect());
+      const bars = [...list.children].map((node) => node.querySelector(":scope>div").getBoundingClientRect().height);
+      return { overflow: list.scrollHeight - list.clientHeight, bottom: Math.max(...boxes.map((box) => box.bottom)) - bounds.bottom, heights: Math.max(...bars) - Math.min(...bars) };
+    });
+    expect(geometry.overflow).toBeLessThanOrEqual(2);
+    expect(geometry.bottom).toBeLessThanOrEqual(1);
+    expect(geometry.heights).toBeLessThan(1);
+    await modal.getByRole("button", { name: /Schließen|Close|Cerrar/i }).click();
+    await downloadPngSample(page, page.locator(".spain-concern-panel .png-export-button").first(), ["landscape", "square", "portrait"], testInfo.outputPath("issues-portrait-final.png"), [1080, 1350], "portrait");
+  });
+
   test("centres PNG and embed dialogs against the viewport after scrolling", async ({ page }, testInfo) => {
     test.skip(!["chromium-desktop", "iphone-13-chromium"].includes(testInfo.project.name), "Representative desktop and phone geometry coverage only.");
     await page.goto("/?region=bundestag&lang=de");
@@ -241,6 +324,11 @@ test.describe("PNG export chooser", () => {
       expect(composition.heightSpread, route).toBeLessThanOrEqual(1);
       expect(composition.clippedNames, route).toBe(0);
       expect(composition.horizontalOverflow, route).toBeLessThanOrEqual(2);
+      const labelSlots = await modal.locator(".png-preview-clone .result-row").evaluateAll((rows) => rows.map((row) => ({
+        cell: row.getBoundingClientRect().width,
+        label: (row.querySelector(".party-info-trigger") ?? row.querySelector(".party-name")).getBoundingClientRect().width,
+      })));
+      for (const slot of labelSlots) expect(Math.abs(slot.cell - slot.label), "rasterised labels must not shrink to rounded text widths").toBeLessThan(1);
       await modal.getByRole("button", { name: /Schließen|Close|Cerrar/i }).click();
     }
   });
@@ -275,7 +363,8 @@ test.describe("PNG export chooser", () => {
         clippedNames,
       };
     });
-    expect(composition).toEqual({ columns: 4, rows: 2, groups: [4, 4], heightSpread: 0, clippedNames: 0 });
+    expect(composition).toMatchObject({ columns: 4, rows: 2, groups: [4, 4], clippedNames: 0 });
+    expect(composition.heightSpread).toBeLessThan(.1); // Fractional raster scaling is not a second baseline.
     await modal.getByRole("button", { name: /Schließen|Close|Cerrar/i }).click();
     await downloadPngSample(page, button, ["landscape", "square", "portrait"], testInfo.outputPath("uk-current-portrait.png"), [1080, 1350], "portrait");
   });
