@@ -277,7 +277,12 @@ function prepareExportClone(clone, { format, preset, profile, locale }) {
   clone.style.setProperty("margin", "0");
   if (clone.dataset.publicationDate) {
     const date = new Date(`${clone.dataset.publicationDate}T12:00:00Z`);
-    const label = locale === "de" ? "Veröffentlicht" : locale === "es" ? "Publicada" : "Published";
+    const kind = clone.dataset.sourceDateKind;
+    const label = kind === "fieldwork"
+      ? (locale === "de" ? "Befragungsende" : locale === "es" ? "Fin del trabajo de campo" : "Fieldwork ended")
+      : kind === "dataThrough"
+        ? (locale === "de" ? "Daten bis" : locale === "es" ? "Datos hasta" : "Data through")
+        : (locale === "de" ? "Veröffentlicht" : locale === "es" ? "Publicada" : "Published");
     const age = clone.querySelector(".widget-data-age");
     if (age && Number.isFinite(date.getTime())) age.textContent = `${label}: ${new Intl.DateTimeFormat(numberLocale(locale), { dateStyle: "medium", timeZone: "UTC" }).format(date)}`;
   }

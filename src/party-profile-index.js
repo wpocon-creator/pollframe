@@ -1,0 +1,2 @@
+// Keep this small availability index in sync with the lazily loaded portraits.
+export const PARTY_PROFILE_KEYS = {"de":["union","cdu","csu","spd","greens","fdp","left","afd","bsw","free-voters","ssw","bvb-fw"],"uk":["labour","conservative","liberal-democrats","green","reform","snp","plaid","ukip","sdp","change-uk","sinn-fein","dup","alliance","uup","sdlp","tuv"],"es":["podemos-up","sumar","psoe","pp","vox","erc","eh-bildu","bng","pnv","junts","cca","upn","salf","alianca","adelante","iu","compromis","ciudadanos","cup","pacma","upyd","ciu-cdc","mas-pais"]};

@@ -1,3 +1,23 @@
+# 6 September: loading performance follow-up
+
+- Initial JavaScript reduced from 259.9 to 211.9 KiB gzip (18.5%). Spanish
+  views and full party portraits are separate on-demand chunks; the four
+  supported languages remain available. Removed unused legacy translations.
+- Closed poll tables do not construct invisible desktop and mobile rows.
+- Preload the primary font and, on the Worker, the exact page's public data
+  while JavaScript loads. Cache freshness and updater schedules are unchanged.
+- Spanish insight snapshots seek the relevant 45-day window directly.
+  Comparison tests verify identical values against the previous algorithm.
+- Fixed offline precaching of Vite's root-relative dependency-map CSS, including
+  approval styles. App cache version v40 includes the new chunks.
+- PNG source dates distinguish publication, fieldwork end and data-through
+  dates; fieldwork dates must not be presented as publication dates.
+- Added lazy-load/cancel/focus tests, dependency-index parity checks, offline
+  asset-walk checks, and a repeatable throttled browser benchmark.
+- Updated stale integration expectations for the .com canonical, native dialog
+  semantics, reserved icon row, disabled phone chart hover and mobile back link.
+- Final live benchmark results are recorded in PERFORMANCE_2026-09-06.md.
+
 # 6 September: publishing compositions
 
 - Current-poll PNG columns use the available canvas width rather than a fixed
