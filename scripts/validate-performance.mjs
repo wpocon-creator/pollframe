@@ -16,7 +16,7 @@ const mainCss = sizes.find(({ name }) => /^main-.*\.css$/.test(name));
 const totalJavaScriptGzip = sizes.filter(({ name }) => name.endsWith(".js")).reduce((sum, file) => sum + file.gzip, 0);
 if (!mainJavaScript) errors.push("main JavaScript asset is missing");
 if (!mainCss) errors.push("main CSS asset is missing");
-if (mainJavaScript?.gzip > 260 * 1024) errors.push(`main JavaScript is ${(mainJavaScript.gzip / 1024).toFixed(1)} KiB gzip (budget: 260 KiB)`);
+if (mainJavaScript?.gzip > 220 * 1024) errors.push(`main JavaScript is ${(mainJavaScript.gzip / 1024).toFixed(1)} KiB gzip (budget: 220 KiB)`);
 if (mainCss?.gzip > 50 * 1024) errors.push(`main CSS is ${(mainCss.gzip / 1024).toFixed(1)} KiB gzip (budget: 50 KiB)`);
 if (totalJavaScriptGzip > 390 * 1024) errors.push(`all JavaScript is ${(totalJavaScriptGzip / 1024).toFixed(1)} KiB gzip (budget: 390 KiB)`);
 for (const file of sizes) {
