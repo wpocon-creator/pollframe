@@ -896,7 +896,7 @@ const copy = {
     motion: "Bewegung",
     motionHelp: "Reduziert Übergänge und Animationen für eine ruhigere Bedienung.",
     reduced: "Reduziert",
-    electionTomorrow: "Rechnerische Sitzverteilung aus dem aktuellen Umfragemittel",
+    electionTomorrow: "Modellierte Sitzverteilung",
     projectionLabel: "Rechnerische Modellansicht",
     projectionIntro: "Vereinfachte Sitzverteilung aus der neuesten Umfrage. Aufgeführt werden ausschließlich rechnerische Mehrheiten, keine Vorhersagen.",
     seats: "Sitze",
@@ -1079,7 +1079,7 @@ const copy = {
     motion: "Motion",
     motionHelp: "Reduces transitions and animation for a calmer experience.",
     reduced: "Reduced",
-    electionTomorrow: "Modelled seat allocation from the current polling average",
+    electionTomorrow: "Modelled seat allocation",
     projectionLabel: "Mathematical model",
     projectionIntro: "A simplified seat allocation based on the latest poll. Only mathematical majorities are listed; none is a prediction.",
     seats: "Seats",
@@ -2998,9 +2998,18 @@ function pollInfoSource(locale, region, poll, metadata, exact = false) {
   return { href, label: `${prefix}: ${translatedName}` };
 }
 
-function ResultsCard({ t, locale, current, previous, date, partyDefinitions = PARTY_DEFINITIONS, statusLabel = null, region = REGION_META[0], metadata = null, selectedPollsters = [], embed = false }) {
+function ResultsCard({ t, locale, current, previous, date, partyDefinitions = PARTY_DEFINITIONS, statusLabel = null, region = REGION_META[0], metadata = null, selectedPollsters = [], embed = false, columns = false }) {
   const [showAll, setShowAll] = useState(false);
   const exportRef = useRef(null);
+  useEffect(() => {
+    if (!embed) return;
+    let cancelled = false;
+    let disconnect;
+    import("./publishing-layout.js").then(({ observePublishingColumns }) => {
+      if (!cancelled && columns) disconnect = observePublishingColumns(exportRef.current?.querySelector(".result-list"));
+    });
+    return () => { cancelled = true; disconnect?.(); };
+  }, [embed, columns, current]);
   const numberLocale = getNumberLocale(locale);
   const recencyKind = currentPollRecencyKind(region, current);
   const info = snapshotInfo(locale, recencyKind, region.type);
@@ -3017,14 +3026,14 @@ function ResultsCard({ t, locale, current, previous, date, partyDefinitions = PA
   const barMaximum = Math.max(30, Math.ceil((rows[0]?.value ?? 0) / 5) * 5);
   const comparisonDate = previous.date ?? toIso(parseDate(date) - (7 * DAY));
   const comparisonLabel = locale === "es"
-    ? `Cambio frente a la última encuesta disponible del ${formatDate(comparisonDate, locale, { year: true })}.`
+    ? `Cambio en puntos porcentuales frente a la encuesta del ${formatDate(comparisonDate, locale, { year: true })}.`
     : locale === "de"
-      ? `Veränderung gegenüber der letzten verfügbaren Umfrage vom ${formatDate(comparisonDate, locale, { year: true })}.`
-      : `Change from the latest poll available on ${formatDate(comparisonDate, locale, { year: true })}.`;
+      ? `Veränderung in Prozentpunkten gegenüber der Umfrage vom ${formatDate(comparisonDate, locale, { year: true })}.`
+      : `Change in percentage points from the poll dated ${formatDate(comparisonDate, locale, { year: true })}.`;
   const collapsedCount = region.type === "spain-federal" ? 5 : rows.length;
 
   return (
-    <section ref={exportRef} className={`results-card ${region.type === "spain-federal" ? "spain-results-card" : ""}`} aria-labelledby="snapshot-title">
+    <section ref={exportRef} data-publication-date={current.synthetic ? undefined : date} className={`results-card ${region.type === "spain-federal" ? "spain-results-card" : ""}`} aria-labelledby="snapshot-title">
       <small className="widget-data-age">{formatCurrentRecency(date, locale, recencyKind)}</small>
       <div className="card-heading">
         <div className="widget-info-heading">
@@ -3036,11 +3045,11 @@ function ResultsCard({ t, locale, current, previous, date, partyDefinitions = PA
         </div>
         <div className="card-heading-actions"><span className="status-dot"><i /> {statusLabel ?? (locale === "es" ? "Última encuesta" : locale === "de" ? "Letzte Umfrage" : "Latest poll")}</span>{!embed && <><WatchlistStar country={region.type === "uk-federal" ? "uk" : region.type === "spain-federal" ? "es" : "de"} regionSlug={region.slug} regionName={region.name} type="snapshot" partyIds={[]} label={`${region.name} · ${t.current}`} /><WidgetShareTools widget="current-average" elementRef={exportRef} filename={`pollframe-${region.slug}-current-average`} title={t.current} subtitle={region.name} locale={locale} t={t} region={region} selectedPollsters={selectedPollsters} /></>}</div>
       </div>
-      <div className="result-list">
+      <div className={`result-list${columns ? " publishing-columns" : ""}`}>
         {(region.type === "spain-federal" && !showAll ? rows.slice(0, collapsedCount) : rows).map((party) => (
           <div className="result-row" key={party.id}>
             <div className="party-name"><span style={{ background: party.color }} /><PartyInfoButton party={party} /></div>
-            <div className="result-bar"><i style={{ width: `${Math.min(100, (party.value / barMaximum) * 100)}%`, background: party.color }} /></div>
+            <div className="result-bar"><i style={{ width: `${Math.min(100, (party.value / barMaximum) * 100)}%`, "--png-column-level": `${Math.min(100, (party.value / barMaximum) * 100)}%`, background: party.color }} /></div>
             <strong>{party.value.toLocaleString(numberLocale, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%</strong>
             <span className={`delta ${party.delta > 0.04 ? "up" : party.delta < -0.04 ? "down" : ""}`}>
               {Number.isFinite(party.delta) ? `${party.delta > 0 ? "+" : ""}${party.delta.toLocaleString(numberLocale, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}` : "–"}
@@ -3564,7 +3573,7 @@ function ParliamentProjection({
   if (!parties.length) return null;
 
   return (
-    <section ref={exportRef} className="projection-section has-data-age" aria-labelledby="projection-title">
+    <section ref={exportRef} data-publication-date={current.synthetic ? undefined : date} className="projection-section has-data-age" aria-labelledby="projection-title">
       <small className="widget-data-age">{formatDataAge(date, locale)}</small>
       <div className="projection-heading">
         <div className="widget-info-heading">
@@ -3600,7 +3609,7 @@ function ParliamentProjection({
             style={{ width: `${(party.seats / totalSeats) * 100}%`, background: party.color }}
             title={`${party.name}: ${party.value.toLocaleString(numberLocale, { maximumFractionDigits: 1 })}% · ${party.seats} ${t.seats}`}
           >
-            {party.value.toLocaleString(numberLocale, { maximumFractionDigits: 1 })}%
+            {party.seats}
           </span>
         ))}
         <i style={{ left: `${(majority / totalSeats) * 100}%` }} aria-hidden="true" />
@@ -4418,8 +4427,9 @@ function WidgetShareModal({
 }) {
   // A fixed, content-tested height keeps publisher embeds free of nested scrollbars.
   // The tendency cards need a little more room at the narrowest supported width.
-  const embedHeight = requestedHeight ?? (widget === "modelled-seats" ? 1272 : widget === "tendencies" ? 1216 : widget === "party-history" ? 760 : widget === "constituency" ? 880 : 620);
+  const embedHeight = requestedHeight ?? (widget === "modelled-seats" ? 1272 : widget === "tendencies" ? 1216 : widget === "party-history" ? 760 : widget === "constituency" ? 880 : 760);
   const [embedTheme, setEmbedTheme] = useState("light");
+  const [embedLayout, setEmbedLayout] = useState("bars");
   const [previewWidth, setPreviewWidth] = useState("article");
   const [copied, setCopied] = useState("");
   const [copyError, setCopyError] = useState(false);
@@ -4428,6 +4438,7 @@ function WidgetShareModal({
   useEffect(() => { if (open) trackAggregateEvent("share_dialog_opened"); }, [open]);
   if (!open) return null;
   const params = new URLSearchParams({ embed: "1", widget, region: region.slug, lang: locale, theme: embedTheme });
+  if (widget === "current-average" && embedLayout === "columns") params.set("layout", "columns");
   Object.entries(extraEmbedParams).forEach(([key, value]) => {
     if (value !== undefined && value !== null && value !== "") params.set(key, String(value));
   });
@@ -4462,8 +4473,8 @@ function WidgetShareModal({
     <ModalPortal><div className="overlay modal-overlay widget-share-overlay" onMouseDown={(event) => event.target === event.currentTarget && onClose()} data-export-ignore="true">
       <section ref={dialogRef} className="embed-modal widget-share-modal" role="dialog" aria-modal="true" aria-labelledby="widget-share-title" tabIndex={-1}>
         <div className="panel-header"><div><span className="section-label">{subtitle}</span><h2 id="widget-share-title">{t.share}</h2></div><button className="icon-button" type="button" onClick={onClose} aria-label={t.close}><Icon name="close" /></button></div>
-        <p className="modal-intro">{locale === "de" ? "Dieses Modul bleibt im Embed eigenständig, responsiv und mit Pollframe sowie Datenquelle gekennzeichnet." : locale === "es" ? "Este módulo se mantiene independiente, adaptable y con Pollframe y la fuente identificados." : "This module remains self-contained and responsive in embeds, with Pollframe and the data source identified."}</p>
-        <div className="embed-options embed-options-single"><div><span>{t.embedTheme}</span><div className="segmented">{[["light",t.embedLight],["dark",t.embedDark],["system",t.embedAuto]].map(([value,label])=><button key={value} className={embedTheme===value?"selected":""} type="button" aria-pressed={embedTheme===value} onClick={()=>setEmbedTheme(value)}>{label}</button>)}</div></div></div>
+        <p className="modal-intro">{t.embedText}</p>
+        <div className="embed-options embed-options-single"><div><span>{t.embedTheme}</span><div className="segmented">{[["light",t.embedLight],["dark",t.embedDark],["system",t.embedAuto]].map(([value,label])=><button key={value} className={embedTheme===value?"selected":""} type="button" aria-pressed={embedTheme===value} onClick={()=>setEmbedTheme(value)}>{label}</button>)}</div></div>{widget === "current-average" && <div><span>{locale === "de" ? "Darstellung" : locale === "es" ? "Diseño" : "Layout"}</span><div className="segmented">{[["bars", locale === "de" ? "Balken" : locale === "es" ? "Barras" : "Bars"],["columns",locale === "de" ? "Säulen" : locale === "es" ? "Columnas" : "Columns"]].map(([value,label])=><button key={value} type="button" className={embedLayout===value?"selected":""} aria-pressed={embedLayout===value} onClick={()=>setEmbedLayout(value)}>{label}</button>)}</div></div>}</div>
         <div className="embed-preview-toolbar" aria-label={t.embedPreview}>{[["wide",labels.wide],["article",labels.article],["phone",labels.phone]].map(([value,label])=><button key={value} type="button" className={previewWidth===value?"selected":""} aria-pressed={previewWidth===value} onClick={()=>setPreviewWidth(value)}>{label}</button>)}</div>
         <StaticEmbedPreview src={embedUrl} title={`${title} · ${t.embedPreview}`} height={embedHeight} previewWidth={previewWidth} targetHeight={360} className="widget-embed-preview" />
         <label className="code-label">{t.embedPreview}<code>{code}</code></label>
@@ -4500,7 +4511,7 @@ function WidgetEmbedView({ widget, t, locale, pollData, latestDate, current, pre
   const headerDate = widget === "current-average"
     ? formatCurrentRecency(currentDate, locale, currentPollRecencyKind(region, current))
     : formatDate(currentDate, locale, { year: true });
-  return <main className={`widget-embed-page widget-embed-${widget}`}><header className="embed-header"><div><span className="embed-brand"><BrandMark/>POLLFRAME</span><h1>{heading}</h1></div><time dateTime={currentDate}>{headerDate}</time></header>{widget === "current-average" ? <ResultsCard t={t} locale={locale} current={current} previous={previous} date={currentDate} partyDefinitions={partyDefinitions} statusLabel={statusLabel} region={region} metadata={pollData.metadata} embed/> : widget === "tendencies" ? <TendencySection t={t} locale={locale} current={current} baseline={baseline} partyDefinitions={partyDefinitions} region={region} metadata={pollData.metadata} embed/> : <ParliamentProjection t={t} locale={locale} current={current} date={currentDate} region={region} partyDefinitions={partyDefinitions} embed/>}<footer className="embed-footer"><DataAttribution locale={locale} metadata={pollData.metadata}/><a href={`/?${interactiveParams}`} target="_blank" rel="noreferrer">{locale === "de" ? "Interaktiv öffnen" : locale === "es" ? "Abrir interactivo" : "Open interactive"} <Icon name="external" size={13}/></a></footer></main>;
+  return <main className={`widget-embed-page widget-embed-${widget}`}><header className="embed-header"><div><span className="embed-brand"><BrandMark/>POLLFRAME</span><h1>{region.name} · {heading}</h1></div><time dateTime={currentDate}>{headerDate}</time></header>{widget === "current-average" ? <ResultsCard t={t} locale={locale} current={current} previous={previous} date={currentDate} partyDefinitions={partyDefinitions} statusLabel={statusLabel} region={region} metadata={pollData.metadata} embed columns={new URLSearchParams(window.location.search).get("layout") === "columns"}/> : widget === "tendencies" ? <TendencySection t={t} locale={locale} current={current} baseline={baseline} partyDefinitions={partyDefinitions} region={region} metadata={pollData.metadata} embed/> : <ParliamentProjection t={t} locale={locale} current={current} date={currentDate} region={region} partyDefinitions={partyDefinitions} embed/>}<footer className="embed-footer"><DataAttribution locale={locale} metadata={pollData.metadata}/><a href={`/?${interactiveParams}`} target="_blank" rel="noreferrer">{locale === "de" ? "Interaktiv öffnen" : locale === "es" ? "Abrir interactivo" : "Open interactive"} <Icon name="external" size={13}/></a></footer></main>;
 }
 
 function PollTable({ t, locale, pollData, selectedPollsters, selectedParties, partyDefinitions, regionSlug }) {

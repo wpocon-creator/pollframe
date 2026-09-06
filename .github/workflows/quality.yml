@@ -28,7 +28,7 @@ jobs:
       - name: Install exact dependencies
         run: npm ci --ignore-scripts
       - name: Check polling freshness parsing and notification deduplication
-        run: node --test tests/uk-supplement.test.mjs tests/watchlist-alerts.test.mjs tests/watchlist-reorder.test.mjs
+        run: node --test tests/uk-supplement.test.mjs tests/watchlist-alerts.test.mjs tests/watchlist-reorder.test.mjs tests/publishing-column-plan.test.mjs
       - name: Audit dependencies
         run: npm audit --audit-level=low
       - name: Validate and build production files

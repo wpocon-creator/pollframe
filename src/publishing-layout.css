@@ -1,0 +1,76 @@
+/* Shared by the actual PNG, its preview and responsive column embeds. */
+.publishing-columns {
+  display:grid!important; align-items:stretch; gap:12px!important;
+  height:780px; min-height:0; margin-top:24px;
+}
+.publishing-columns>.result-row {
+  min-width:0; min-height:0; display:grid!important;
+  grid-template-columns:1fr!important;
+  grid-template-rows:minmax(42px,auto) minmax(70px,1fr) 30px 24px;
+  grid-template-areas:"name" "bar" "value" "delta";
+  align-items:end; justify-items:center; gap:8px!important; border:0;
+}
+.publishing-columns .party-name {
+  grid-area:name; width:100%; max-width:100%; align-self:start; display:block; overflow:visible;
+  justify-content:center; text-align:center; font-size:18px; line-height:1.2;
+}
+.publishing-columns .party-name>span { display:none; }
+.publishing-columns .party-name .party-info-trigger {
+  display:block; width:100%; overflow:visible; text-overflow:clip; white-space:normal; overflow-wrap:anywhere;
+}
+.publishing-columns .result-bar {
+  grid-area:bar; width:46px; max-width:80%; height:100%!important;
+  align-self:stretch; justify-self:center; border-radius:4px 4px 0 0;
+  background:transparent; border-bottom:1px solid var(--line);
+}
+.publishing-columns .result-bar>i {
+  inset:auto 0 0!important; width:100%!important; height:var(--png-column-level,0)!important;
+}
+.publishing-columns>.result-row>strong { grid-area:value; text-align:center; font-size:24px!important; }
+.publishing-columns>.result-row>.delta { grid-area:delta; display:block!important; text-align:center; font-size:17px; }
+.widget-embed-page .publishing-columns { height:360px; }
+.widget-embed-page .publishing-columns .party-name { font-size:14px; }
+.widget-embed-page .publishing-columns>.result-row>strong { font-size:19px!important; }
+.widget-embed-page .publishing-columns>.result-row>.delta { font-size:13px; }
+.widget-embed-page .publishing-columns>.result-row { grid-template-rows:36px minmax(40px,1fr) 24px 18px; }
+
+/* Publication context must survive when the graphic leaves the website. */
+:is(.png-export-clone,.png-preview-clone) .results-note { font-size:18px; line-height:1.4; text-align:left; }
+:is(.png-export-clone,.png-preview-clone) .results-note>svg { display:none; }
+:is(.png-export-clone,.png-preview-clone) .party-info-trigger { text-decoration:none!important; border-bottom:0!important; }
+:is(.png-export-clone,.png-preview-clone).results-card .card-heading { padding:0!important; min-height:0; }
+:is(.png-export-clone,.png-preview-clone).results-card .widget-data-age { position:static!important; display:block!important; transform:none; max-width:none; text-align:left; margin:0 0 12px; font-size:18px; }
+:is(.png-export-clone,.png-preview-clone).results-card .snapshot-date { font-size:32px; }
+:is(.png-export-clone,.png-preview-clone).results-card .status-dot { font-size:18px; }
+:is(.png-export-clone,.png-preview-clone).results-card .status-dot,
+.widget-embed-page .results-card .status-dot { display:inline-flex!important; }
+:is(.png-export-clone,.png-preview-clone).party-history-export .party-modal-actions,
+:is(.png-export-clone,.png-preview-clone).party-history-export .party-modal-header .section-label { display:none!important; }
+:is(.png-export-clone,.png-preview-clone).party-history-export .party-modal-header { padding:0!important; }
+:is(.png-export-clone,.png-preview-clone).party-history-export .party-modal-title-row h2 { font-size:32px; }
+:is(.png-export-clone,.png-preview-clone).projection-section .projection-heading h3 { font-size:30px; }
+:is(.png-export-clone,.png-preview-clone).projection-section>.widget-data-age { position:static!important; transform:none; max-width:none; display:block; text-align:left; font-size:18px; margin-bottom:16px; }
+:is(.png-export-clone,.png-preview-clone).projection-section .seat-row,
+:is(.png-export-clone,.png-preview-clone).projection-section .coalition-row { font-size:18px; }
+.widget-embed-page .results-note { display:block!important; font-size:12px; line-height:1.4; }
+.widget-embed-page .results-note>svg { display:none; }
+.widget-embed-page>.results-card .widget-data-age,
+.widget-embed-page>.results-card .snapshot-date { display:none!important; }
+.widget-embed-page>.results-card .card-heading { min-height:0; padding:0; }
+.widget-embed-page .embed-footer { display:flex; flex-wrap:wrap; align-items:baseline; gap:8px 16px; margin-top:14px; font-size:12px; line-height:1.5; }
+.widget-embed-page .embed-footer>a { flex-shrink:0; }
+:is(.png-export-clone,.png-preview-clone).spain-concern-panel[data-png-preset="portrait"] .publishing-columns { height:680px; min-height:0!important; }
+:is(.png-export-clone,.png-preview-clone).spain-concern-panel[data-png-preset="portrait"] .publishing-columns>div {
+  min-height:0!important; grid-template-rows:24px 66px minmax(80px,1fr) 28px!important;
+}
+:is(.png-export-clone,.png-preview-clone).approval-current-card .widget-data-age { display:none!important; }
+:is(.png-export-clone,.png-preview-clone).approval-current-card>footer>span { display:inline!important; }
+:is(.png-export-clone,.png-preview-clone).approval-current-card .approval-net-value>span { min-height:0; line-height:1.35; }
+:is(.png-export-clone,.png-preview-clone).approval-current-card .approval-current-values strong { font-size:48px!important; }
+:is(.png-export-clone,.png-preview-clone).results-card .party-name { font-size:20px; }
+:is(.png-export-clone,.png-preview-clone).results-card .result-row>strong { font-size:26px; }
+:is(.png-export-clone,.png-preview-clone).results-card .result-row>.delta { font-size:18px; }
+:is(.png-export-clone,.png-preview-clone):is(.results-card,.projection-section,.party-history-export,.tendency-section) { box-shadow:none!important; }
+:is(.png-export-clone,.png-preview-clone).party-history-export[data-png-preset="square"] .party-metrics { grid-template-columns:repeat(2,minmax(0,1fr))!important; }
+:is(.png-export-clone,.png-preview-clone).party-history-export[data-png-preset="square"] .party-metrics>div:nth-child(n+3) { display:none!important; }
+:is(.png-export-clone,.png-preview-clone).tendency-section .tendency-status { display:none; }
