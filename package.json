@@ -42,12 +42,12 @@
     "cheerio": "1.0.0",
     "fflate": "0.8.3",
     "pdfjs-dist": "5.4.624",
-    "undici": "7.29.0",
+    "undici": "8.10.1",
     "vite": "6.4.3",
     "wrangler": "4.119.0"
   },
   "overrides": {
-    "undici": "7.29.0",
+    "undici": "8.10.1",
     "nanoid": "3.3.18"
   }
 }
