@@ -1,6 +1,7 @@
 import React, { Suspense, lazy, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { createRoot } from "react-dom/client";
+const ElectionResult = lazy(() => import("./election-result.jsx"));
 import { usePwaLifecycle } from "./pwa.js";
 import { useWatchlistReorder } from "./watchlistReorder.js";
 import { processWatchlistAlerts } from "./watchlistAlerts.js";
@@ -53,7 +54,7 @@ const MAP_LICENSE_URL = "https://creativecommons.org/licenses/by/4.0/";
 const ELECTION_SOURCE_URL = "https://www.bundeswahlleiterin.de/bundestagswahlen.html";
 const GERMAN_ELECTION_OPEN_DATA_URL = "https://www.bundeswahlleiterin.de/bundestagswahlen/2025/ergebnisse/opendata.html";
 const GERMAN_ELECTION_DATA_LICENSE_URL = "https://www.govdata.de/dl-de/by-2-0";
-const CONTACT_EMAIL = "opinionpoll.redaktion@proton.me";
+const CONTACT_EMAIL = "william@pollframe.com";
 const SOCIAL_IMAGE_URL = `${SITE_ORIGIN}/pollframe-social.png`;
 const BUG_REPORT_DASHBOARD_PATH = "/pf-ops/3f592c524cff69071b258ce63776e793/reports";
 const IS_EMBED_ENTRY = window.location.pathname === EMBED_PATH;
@@ -965,7 +966,7 @@ const copy = {
     limitsTitle: "Was der Wert nicht sagt",
     limitsText: "Umfragen sind Momentaufnahmen mit Unsicherheit. Der Durchschnitt korrigiert derzeit weder institutsspezifische Effekte noch Stichprobenfehler. Die geglättete Linie verbindet berechnete Stützpunkte; amtliche Wahlergebnisse erscheinen separat als Rauten. Tendenzkarten bewerten 90-Tage-Änderungen ab ±0,4 Prozentpunkten als leicht und ab ±1,2 als deutlich. Keine dieser Darstellungen ist eine Wahlprognose.",
     sourceTitle: "Quelle und Lizenz",
-    sourceText: "Die einzelnen Umfragen seit 2017 stammen aus der offenen DAWUM-Datenbank (ODbL 1.0). Pollframe filtert sieben Institute, vereinheitlicht Felder und berechnet daraus eigene Mittelwerte und Trends. Die Wahlergebnisse 2017, 2021 und 2025 stammen von der Bundeswahlleiterin, Wiesbaden; Prozentwerte wurden gekürzt und grafisch neu dargestellt.",
+    sourceText: "Die einzelnen Umfragen seit 2017 stammen aus der offenen DAWUM-Datenbank (ODbL 1.0). Pollframe wählt die Institute je Parlament aus (Bundestag: sieben; Länder: zusätzlich GMS und Civey), vereinheitlicht Felder und berechnet daraus eigene Mittelwerte und Trends. Die Wahlergebnisse 2017, 2021 und 2025 stammen von der Bundeswahlleiterin, Wiesbaden; Prozentwerte wurden gekürzt und grafisch neu dargestellt.",
     electionSource: "Wahlergebnisse",
     lastPoll: "Letzte enthaltene Umfrage",
     basedOn: (count) => `Mittel aus ${count} Instituten`,
@@ -1148,7 +1149,7 @@ const copy = {
     limitsTitle: "What the figure does not show",
     limitsText: "Polls are uncertain snapshots. The average does not currently adjust for pollster-specific effects or sampling error. The smoothed line connects calculated points; official election results are shown separately as diamonds. Tendency cards classify 90-day changes from ±0.4 percentage points as slight and from ±1.2 as clear. None of these displays is an election forecast.",
     sourceTitle: "Source and licence",
-    sourceText: "Individual polls since 2017 come from the open DAWUM database (ODbL 1.0). Pollframe filters seven pollsters, normalises fields and calculates its own averages and trends. The 2017, 2021 and 2025 election results come from the Federal Returning Officer, Wiesbaden; percentages were shortened and presented in a new graphic form.",
+    sourceText: "Individual polls since 2017 come from the open DAWUM database (ODbL 1.0). Pollframe selects pollsters by parliament (Bundestag: seven; states: additionally GMS and Civey), normalises fields and calculates its own averages and trends. The 2017, 2021 and 2025 election results come from the Federal Returning Officer, Wiesbaden; percentages were shortened and presented in a new graphic form.",
     electionSource: "Election results",
     lastPoll: "Latest included poll",
     basedOn: (count) => `Average of ${count} pollsters`,
@@ -1172,7 +1173,7 @@ copy["en-US"] = {
   customize: "Customize chart",
   percentagePoints90: (delta) => `${delta > 0 ? "+" : ""}${delta.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} percentage points in 90 days`,
   sourceTitle: "Source and license",
-  sourceText: "Individual polls since 2017 come from the open DAWUM database (ODbL 1.0). Pollframe filters seven pollsters, normalizes fields, and calculates its own averages and trends. The 2017, 2021, and 2025 election results come from the Federal Returning Officer, Wiesbaden; percentages were shortened and presented in a new graphic form.",
+  sourceText: "Individual polls since 2017 come from the open DAWUM database (ODbL 1.0). Pollframe selects pollsters by parliament (Bundestag: seven; states: additionally GMS and Civey), normalizes fields, and calculates its own averages and trends. The 2017, 2021, and 2025 election results come from the Federal Returning Officer, Wiesbaden; percentages were shortened and presented in a new graphic form.",
 };
 
 copy.es = {
@@ -2010,7 +2011,7 @@ function mainChartInfo(locale, regionType, mode, weightedUk = false) {
       points: "Jeder Punkt ist der Durchschnitt der zu diesem Zeitpunkt verfügbaren Institute – nicht eine einzelne Umfrage.",
       both: "Die geglättete Trendlinie und die ungeschönten Durchschnittspunkte werden gemeinsam gezeigt.",
       uk: "Der britische Standard verwendet den qualitätsgewichteten 14-Tage-Durchschnitt des UK Election Data Vault. Pollframe stellt diese Quellwerte dar und glättet sie im Trendmodus passend zum sichtbaren Zeitraum.",
-      germany: "Die deutsche Reihe basiert auf der DAWUM-Datenbank unter ODbL 1.0 und beginnt bei Pollframe 2017. Sie umfasst sieben etablierte Institute. Fehlende Parteiwertungen werden ausgelassen und nicht als null Prozent behandelt.",
+      germany: "Die deutsche Reihe basiert auf der DAWUM-Datenbank unter ODbL 1.0 und beginnt bei Pollframe 2017. Für den Bundestag umfasst sie sieben ausgewählte Institute, für die Bundesländer zusätzlich GMS und Civey. Die Erhebungsmethode steht bei jeder Umfrage. Fehlende Parteiwertungen werden ausgelassen und nicht als null Prozent behandelt.",
       spain: "Die spanische Reihe umfasst nationale Wahlabsicht zum Congreso de los Diputados und wird aus den zitierten Umfragetabellen von Wikipedia unter CC BY-SA 4.0 samt Originalverweisen aufbereitet. Parteien, Bündnisse und Nachfolgeorganisationen bleiben grundsätzlich getrennt; fehlende Werte sind keine Nullwerte.",
       ukLimit: "Westminster-Umfragen beziehen sich hier auf Großbritannien – England, Schottland und Wales –, nicht auf Nordirland. Die Reihe stammt vom UK Election Data Vault und ist zur kostenlosen kommerziellen Weiterverwendung freigegeben. Ältere Archivpunkte können weniger Begleitangaben enthalten als neuere Veröffentlichungen.",
       interpretation: "Linien verbinden diskrete Messpunkte und können zwischen ihnen eine Entwicklung suggerieren, die nicht direkt erhoben wurde. Kleine Unterschiede können Stichprobenfehler, Rundung, Erhebungsmethode, Feldzeit oder typische Institutseffekte widerspiegeln. Die automatisch angepasste Y-Achse beginnt nicht zwingend bei null.",
@@ -2025,7 +2026,7 @@ function mainChartInfo(locale, regionType, mode, weightedUk = false) {
       points: "Each point is the mean of the pollsters available at that date, not an individual poll.",
       both: "The smoothed trend and the unsmoothed average points are shown together.",
       uk: "The UK default uses UK Election Data Vault’s quality-weighted 14-day average. Pollframe plots those source values and, in trend mode, smooths them for the visible time span.",
-      germany: "The German series uses DAWUM’s ODbL 1.0 database and starts on Pollframe in 2017. It covers seven established pollsters. Missing party readings are omitted rather than treated as zero.",
+      germany: "The German series uses DAWUM’s ODbL 1.0 database and starts on Pollframe in 2017. It covers seven selected pollsters for the Bundestag, plus GMS and Civey for state parliaments. Each poll lists its collection method. Missing party readings are omitted rather than treated as zero.",
       spain: "The Spanish series covers national voting intention for the Congreso de los Diputados and is normalised from Wikipedia’s cited polling tables under CC BY-SA 4.0, with links to original releases. Parties, alliances and successors are generally kept separate; missing values are not zeroes.",
       ukLimit: "Westminster polling here covers Great Britain—England, Scotland and Wales—not Northern Ireland. The series comes from UK Election Data Vault and is available for free commercial reuse. Older archive points may carry less supporting metadata than recent releases.",
       interpretation: "Lines connect discrete observations and can imply movement between dates that was not itself measured. Small differences may reflect sampling uncertainty, rounding, fieldwork dates, mode or persistent pollster effects. The automatically fitted vertical axis does not necessarily start at zero.",
@@ -2040,7 +2041,7 @@ function mainChartInfo(locale, regionType, mode, weightedUk = false) {
       points: "Cada punto es la media de los institutos disponibles en esa fecha, no una encuesta individual.",
       both: "Se muestran a la vez la tendencia suavizada y los puntos medios sin suavizar.",
       uk: "La vista británica predeterminada usa la media de 14 días ponderada por calidad de UK Election Data Vault. Pollframe representa esos valores y los suaviza según el periodo visible en el modo tendencia.",
-      germany: "La serie alemana usa la base de datos de DAWUM bajo ODbL 1.0 y comienza en Pollframe en 2017. Incluye siete institutos consolidados. Los datos ausentes de un partido se omiten y no se consideran cero.",
+      germany: "La serie alemana usa la base de datos de DAWUM bajo ODbL 1.0 y comienza en Pollframe en 2017. Incluye siete institutos para el Bundestag y, además, GMS y Civey para los parlamentos regionales. Cada encuesta indica su método. Los datos ausentes de un partido se omiten y no se consideran cero.",
       spain: "La serie española mide intención de voto nacional al Congreso de los Diputados y se normaliza a partir de las tablas citadas por Wikipedia bajo CC BY-SA 4.0, con enlaces a las publicaciones originales. Partidos, coaliciones y sucesores se mantienen por regla general separados; un dato ausente no es cero.",
       ukLimit: "Las encuestas de Westminster cubren Gran Bretaña —Inglaterra, Escocia y Gales—, no Irlanda del Norte. La serie procede de UK Election Data Vault y permite la reutilización comercial gratuita. Los puntos históricos más antiguos pueden tener menos metadatos que las publicaciones recientes.",
       interpretation: "Las líneas unen observaciones discretas y pueden sugerir un movimiento entre fechas que no se midió directamente. Las diferencias pequeñas pueden deberse a incertidumbre muestral, redondeo, fechas de campo, método o efectos propios de cada instituto. El eje vertical automático no empieza necesariamente en cero.",
@@ -2220,6 +2221,7 @@ function PollChart({
   events = POLITICAL_EVENTS,
   eventCategories = EVENT_CATEGORIES,
   electionResults = ELECTION_RESULTS,
+  electionStatus = null,
   termStart = CURRENT_TERM_START,
   archiveStart = ARCHIVE_START,
   maxConnectionGapDays = Infinity,
@@ -2278,7 +2280,7 @@ function PollChart({
   }, []);
 
   const archiveStartTime = parseDate(archiveStart);
-  const latestTime = parseDate(displayEndDate);
+  const latestTime = Math.max(parseDate(displayEndDate), ...Object.keys(electionResults).filter(date=>date<=toIso(Date.now())).map(parseDate));
   const requestedCustomEnd = customEndDate ? parseDate(customEndDate) : latestTime;
   const endTime = range === "custom"
     ? Math.max(archiveStartTime, Math.min(latestTime, requestedCustomEnd))
@@ -2289,6 +2291,7 @@ function PollChart({
     : getRangeStart(range, endTime, termStart, archiveStart);
   const startDate = toIso(startTime);
   const endDate = toIso(endTime);
+  const pollEndDate = endDate > latestDate ? latestDate : endDate;
   const spanDays = Math.max(1, (endTime - startTime) / DAY);
   // Every mobile time range uses the same fitted canvas. The former long-range
   // branch switched to a 600px horizontally scrolling chart after changing a
@@ -2304,9 +2307,9 @@ function PollChart({
   const partyIds = useMemo(() => partyDefinitions.map((party) => party.id), [partyDefinitions]);
   const trend = useMemo(
     () => (trendVisible
-      ? makeTrend(polls, selectedPollsters, startDate, endDate, partyDefinitions, smoothingDays)
+      ? makeTrend(polls, selectedPollsters, startDate, pollEndDate, partyDefinitions, smoothingDays)
       : []),
-    [trendVisible, polls, selectedPollsters, startDate, endDate, partyDefinitions, smoothingDays],
+    [trendVisible, polls, selectedPollsters, startDate, pollEndDate, partyDefinitions, smoothingDays],
   );
   const visiblePolls = useMemo(
     () => (averageSeriesVisible ? polls.filter((poll) => (
@@ -2702,7 +2705,7 @@ function PollChart({
               {trendVisible && visibleElections.map((election) => {
                 const value = election.results[party.id];
                 if (!Number.isFinite(value)) return null;
-                const sourceLabel = locale === "es" ? "Resultado electoral oficial" : locale === "de" ? "Amtliches Wahlergebnis" : "Official election result";
+                const sourceLabel = electionStatus === "provisional" ? (locale === "de" ? "Vorläufiges amtliches Wahlergebnis" : locale === "es" ? "Resultado oficial provisional" : "Provisional official election result") : locale === "es" ? "Resultado electoral oficial" : locale === "de" ? "Amtliches Wahlergebnis" : "Official election result";
                 return (
                   <rect
                     key={`election-${party.id}-${election.date}`}
@@ -3887,6 +3890,7 @@ function DataAttribution({
           <a href={electionSourceUrl} target="_blank" rel="noreferrer">{electionSourceLabel ?? l("Die Bundeswahlleiterin, Wiesbaden", "Federal Returning Officer, Wiesbaden", "Administración electoral")}</a>
           {" "}({l("gekürzt und neu dargestellt", "shortened and newly presented", "abreviados y representados de nuevo")})
           {electionSourceUrl === ELECTION_SOURCE_URL && <> · <a href={GERMAN_ELECTION_DATA_LICENSE_URL} target="_blank" rel="noreferrer">Datenlizenz Deutschland – Namensnennung – Version 2.0</a></>}
+          {metadata?.electionLicenseUrl && electionSourceUrl !== ELECTION_SOURCE_URL && <> · <a href={metadata.electionLicenseUrl} target="_blank" rel="noreferrer">{metadata.electionLicense}</a></>}
         </>
       )}
       {includeMap && (
@@ -4530,6 +4534,7 @@ function EmbedView({
   events = POLITICAL_EVENTS,
   eventCategories = EVENT_CATEGORIES,
   electionResults = ELECTION_RESULTS,
+  electionStatus = null,
   termStart = CURRENT_TERM_START,
   archiveStart = ARCHIVE_START,
   regionSlug = "bundestag",
@@ -4577,6 +4582,7 @@ function EmbedView({
         events={events}
         eventCategories={eventCategories}
         electionResults={electionResults}
+        electionStatus={pollData.metadata?.electionStatus}
         termStart={termStart}
         archiveStart={archiveStart}
         customStartDate={customStartDate}
@@ -4588,7 +4594,7 @@ function EmbedView({
         <DataAttribution
           locale={locale}
           metadata={pollData.metadata}
-          includeElection={["bundestag", "uk-westminster"].includes(regionSlug)}
+          includeElection={["bundestag", "uk-westminster"].includes(regionSlug) || Boolean(pollData.metadata?.electionResults)}
           electionSourceUrl={pollData.metadata?.electionSourceUrl ?? ELECTION_SOURCE_URL}
           electionSourceLabel={pollData.metadata?.electionSourceLabel}
         />
@@ -5565,10 +5571,12 @@ function GermanyCountryOverview({ locale, summary, mapOnly = false }) {
         <div><div className="eyebrow"><span />{l("Bundestag und Länder", "federalAndStates")}</div><h1>🇩🇪 {l("Deutschland im Überblick", "germanyOverview")}</h1><p>{l("Aktuelle Sonntagsfrage und Bundestagswahl-Umfragen oben, die 16 Länder in der großen Karte darunter. Jede Karte führt zu einer vollständigen Informationsseite.", "overviewIntro")}</p></div>
         <div className="overview-profile-badge"><span>{l("Länderübersicht", "countryOverview")}</span><strong>{l("Deutschland", "germany")}</strong><small>{l("Laufende Umfragen · historische Reihen", "currentHistory")}</small></div>
       </section>
+
       <section className="overview-entry-stack" aria-label={l("Wahlen und Karten in Deutschland", "electionsAndMaps")}>
         <OverviewInfoWidget accent="parliament" href={publicRegionPath("bundestag")} eyebrow={l("Nationale Ebene", "nationalLevel")} title={l("Aktuelle Sonntagsfrage zur Bundestagswahl", "federalElection")} text={l("Neueste Umfrage, langfristiger Trend, Institute, Ereignisse und Sitzmodell.", "federalWidget")} stats={[[l("Umfragen", "pollsLabel"), federal?.pollCount?.toLocaleString(getNumberLocale(locale)) ?? "–"], [l("Seit", "sinceLabel"), federal?.firstDate ? new Date(parseDate(federal.firstDate)).getUTCFullYear() : "–"], [l("Zuletzt", "latestLabel"), federal ? <>{formatDate(federal.latestDate, locale, { year: true })}<small className="data-age-label">{formatDataAge(federal.latestDate, locale)}</small></> : "–"]]} />
         <OverviewInfoWidget accent="opinion" href={publicViewPath("map")} eyebrow={l("Vergleich der Länder", "stateComparison")} title={l("Deutschland im Überblick", "germanyOverview")} text={l("Parteistärken und Bewegungen auf einer anpassbaren Karte über alle 16 Länder vergleichen.", "stateWidget")} stats={[[l("Länder", "statesLabel"), "16"], [l("Ansichten", "viewsLabel"), "3"], [l("Teilen", "sharingLabel"), "Embed"]]} />
         <ApprovalOverviewEntry country="de" locale={locale} />
+        <Suspense fallback={null}><ElectionResult locale={locale} /></Suspense>
       </section>
       {states.length > 0 && <StateCoverageMap states={states} locale={locale} mapGeometry={mapGeometry} />}
       <p className="germany-country-note">{l("Länderkarte und jede Länderansicht verwenden ausschließlich vorhandene Werte; Datenlücken bleiben an den einzelnen Punkten sichtbar.", "mapDataNote")}</p>
@@ -6793,8 +6801,8 @@ function ContactPage({ locale }) {
             ? "Dieses Formular sendet und speichert nichts auf Pollframe. Der Button öffnet lediglich dein eigenes E-Mail-Programm mit einer vorbereiteten Nachricht."
             : "This form does not send or store anything on Pollframe. The button only opens your own email app with a prepared message."}</p>
           <p>{isGerman
-            ? "Prüfe die Nachricht dort und drücke anschließend auf „Senden“. Erst dann wird sie über deinen E-Mail-Anbieter an Proton Mail übertragen."
-            : "Review the message there and then press “Send”. Only then is it transferred by your email provider to Proton Mail."}</p>
+            ? "Prüfe die Nachricht dort und drücke anschließend auf „Senden“. Erst dann wird sie über deinen E-Mail-Anbieter an Apple iCloud Mail übertragen."
+            : "Review the message there and then press “Send”. Only then is it transferred by your email provider to Apple iCloud Mail."}</p>
           <div className="contact-direct">
             <span>{isGerman ? "Direkte E-Mail" : "Direct email"}</span>
             <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>
@@ -7055,7 +7063,7 @@ function PrivacyPage({ locale }) {
         <section>
           <h2>7. Contact by email</h2>
           <p>The contact assistant does not transmit entries to Pollframe or Cloudflare. It creates a prepared email and asks the browser to open your local email app. Data is transmitted only if you send the message from that app.</p>
-          <p>If you contact us, your message, email address and the information you provide are processed to answer the request. Email is provided through Proton Mail. The legal basis is Article 6(1)(f) GDPR, or Article 6(1)(b) GDPR where the message concerns steps before entering into a contract. Messages are deleted when the request has been resolved unless legal retention obligations apply. Proton’s information is available in its <a href="https://proton.me/legal/privacy" target="_blank" rel="noreferrer">Privacy Policy</a>.</p>
+          <p>If you contact us, your message, email address and the information you provide are processed to answer the request. Email is provided through Apple iCloud Mail. The legal basis is Article 6(1)(f) GDPR, or Article 6(1)(b) GDPR where the message concerns steps before entering into a contract. Messages are deleted when the request has been resolved unless legal retention obligations apply. Apple’s information is available in its <a href="https://www.apple.com/legal/privacy/en-ww/" target="_blank" rel="noreferrer">Privacy Policy</a>.</p>
         </section>
 
         <section>
@@ -7131,7 +7139,7 @@ function PrivacyPage({ locale }) {
       <section>
         <h2>7. Kontakt per E-Mail</h2>
         <p>Der Kontaktassistent überträgt Eingaben nicht an Pollframe oder Cloudflare. Er erstellt lediglich eine vorbereitete E-Mail und fordert den Browser auf, das lokale E-Mail-Programm zu öffnen. Daten werden erst übertragen, wenn du die Nachricht dort absendest.</p>
-        <p>Wenn du uns kontaktierst, werden deine Nachricht, deine E-Mail-Adresse und die von dir mitgeteilten Informationen zur Bearbeitung der Anfrage verarbeitet. Der E-Mail-Dienst wird über Proton Mail bereitgestellt. Rechtsgrundlage ist Art. 6 Abs. 1 lit. f DSGVO, bei vorvertraglichen Anfragen Art. 6 Abs. 1 lit. b DSGVO. Nachrichten werden gelöscht, wenn die Anfrage abschließend erledigt ist, sofern keine gesetzlichen Aufbewahrungspflichten bestehen. Informationen von Proton stehen in dessen <a href="https://proton.me/legal/privacy" target="_blank" rel="noreferrer">Datenschutzerklärung</a>.</p>
+        <p>Wenn du uns kontaktierst, werden deine Nachricht, deine E-Mail-Adresse und die von dir mitgeteilten Informationen zur Bearbeitung der Anfrage verarbeitet. Der E-Mail-Dienst wird über Apple iCloud Mail bereitgestellt. Rechtsgrundlage ist Art. 6 Abs. 1 lit. f DSGVO, bei vorvertraglichen Anfragen Art. 6 Abs. 1 lit. b DSGVO. Nachrichten werden gelöscht, wenn die Anfrage abschließend erledigt ist, sofern keine gesetzlichen Aufbewahrungspflichten bestehen. Informationen von Apple stehen in dessen <a href="https://www.apple.com/legal/privacy/en-ww/" target="_blank" rel="noreferrer">Datenschutzerklärung</a>.</p>
       </section>
 
       <section>
@@ -7176,7 +7184,7 @@ function LicencesPage({ locale }) {
           {isGerman ? " bereitgestellt." : "."}
         </p>
         <p>{isGerman
-          ? "Änderungen durch Pollframe: Beschränkung auf sieben ausgewählte Institute und Daten ab 2017; Vereinheitlichung und Umbenennung von Feldern; Aufteilung nach Parlamenten; Berechnung gleich gewichteter Institutsmittel und linearer Ländertrends. Ein weiteres Institut ist bis zur Klärung der Nutzungsrechte vorübergehend ausgeschlossen. Die herunterladbaren JSON-Dateien enthalten den Quellen- und Lizenzhinweis ebenfalls."
+          ? "Änderungen durch Pollframe: Daten ab 2017 von sieben ausgewählten Instituten für den Bundestag, für die Bundesländer zusätzlich GMS und Civey; Vereinheitlichung und Umbenennung von Feldern; Aufteilung nach Parlamenten; Berechnung gleich gewichteter Institutsmittel und linearer Ländertrends. Ein weiteres Institut ist bis zur Klärung der Nutzungsrechte vorübergehend ausgeschlossen. Die herunterladbaren JSON-Dateien enthalten den Quellen- und Lizenzhinweis ebenfalls."
           : "Changes by Pollframe: filtering to seven selected pollsters and data from 2017; normalising and renaming fields; splitting records by parliament; calculating equally weighted pollster averages and linear state trends. One further pollster is temporarily excluded while reuse rights are clarified. Downloadable JSON files also contain the source and licence notice."}</p>
       </section>
 
@@ -7965,8 +7973,8 @@ function RegionalApp() {
       ? "Umfragen sind Momentaufnahmen mit Unsicherheit. Der Durchschnitt korrigiert derzeit weder institutsspezifische Effekte noch Stichprobenfehler. Die geglättete Linie verbindet berechnete Stützpunkte. Tendenzkarten bewerten 90-Tage-Änderungen ab ±0,4 Prozentpunkten als leicht und ab ±1,2 als deutlich. Keine Darstellung ist eine Wahlprognose."
       : "Polls are uncertain snapshots. The average does not currently adjust for pollster-specific effects or sampling error. The smoothed line connects calculated points. Tendency cards classify 90-day changes from ±0.4 percentage points as slight and from ±1.2 as clear. No display is an election forecast.",
     sourceText: isGerman
-      ? "Die einzelnen Umfragen seit 2017 stammen aus der offenen DAWUM-Datenbank (ODbL 1.0). Pollframe filtert sieben Institute, vereinheitlicht Felder und berechnet daraus eigene Mittelwerte und Trends. Landeswahltermine in der Ereignisebene verlinken die jeweils angegebene amtliche Quelle."
-      : "Individual polls since 2017 come from the open DAWUM database (ODbL 1.0). Pollframe filters seven pollsters, normalises fields and calculates its own averages and trends. State election dates in the event layer link to the stated official source.",
+      ? "Die einzelnen Umfragen seit 2017 stammen aus der offenen DAWUM-Datenbank (ODbL 1.0). Pollframe wählt die Institute je Parlament aus (Bundestag: sieben; Länder: zusätzlich GMS und Civey), vereinheitlicht Felder und berechnet daraus eigene Mittelwerte und Trends. Landeswahltermine in der Ereignisebene verlinken die jeweils angegebene amtliche Quelle."
+      : "Individual polls since 2017 come from the open DAWUM database (ODbL 1.0). Pollframe selects pollsters by parliament (Bundestag: seven; states: additionally GMS and Civey), normalises fields and calculates its own averages and trends. State election dates in the event layer link to the stated official source.",
     };
   }, [baseT, locale, region, isGerman]);
 
@@ -8424,7 +8432,7 @@ function RegionalApp() {
         partyDefinitions={activePartyDefinitions}
         events={activeEvents}
         eventCategories={activeEventCategories}
-        electionResults={["uk-federal", "spain-federal"].includes(region.type) ? pollData.metadata?.electionResults ?? {} : region.type === "federal" ? ELECTION_RESULTS : {}}
+        electionResults={["uk-federal", "spain-federal"].includes(region.type) ? pollData.metadata?.electionResults ?? {} : region.type === "federal" ? ELECTION_RESULTS : pollData.metadata?.electionResults ?? {}}
         termStart={termStart}
         archiveStart={archiveStart}
         regionSlug={region.slug}
@@ -8642,6 +8650,7 @@ function RegionalApp() {
         <nav className="region-breadcrumb" aria-label={isGerman ? "Region" : "Region"}>
           <BackButton fallback={homeHref} label={locale === "es" ? "Atrás" : isGerman ? "Zurück" : "Back"} /><span>/</span><a href={homeHref}>{locale === "es" ? "Resumen" : isGerman ? "Übersicht" : "Overview"}</a><span>/</span><strong>{region.name}</strong>
         </nav>
+        {region.slug === "sachsen-anhalt" && <Suspense fallback={null}><ElectionResult locale={locale} /></Suspense>}
         <section className={`intro-section ${region.type === "state" ? "state-intro" : ""} ${region.type === "spain-federal" ? "spain-intro" : ""}`}>
           <div className="intro-copy">
             <div className="eyebrow"><span />{t.overview}</div>
@@ -8782,7 +8791,8 @@ function RegionalApp() {
                 partyDefinitions={activePartyDefinitions}
                 events={activeEvents}
                 eventCategories={activeEventCategories}
-                electionResults={["uk-federal", "spain-federal"].includes(region.type) ? pollData.metadata?.electionResults ?? {} : region.type === "federal" ? ELECTION_RESULTS : {}}
+                electionStatus={pollData.metadata?.electionStatus}
+                electionResults={["uk-federal", "spain-federal"].includes(region.type) ? pollData.metadata?.electionResults ?? {} : region.type === "federal" ? ELECTION_RESULTS : pollData.metadata?.electionResults ?? {}}
                 termStart={termStart}
                 archiveStart={archiveStart}
                 customStartDate={customStartDate || archiveStart}
@@ -8793,7 +8803,7 @@ function RegionalApp() {
                 <DataAttribution
                   locale={locale}
                   metadata={pollData.metadata}
-                  includeElection={["federal", "uk-federal", "spain-federal"].includes(region.type)}
+                  includeElection={["federal", "uk-federal", "spain-federal"].includes(region.type) || Boolean(pollData.metadata?.electionResults)}
                   electionSourceUrl={pollData.metadata?.electionSourceUrl ?? ELECTION_SOURCE_URL}
                   electionSourceLabel={pollData.metadata?.electionSourceLabel}
                 />
@@ -8864,7 +8874,7 @@ function RegionalApp() {
           metadata={pollData.metadata}
           latestDate={latestDate}
           locale={locale}
-          electionSourceUrl={region.type === "state" ? null : pollData.metadata?.electionSourceUrl ?? ELECTION_SOURCE_URL}
+          electionSourceUrl={pollData.metadata?.electionSourceUrl ?? (region.type === "state" ? null : ELECTION_SOURCE_URL)}
         />
       )}
       <EmbedModal
@@ -8903,4 +8913,26 @@ function RegionalApp() {
   );
 }
 
-createRoot(document.getElementById("root")).render(<RegionalApp />);
+const ElectionPage = lazy(() => import("./election-page.jsx"));
+function ElectionShareTools({ kind, elementRef, title, locale, options }) {
+  const params = { view: "election-st2026", electionWidget: kind, baseline: options.baseline, all: options.all, electionPollster: options.electionPollster, coalition: options.coalition };
+  const share = new URLSearchParams({ ...params, lang: locale });
+  return <WidgetShareTools widget={`election-${kind}`} elementRef={elementRef} filename={`pollframe-sachsen-anhalt-2026-${kind}`} title={title} subtitle="Sachsen-Anhalt · Landtagswahl 2026" locale={locale} t={copy[locale]} region={{slug:"sachsen-anhalt",type:"state"}} extraEmbedParams={params} shareHref={`${publicShareOrigin(location.origin)}/?${share}#election-${kind}`} credit={`Statistisches Landesamt Sachsen-Anhalt, Halle (Saale) 2026 · dl-de/by-2-0 · Pollframe${kind === "comparison" && options.baseline === "poll" ? " · DAWUM · ODbL 1.0" : ""}`} profile="election" height={kind === "comparison" ? 510 + options.rows * 48 : kind === "seats" ? 900 : 560}/>;
+}
+function ElectionSiteHeader({ locale, setLocale }) {
+  const [open, setOpen] = useState(false);
+  const [theme, setTheme] = useState(() => storedPreference("opinion-poll-theme", "system", ["system", "light", "dark"]));
+  const [textSize, setTextSize] = useState("standard");
+  const pwa = usePwaLifecycle();
+  useEffect(() => {
+    try { localStorage.setItem("opinion-poll-theme", theme); localStorage.setItem("opinion-poll-locale", locale); } catch {}
+    document.documentElement.dataset.theme = theme === "dark" || (theme === "system" && matchMedia("(prefers-color-scheme: dark)").matches) ? "dark" : "light";
+    document.documentElement.dataset.textSize = textSize;
+  }, [theme, locale, textSize]);
+  return <><SiteHeader t={copy[locale]} locale={locale} pwa={pwa} onSettings={() => setOpen(true)} /><SettingsPanel open={open} onClose={() => setOpen(false)} locale={locale} setLocale={setLocale} t={copy[locale]} theme={theme} setTheme={setTheme} textSize={textSize} setTextSize={setTextSize} pwa={pwa} /></>;
+}
+
+function EventRouter() {
+ return new URLSearchParams(location.search).get("view") === "election-st2026" ? <Suspense fallback={<main role="status">Pollframe …</main>}><ElectionPage Header={IS_EMBED_ENTRY ? null : ElectionSiteHeader} ShareTools={ElectionShareTools} embed={IS_EMBED_ENTRY}/></Suspense> : <RegionalApp/>;
+}
+createRoot(document.getElementById("root")).render(<EventRouter />);

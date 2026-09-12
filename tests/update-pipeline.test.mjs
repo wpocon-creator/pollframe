@@ -94,12 +94,12 @@ test("the update workflow cannot be blocked by dependency audit or one source", 
   const workflow = await readFile(new URL("../.github/workflows/update-poll-data.yml", import.meta.url), "utf8");
   assert.doesNotMatch(workflow, /npm audit/);
   assert.match(workflow, /cron:\s*["']17 \*\/4 \* \* \*["']/);
-  for (const id of ["germany", "uk", "spain", "spain_regions", "approval"]) {
+  for (const id of ["germany", "uk", "spain", "spain_issues", "spain_regions", "approval"]) {
     const sourceStep = workflow.match(new RegExp(`id: ${id}[\\s\\S]{0,320}?(?=\\n\\s+- name:|$)`))?.[0] ?? "";
     assert.match(sourceStep, /continue-on-error: true/, `${id} must not block other sources`);
     assert.match(sourceStep, /timeout-minutes: [3-8]/, `${id} needs its own timeout`);
   }
-  assert.match(workflow, /jobs:[\s\S]*?update:[\s\S]*?timeout-minutes: 20/);
+  assert.match(workflow, /jobs:[\s\S]*?update:[\s\S]*?timeout-minutes: 30/);
   assert.match(workflow, /needs:\s*\[update, publish\]/);
   assert.match(workflow, /validate-update-health\.mjs/);
   assert.match(workflow, /cp incoming-poll-data\/public\/poll-data\.json public\/poll-data\.json/);

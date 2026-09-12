@@ -44,11 +44,13 @@
   "durable_objects": {
     "bindings": [
       { "name": "BUG_REPORT_STORE", "class_name": "BugReportStore" },
-      { "name": "ANALYTICS_STORE", "class_name": "AnalyticsStore" }
+      { "name": "ANALYTICS_STORE", "class_name": "AnalyticsStore" },
+      { "name": "ELECTION_RESULTS", "class_name": "ElectionResultsStore" }
     ]
   },
   "migrations": [
     { "tag": "v1", "new_sqlite_classes": ["BugReportStore"] },
-    { "tag": "v2", "new_sqlite_classes": ["AnalyticsStore"] }
+    { "tag": "v2", "new_sqlite_classes": ["AnalyticsStore"] },
+    { "tag": "v3", "new_sqlite_classes": ["ElectionResultsStore"] }
   ]
 }

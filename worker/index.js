@@ -7,6 +7,7 @@ import {
 } from "../src/public-routes.js";
 import { SITE_ORIGIN, LEGACY_SITE_ORIGIN } from "../src/site-origin.js";
 import { seoPageResponse } from "./seo-response.js";
+export { ElectionResultsStore } from "./election-results.js";
 
 function legacyAppRequest(request, url) {
   return url.origin === LEGACY_SITE_ORIGIN && (
@@ -428,6 +429,16 @@ export class AnalyticsStore {
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+    if (url.pathname === "/api/elections/sachsen-anhalt-2026" && request.method === "GET") {
+      if (!env.ELECTION_RESULTS) return Response.json({result:null}, {headers:{"cache-control":"no-store"}});
+      const id = env.ELECTION_RESULTS.idFromName("sachsen-anhalt-2026");
+      const response = await env.ELECTION_RESULTS.get(id).fetch(new Request(`https://election-results/?archive=${url.searchParams.get("archive") === "1" ? "1" : "0"}`));
+      const headers = new Headers(response.headers);
+      const sourceError = headers.get("x-pollframe-source-error");
+      if (sourceError) console.warn("Election source:", sourceError);
+      headers.delete("x-pollframe-source-error");
+      return new Response(response.body, {status:response.status,headers});
+    }
     const domainTarget = domainRedirect(request);
     if (domainTarget) return new Response(null, {
       status: 308,

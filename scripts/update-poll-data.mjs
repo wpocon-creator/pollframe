@@ -1,12 +1,14 @@
 import { mkdir, readFile, rename, stat, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { createStateMapData } from "./build-state-map-data.mjs";
+import { REGIONAL_INSTITUTES, includesInstitute } from "./lib/institute-coverage.mjs";
+import { validateElectionHistory } from './lib/election-history.mjs';
 
 const TRUSTED_REMOTE_SOURCE = "https://api.dawum.de/";
 const TRUSTED_SOURCE_URL = "https://dawum.de/API/";
 const TRUSTED_LICENSE_URL = "https://opendatacommons.org/licenses/odbl/1-0/";
 const DERIVATIVE_NOTICE = "Derived from the dawum.de election polling database. This derivative Pollframe database is made available under the Open Database License (ODbL) 1.0.";
-const DERIVATIVE_CHANGES = "Filtered to seven selected institutes and records from 2017; fields normalised and renamed; records split by parliament; Pollframe averages and state movements calculated separately. Polls from a rights-pending source are temporarily excluded.";
+const DERIVATIVE_CHANGES = "Records from 2017; seven selected institutes for the Bundestag, additionally GMS and Civey for state parliaments; fields normalised and renamed; records split by parliament; Pollframe averages and state movements calculated separately. Polls from a rights-pending source are temporarily excluded.";
 const MAX_SOURCE_BYTES = 25 * 1024 * 1024;
 const MAX_SURVEYS = 100_000;
 const MAX_RESULTS_PER_SURVEY = 50;
@@ -95,8 +97,10 @@ async function loadSource() {
 }
 
 const source = await loadSource();
+const stateElection = await readFile(resolve('public/data/election-st2026.json'),'utf8').then(JSON.parse).catch(error=>{if(error.code==='ENOENT')return null;throw error;});
+validateElectionHistory(stateElection);
 
-const includedInstituteIds = new Set(["1", "2", "3", "5", "6", "9", "13"]);
+const includedInstituteIds = new Set(REGIONAL_INSTITUTES);
 const REGION_CONFIG = [
   { id: "0", slug: "bundestag", mapId: null, type: "federal", name: "Deutschland", parliament: "Bundestag" },
   { id: "1", slug: "baden-wuerttemberg", mapId: "bw", type: "state", name: "Baden-Württemberg", parliament: "Landtag" },
@@ -149,7 +153,7 @@ function makeRegionData(region) {
       isRecord(survey)
       && survey.Parliament_ID === region.id
       && survey.Date >= "2017-01-01"
-      && includedInstituteIds.has(survey.Institute_ID)
+      && includesInstitute(region.type, survey.Institute_ID)
     ))
     .sort((a, b) => a.Date.localeCompare(b.Date));
   for (const [index, survey] of regionSurveys.entries()) {
@@ -213,8 +217,19 @@ function makeRegionData(region) {
       generatedAt,
       derivativeDatabaseNotice: DERIVATIVE_NOTICE,
       changes: DERIVATIVE_CHANGES,
-      inclusionRule: "Seven established institutes with published fieldwork and sample metadata. The reusable DAWUM archive begins in 2017.",
+      inclusionRule: region.type === "state"
+        ? "Regional coverage includes GMS and Civey in addition to the seven Bundestag institutes, where present in DAWUM. Collection methods differ and are recorded per poll. The reusable archive begins in 2017."
+        : "Seven selected institutes with published fieldwork and sample metadata. The reusable DAWUM archive begins in 2017.",
       region,
+      ...(region.slug === 'sachsen-anhalt' && stateElection ? {
+        electionResults: {[stateElection.date]: stateElection.results},
+        electionSourceUrl: stateElection.sourceUrl,
+        electionSourceLabel: stateElection.source,
+        electionLicense: stateElection.license,
+        electionLicenseUrl: stateElection.licenseUrl,
+        electionStatus: stateElection.status,
+        electionPublishedAt: stateElection.publishedAt,
+      } : {}),
     },
     pollsters: Object.fromEntries([...pollsterIds].map((id) => [
       id,

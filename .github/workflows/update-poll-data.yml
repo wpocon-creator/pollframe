@@ -16,7 +16,7 @@ concurrency:
 jobs:
   update:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     permissions:
       contents: read
 
@@ -39,6 +39,12 @@ jobs:
       # A temporary failure or renamed file at one provider must not prevent the
       # other countries from being published. The health job still turns the
       # overall workflow red after publication so a partial failure is visible.
+      - name: Update official completed election marker
+        id: election
+        continue-on-error: true
+        timeout-minutes: 3
+        run: npm run data:update:election
+
       - name: Update Germany
         id: germany
         continue-on-error: true
@@ -58,6 +64,12 @@ jobs:
         env:
           SPAIN_ELECTION_DATE: ${{ vars.SPAIN_ELECTION_DATE }}
         run: npm run data:update:spain
+
+      - name: Update official CIS concerns and economic perceptions
+        id: spain_issues
+        continue-on-error: true
+        timeout-minutes: 3
+        run: npm run data:update:spain-issues
 
       - name: Update Spanish regions
         id: spain_regions
@@ -80,8 +92,10 @@ jobs:
       - name: Record every source outcome
         env:
           GERMANY_OUTCOME: ${{ steps.germany.outcome }}
+          ELECTION_OUTCOME: ${{ steps.election.outcome }}
           UK_OUTCOME: ${{ steps.uk.outcome }}
           SPAIN_OUTCOME: ${{ steps.spain.outcome }}
+          SPAIN_ISSUES_OUTCOME: ${{ steps.spain_issues.outcome }}
           SPAIN_REGIONS_OUTCOME: ${{ steps.spain_regions.outcome }}
           APPROVAL_OUTCOME: ${{ steps.approval.outcome }}
         run: node scripts/write-update-health.mjs data-update-health.json

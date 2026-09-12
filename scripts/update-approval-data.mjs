@@ -1,4 +1,4 @@
-import { readFile, writeFile } from "node:fs/promises";
+import { readFile, writeFile, rename } from "node:fs/promises";
 import { resolve } from "node:path";
 import { unzipSync, strFromU8 } from "fflate";
 import { load } from "cheerio/slim";
@@ -288,9 +288,14 @@ const output = {
 for (const [country, data] of Object.entries(output.countries)) {
   for (const metric of ["government", "leader"]) {
     if (!data.series[metric].length) throw new Error(`${country}/${metric}: no approval data`);
+    const latest = data.series[metric].map(point => point.date).sort().at(-1);
+    const previousLatest = existing?.countries?.[country]?.series?.[metric]?.map(point => point.date).sort().at(-1);
+    if (previousLatest && latest < previousLatest) throw new Error(`${country}/${metric}: latest source observation moved backwards`);
     if (data.series[metric].some((point) => !/^\d{4}-\d{2}-\d{2}$/.test(point.date) || point.positive < 0 || point.positive > 100)) throw new Error(`${country}/${metric}: invalid point`);
   }
 }
 
-await writeFile(OUTPUT, `${JSON.stringify(output, null, 2)}\n`);
+output.countries.de.sourceCheck = { checkedAt: output.generatedAt, urls: fgwCurrentDownloads, latest: {government: deGovernment.at(-1).date, leader: deLeader.at(-1).date} };
+await writeFile(OUTPUT + '.tmp', `${JSON.stringify(output, null, 2)}\n`);
+await rename(OUTPUT + '.tmp', OUTPUT);
 console.log(`Approval: DE ${deGovernment.length}/${deLeader.length}, UK ${uk ? `${uk.government.length}/${uk.leader.length}` : "withheld"}, ES ${es.government.length}/${es.leader.length}`);

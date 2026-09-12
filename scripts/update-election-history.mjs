@@ -1,0 +1,15 @@
+import {readFile,writeFile,rename} from 'node:fs/promises';
+import {parseElectionResults,ELECTION_SOURCE} from '../worker/election-results.js';
+import {ELECTION_PARTIES,ELECTION_DAY} from '../src/election-comparison.js';
+const path='public/data/election-st2026.json';
+const response=await fetch(ELECTION_SOURCE,{redirect:'error',signal:AbortSignal.timeout(25000)});
+if(!response.ok)throw Error(`Official election source: HTTP ${response.status}`);
+const html=await response.text();if(html.length>5_000_000)throw Error('Election source too large');
+const result=parseElectionResults(html);
+if(!result||result.counted!==result.total)throw Error('No complete official election count; retaining existing historical marker');
+const previous=await readFile(path,'utf8').then(JSON.parse).catch(error=>{if(error.code==='ENOENT')return null;throw error;});
+if(previous?.publishedAt>result.publishedAt)throw Error('Election source moved backwards');
+const results=Object.fromEntries(result.rows.filter(row=>ELECTION_PARTIES[row.name]).map(row=>[ELECTION_PARTIES[row.name].id,row.share]));
+const payload={date:ELECTION_DAY,publishedAt:result.publishedAt,status:result.status,sourceUrl:ELECTION_SOURCE,source:'Statistisches Landesamt Sachsen-Anhalt, Halle (Saale) 2026',license:'dl-de/by-2-0',licenseUrl:'https://www.govdata.de/dl-de/by-2-0',results};
+await writeFile(path+'.tmp',JSON.stringify(payload)+'\n');await rename(path+'.tmp',path);
+console.log(`Sachsen-Anhalt historical result: ${payload.date}, ${payload.status}, source ${payload.publishedAt}`);
