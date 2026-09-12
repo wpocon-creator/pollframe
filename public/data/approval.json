@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-12T12:10:36.283Z",
+  "generatedAt": "2026-09-12T15:30:46.900Z",
   "countries": {
     "de": {
       "label": "Deutschland",
@@ -3595,7 +3595,7 @@
         ]
       },
       "sourceCheck": {
-        "checkedAt": "2026-09-12T12:10:36.283Z",
+        "checkedAt": "2026-09-12T15:30:46.900Z",
         "urls": {
           "government": "https://www.forschungsgruppe.de/Umfragen/Politbarometer/Langzeitentwicklung_-_Themen_im_Ueberblick/Politik_II/4_Arbeit_Reg.xlsx",
           "leader": "https://www.forschungsgruppe.de/Umfragen/Politbarometer/Langzeitentwicklung_-_Themen_im_Ueberblick/Politik_II/11_Arbeit_Merz_1.xlsx"
