@@ -16,6 +16,8 @@
     "test:seo": "node --test tests/seo-routes.test.mjs",
     "test:watchlist-reorder": "node --test tests/watchlist-reorder.test.mjs",
     "data:update": "node scripts/update-poll-data.mjs",
+    "data:update:election": "node scripts/update-election-history.mjs",
+    "data:update:spain-issues": "node scripts/update-spain-issues.mjs",
     "data:update:uk": "node scripts/update-uk-data.mjs",
     "data:update:spain": "node scripts/update-spain-data.mjs",
     "data:update:spain-regions": "node scripts/update-spain-regions.mjs",

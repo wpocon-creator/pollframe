@@ -1,7 +1,8 @@
-import { readFile, writeFile } from "node:fs/promises";
+import { readFile, writeFile, rename } from "node:fs/promises";
 import { resolve } from "node:path";
 import { load } from "cheerio/slim";
 import { fetchTextWithRetry, settleWithConcurrency } from "./lib/resilient-source.mjs";
+import { regionalElectionLink, validateRegionalRefresh } from "./lib/regional-source-health.mjs";
 
 const USER_AGENT = "PollframeDataUpdater/1.0 (regional polling coverage audit)";
 const FETCH_TIMEOUT_MS = 20_000;
@@ -37,8 +38,8 @@ const safeNumber = (value) => {
   return match ? Number(match[0]) : null;
 };
 const iso = (year, month, day) => {
-  const value = new Date(Date.UTC(year, month, day)).toISOString().slice(0, 10);
-  return value.startsWith(String(year)) ? value : null;
+  const date = new Date(Date.UTC(year, month, day));
+  return date.getUTCFullYear() === year && date.getUTCMonth() === month && date.getUTCDate() === day ? date.toISOString().slice(0, 10) : null;
 };
 const MONTHS = { jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5, jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11 };
 function parseDate(value, fallbackYear) {
@@ -66,7 +67,8 @@ async function wiki(page) {
 }
 function rowSource($, row, fallback) {
   const id = $(row).find("sup.reference a").first().attr("href");
-  const href = id?.startsWith("#") ? $(id).find("a.external").first().attr("href") : null;
+  const scope = $(row).closest('[data-pollframe-source]');
+  const href = id?.startsWith("#") ? (scope.length ? scope.find(id) : $(id)).find("a.external").first().attr("href") : null;
   try { return href ? new URL(href, fallback).href : fallback; } catch { return fallback; }
 }
 function partyName($, cell) {
@@ -125,7 +127,7 @@ function parseRegion(region, $) {
       const id = name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 36);
       if (id) { columns.push([index, id]); if (!parties.has(id)) parties.set(id, { id, name, color: partyColor(name, parties.size) }); }
     });
-    $(table).find("tr").slice(2).each((_, row) => {
+    $(table).find("tr").slice(1).each((_, row) => {
       const cells = $(row).children("td").toArray();
       if (cells.length < 6) return;
       const pollster = clean($(cells[0]).clone().find("sup").remove().end().text());
@@ -141,7 +143,7 @@ function parseRegion(region, $) {
         if (Number.isInteger(seatCount)) seats[id] = seatCount;
       }
       if (Object.keys(results).length < 2) return;
-      const item = { date, pollster, sample: Number(clean($(cells[2]).text()).replace(/\D/g, "")) || null, results, sourceUrl: rowSource($, row, sourceUrl) };
+      const item = { date, pollster, sample: Number(clean($(cells[2]).text()).replace(/\D/g, "")) || null, results, sourceUrl: rowSource($, row, $(table).closest('[data-pollframe-source]').attr('data-pollframe-source') || sourceUrl) };
       if (Object.keys(seats).length) item.seats = seats;
       if (/(?:regional|assembly) election/i.test(pollster)) elections.push(item);
       else if (!/election|projection|scenario/i.test(pollster)) polls.push(item);
@@ -151,7 +153,7 @@ function parseRegion(region, $) {
   elections.sort((a, b) => a.date.localeCompare(b.date));
   const lastElection = elections.at(-1) ?? null;
   const postElection = lastElection ? unique.filter((poll) => poll.date > lastElection.date) : unique;
-  const latest = postElection.at(-1) ?? unique.at(-1) ?? null;
+  const latest = postElection.at(-1) ?? null;
   const currentWindow = latest ? postElection.filter((poll) => Date.parse(`${poll.date}T00:00:00Z`) >= Date.parse(`${latest.date}T00:00:00Z`) - 180 * 86_400_000) : [];
   const latestByPollster = new Map(currentWindow.map((poll) => [poll.pollster, poll]));
   const current = {};
@@ -178,8 +180,30 @@ const previous = JSON.parse(await readFile(resolve("public/data/spain-regions.js
 const regions = [...(previous.regions ?? [])];
 const updates = await settleWithConcurrency(selectedRegions, async (region) => {
   const $ = await wiki(region.page);
-  return parseRegion(region, $);
+  // Follow the actual next-election link, retaining the completed election and
+  // its polling archive. Never replace the whole archive with a new empty page.
+  const nextLink = $('.infobox a[href]').toArray().find(node => {
+    const label = clean($(node).text()).replace('→', '').trim();
+    const currentYear = Number(region.page.slice(0, 4));
+    return (label === 'Next' || (/^\d{4}$/.test(label) && Number(label) > currentYear)) && regionalElectionLink($(node).attr('href'), region.page);
+  });
+  const nextPage = nextLink ? regionalElectionLink($(nextLink).attr('href'), region.page) : null;
+  const checkedSources = [`https://en.wikipedia.org/wiki/${region.page}`];
+  if (nextPage) {
+    const next = await wiki(nextPage);
+    const pollingTables = next('table.wikitable').toArray().filter(table => /Polling firm/i.test(clean(next(table).find('tr').first().text())));
+    if (pollingTables.length && !pollingTables.some(table => /Turnout/i.test(clean(next(table).find('tr').first().text())))) throw new Error('Next-election polling table changed format; manual review required');
+    const nextUrl = `https://en.wikipedia.org/wiki/${nextPage}`;
+    // Separate sections keep citation anchors and their original fallback URL.
+    const section = $('<section>').attr('data-pollframe-source', nextUrl).html(next.root().html() || '');
+    $.root().append(section);
+    checkedSources.push(nextUrl);
+  }
+  const parsed = validateRegionalRefresh(parseRegion(region, $), regions.find(item => item.slug === region.slug));
+  parsed.sourceCheck = { checkedAt: new Date().toISOString(), status: 'success', urls: checkedSources };
+  return parsed;
 }, UPDATE_CONCURRENCY);
+const failed = [];
 for (const [index, result] of updates.entries()) {
   const region = selectedRegions[index];
   const previousIndex = regions.findIndex((item) => item.slug === region.slug);
@@ -188,11 +212,16 @@ for (const [index, result] of updates.entries()) {
     if (previousIndex >= 0) regions.splice(previousIndex, 1, parsed); else regions.push(parsed);
     console.log(`${region.names.es}: ${parsed.coverage.usablePolls} polls (${parsed.coverage.status})`);
   } else {
+    failed.push(region.slug);
+    if (previousIndex >= 0) regions[previousIndex] = { ...regions[previousIndex], sourceCheck: { checkedAt: new Date().toISOString(), status: 'failed', reason: result.reason.message } };
     console.warn(`${region.names.es}: ${result.reason.message}; retaining the last validated snapshot`);
     if (previousIndex < 0) regions.push({ ...region, sourceUrl: `https://en.wikipedia.org/wiki/${region.page}`, parties: [], polls: [], lastElection: null, current: null, coverage: { status: "unavailable", usablePolls: 0, postElectionPolls: 0, pollsterCount: 0, firstDate: null, latestDate: null } });
   }
 }
 regions.sort((a, b) => a.code.localeCompare(b.code));
 const output = { metadata: { generatedAt: new Date().toISOString(), methodology: "Headline vote estimates from the cited regional polling tables (raw vote-intention duplicates are excluded); the current snapshot averages each pollster's latest post-election poll within 180 days of the latest poll." }, regions };
-await writeFile(resolve("public/data/spain-regions.json"), `${JSON.stringify(output)}\n`);
+output.metadata.failedRegions = regions.filter(region => region.sourceCheck?.status === 'failed').map(region => region.slug);
+await writeFile(resolve("public/data/spain-regions.json.tmp"), `${JSON.stringify(output)}\n`);
+await rename(resolve("public/data/spain-regions.json.tmp"), resolve("public/data/spain-regions.json"));
 console.log(`Spain regions: wrote ${regions.length} pages and ${regions.reduce((sum, region) => sum + region.polls.length, 0)} polls`);
+if (failed.length) process.exitCode = 1;

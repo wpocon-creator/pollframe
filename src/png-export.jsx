@@ -16,6 +16,7 @@ const EXPORT_BACKGROUNDS = { light: "#ffffff", dark: "#1a1d20" };
 const EXPORT_MAX_SCALE = { chart: 1.2, approval: 1.22, "approval-current": 1.34, "party-history": 1.26, map: 1.25, "current-poll": 1.34, "party-grid": 1.34, "seat-grid": 1.26, constituency: 1.3, issues: 1.34, insight: 1.36 };
 
 const PROFILES = {
+  election: { formats: ["content"], recommended: "content", copyKey: "election" },
   chart: { formats: ["landscape", "square"], recommended: "landscape", copyKey: "chart" },
   approval: { formats: ["landscape", "square"], recommended: "landscape", copyKey: "approval" },
   "approval-current": { formats: ["landscape", "square"], recommended: "square", copyKey: "approvalCurrent" },
@@ -275,6 +276,9 @@ function prepareExportClone(clone, { format, preset, profile, locale }) {
   clone.style.setProperty("width", `${exportCloneWidth(format, profile, preset)}px`);
   clone.style.setProperty("max-width", "none");
   clone.style.setProperty("margin", "0");
+  if (profile === "election") {
+    clone.querySelectorAll("[data-election-time]").forEach(node => { node.textContent = `${locale === "de" ? "Amtlicher Datenstand" : locale === "es" ? "Datos oficiales" : "Official source updated"}: ${node.dataset.electionTime} (Europe/Berlin)`; });
+  }
   if (clone.dataset.publicationDate) {
     const date = new Date(`${clone.dataset.publicationDate}T12:00:00Z`);
     const kind = clone.dataset.sourceDateKind;
