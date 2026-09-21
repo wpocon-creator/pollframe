@@ -281,9 +281,8 @@ test.describe("PNG export chooser", () => {
 
     await page.goto("/?view=approval&country=de&lang=de");
     await settle(page);
-    await page.getByRole("button", { name: "Teilen & einbetten", exact: true }).click();
-    const approvalModal = page.locator(".approval-share-card");
-    await assertViewportCentred(approvalModal, "approval embed dialog");
+    await expect(page.getByRole("heading", {name:"Vorübergehend nicht verfügbar"})).toBeVisible();
+    await expect(page.locator(".approval-share-card")).toHaveCount(0);
   });
 
   test("portrait current-poll grids stay balanced across countries and devices", async ({ page }, testInfo) => {
@@ -471,7 +470,7 @@ test.describe("PNG export chooser", () => {
     await expect(page.locator(".embed-modal:not(.png-options-modal)")).toBeVisible();
   });
 
-  test("compact approval redesign preserves both real PNG compositions", async ({ page }, testInfo) => {
+  test.skip("withheld pending permission: compact approval redesign preserves both real PNG compositions", async ({ page }, testInfo) => {
     test.skip(!["chromium-desktop", "iphone-13-chromium"].includes(testInfo.project.name), "Representative desktop and touch downloads");
     await installPngCapture(page);
     await page.goto("/?view=approval&country=de&lang=de");
@@ -521,8 +520,7 @@ test.describe("PNG export chooser", () => {
 
     await page.goto("/?view=approval&country=de&lang=de");
     await settle(page);
-    await downloadPngSample(page, page.locator(".approval-main-chart .png-export-button"), ["landscape", "square"], testInfo.outputPath("approval-landscape.png"), [1920, 1080]);
-    await downloadPngSample(page, page.locator(".approval-current-government .widget-png-trigger"), ["landscape", "square"], testInfo.outputPath("approval-government-square.png"), [1080, 1080], "square");
+    await expect(page.getByRole("heading", {name:"Vorübergehend nicht verfügbar"})).toBeVisible();
 
     await page.goto("/?region=spain-congress&lang=es");
     await settle(page);

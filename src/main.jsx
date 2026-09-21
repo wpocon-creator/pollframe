@@ -5575,7 +5575,6 @@ function GermanyCountryOverview({ locale, summary, mapOnly = false }) {
       <section className="overview-entry-stack" aria-label={l("Wahlen und Karten in Deutschland", "electionsAndMaps")}>
         <OverviewInfoWidget accent="parliament" href={publicRegionPath("bundestag")} eyebrow={l("Nationale Ebene", "nationalLevel")} title={l("Aktuelle Sonntagsfrage zur Bundestagswahl", "federalElection")} text={l("Neueste Umfrage, langfristiger Trend, Institute, Ereignisse und Sitzmodell.", "federalWidget")} stats={[[l("Umfragen", "pollsLabel"), federal?.pollCount?.toLocaleString(getNumberLocale(locale)) ?? "–"], [l("Seit", "sinceLabel"), federal?.firstDate ? new Date(parseDate(federal.firstDate)).getUTCFullYear() : "–"], [l("Zuletzt", "latestLabel"), federal ? <>{formatDate(federal.latestDate, locale, { year: true })}<small className="data-age-label">{formatDataAge(federal.latestDate, locale)}</small></> : "–"]]} />
         <OverviewInfoWidget accent="opinion" href={publicViewPath("map")} eyebrow={l("Vergleich der Länder", "stateComparison")} title={l("Deutschland im Überblick", "germanyOverview")} text={l("Parteistärken und Bewegungen auf einer anpassbaren Karte über alle 16 Länder vergleichen.", "stateWidget")} stats={[[l("Länder", "statesLabel"), "16"], [l("Ansichten", "viewsLabel"), "3"], [l("Teilen", "sharingLabel"), "Embed"]]} />
-        <ApprovalOverviewEntry country="de" locale={locale} />
         <Suspense fallback={null}><ElectionResult locale={locale} /></Suspense>
       </section>
       {states.length > 0 && <StateCoverageMap states={states} locale={locale} mapGeometry={mapGeometry} />}
@@ -5864,7 +5863,7 @@ function readWatchlist(country = "de") {
 }
 
 const WATCHLIST_TYPES_BY_COUNTRY = {
-  de: new Set(["snapshot", "party", "coalition", "map", "approval"]),
+  de: new Set(["snapshot", "party", "coalition", "map"]),
   uk: new Set(["snapshot", "party", "map"]),
   es: new Set(["snapshot", "party", "map", "issues", "personal-issues", "economy", "spain-change", "spain-gap", "spain-spread", "spain-region"]),
 };
@@ -6432,7 +6431,6 @@ function WatchlistPage({ locale, initialCountry = "de", refreshVersion = 0 }) {
   const typeOptions = [
     { id: "snapshot", icon: "chart", label: wl("Letzte Umfrage", "Latest poll", "Última encuesta") },
     { id: "party", icon: "chart", label: wl("Partei", "Party trend", "Tendencia de partido") },
-    ...(initialCountry === "de" ? [{ id: "approval", icon: "info", label: wl("Zufriedenheit", "Approval", "Valoración") }] : []),
     ...(initialCountry === "es" ? [{ id: "issues", icon: "info", label: wl("Probleme Spaniens", "Spain's issues", "Problemas de España") }] : []),
     ...(initialCountry === "es" ? [
       { id: "personal-issues", icon: "info", label: wl("Persönliche Sorgen", "Personal concerns", "Preocupaciones personales") },
@@ -7216,12 +7214,9 @@ function LicencesPage({ locale }) {
       <section className="licence-card">
         <span className="licence-kind">{isGerman ? "Zeitreihen · Zufriedenheit" : "Time series · approval"}</span>
         <h2>{isGerman ? "Regierung und Regierungschef" : "Government and national leader"}</h2>
-        <p>{isGerman
-          ? "Die derzeit veröffentlichte deutsche Zeitreihe stammt aus den Politbarometer-Tabellen der Forschungsgruppe Wahlen. Pollframe zeigt positive und negative Anteile getrennt und berechnet den Nettowert als Differenz. Fragestellung und Originalquelle stehen direkt in der Grafik."
-          : "The currently published German series comes from the Politbarometer tables by Forschungsgruppe Wahlen. Pollframe displays positive and negative answers separately and calculates net rating as their difference. The original wording and source are shown with the chart."}</p>
-        <p><strong>{isGerman ? "Rechtestatus:" : "Rights status:"}</strong> {isGerman
-          ? "Die Forschungsgruppe Wahlen hat Pollframe die öffentliche Nutzung mit Quellenangabe gestattet. Zufriedenheitsmodule ohne geklärte Wiederverwendungsrechte werden derzeit nicht veröffentlicht."
-          : "Forschungsgruppe Wahlen has permitted Pollframe’s public use with attribution. Approval modules without clarified reuse rights are not currently published."}</p>
+        <p>{locale === "es" ? "Las series alemanas de aprobación de Forschungsgruppe Wahlen y las británicas de Ipsos no se publican mientras se aclaran los permisos de reutilización. La afirmación anterior de que existía un permiso de FGW no estaba respaldada por documentación y se ha corregido."
+          : isGerman ? "Die deutschen Zufriedenheitsreihen der Forschungsgruppe Wahlen und die britischen Ipsos-Reihen werden bis zur Klärung der Nutzungsrechte nicht veröffentlicht. Die frühere Angabe einer FGW-Freigabe war nicht belegt und wurde korrigiert."
+          : "German approval series from Forschungsgruppe Wahlen and British Ipsos series are withheld pending clarification of reuse rights. The earlier claim of FGW permission was not supported by documentation and has been corrected."}</p>
         <p><a href="https://www.forschungsgruppe.de/Umfragen/Politbarometer/Langzeitentwicklung_-_Themen_im_Ueberblick/Politik_II/" target="_blank" rel="noreferrer">Forschungsgruppe Wahlen ↗</a></p>
       </section>
 
@@ -8399,6 +8394,10 @@ function RegionalApp() {
       document.removeEventListener("pointerup", closeMenusOutside);
     };
   }, []);
+
+  if (approvalPage) {
+    return <main className="legal-page"><h1>{locale === "es" ? "Temporalmente no disponible" : isGerman ? "Vorübergehend nicht verfügbar" : "Temporarily unavailable"}</h1><p>{locale === "es" ? "Las series de aprobación se han retirado mientras se aclaran los permisos de reutilización." : isGerman ? "Die Zufriedenheitsreihen sind bis zur Klärung der Nutzungsrechte nicht verfügbar." : "Approval series have been withdrawn while reuse permissions are clarified."}</p><a href="/">{locale === "es" ? "Volver a Pollframe" : isGerman ? "Zurück zu Pollframe" : "Back to Pollframe"}</a></main>;
+  }
 
   if (embedMode && approvalPage) {
     return summary

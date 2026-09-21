@@ -1,4 +1,4 @@
-const VERSION = "pollframe-data-release-20260912";
+const VERSION = "pollframe-app-rights-20260921";
 const SHELL_CACHE = `${VERSION}-shell`;
 const RUNTIME_CACHE = `${VERSION}-runtime`;
 const DATA_CACHE = `${VERSION}-data`;
@@ -16,7 +16,6 @@ const CORE_DATA = [
   "/state-map-data.json",
   "/uk-summary.json",
   "/spain-summary.json",
-  "/data/approval.json",
 ];
 const COUNTRY_DATA = {
   de: [
@@ -128,7 +127,7 @@ self.addEventListener("install", (event) => {
 self.addEventListener("activate", (event) => {
   event.waitUntil(Promise.all([
     caches.keys().then((keys) => Promise.all(
-      keys.filter((key) => key.startsWith("pollframe-app-") && ![SHELL_CACHE, RUNTIME_CACHE, DATA_CACHE].includes(key))
+      keys.filter((key) => (key.startsWith("pollframe-app-") || key.startsWith("pollframe-data-release-")) && ![SHELL_CACHE, RUNTIME_CACHE, DATA_CACHE].includes(key))
         .map((key) => caches.delete(key)),
     )),
     self.registration.navigationPreload?.enable().catch(() => {}),
@@ -224,6 +223,16 @@ self.addEventListener("fetch", (event) => {
   if (request.method !== "GET" || request.headers.has("range")) return;
   const url = new URL(request.url);
   if (url.origin !== self.location.origin || url.pathname === "/embed.html") return;
+
+  // Offline caches must not resurrect approval series withdrawn for rights review.
+  if (url.pathname === "/data/approval.json") {
+    event.respondWith(Promise.resolve(new Response(JSON.stringify({ countries: {}, events: [], publicationStatus: { de: "withheld-pending-permission", uk: "withheld-pending-permission" } }), { headers: { "content-type": "application/json", "cache-control": "no-store" } })));
+    return;
+  }
+  if (url.pathname.replace(/\/+$/, "") === "/de/regierung/zufriedenheit" || url.searchParams.get("view") === "approval") {
+    event.respondWith(Promise.resolve(new Response("Approval series are temporarily unavailable pending clarification of reuse permissions. / Zufriedenheitsreihen sind bis zur Klärung der Nutzungsrechte nicht verfügbar.", { status: 410, headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store" } })));
+    return;
+  }
 
   if (request.mode === "navigate") {
     event.respondWith(navigationResponse(event).catch(() => caches.match("/")));

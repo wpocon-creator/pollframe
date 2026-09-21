@@ -200,8 +200,8 @@ if (spainSummary.congress?.lastElection?.date !== "2023-07-23" || !isRecord(spai
 if (!Array.isArray(spainSummary.issues?.items) || spainSummary.issues.items.length < 3 || !/^https:\/\/www\.cis\.es\//.test(spainSummary.issues?.sourceUrl ?? "")) addError("Spain CIS issue snapshot is incomplete");
 if (spainMap.type !== "FeatureCollection" || !Array.isArray(spainMap.features) || spainMap.features.length < 19) addError("Spain autonomous-community map is incomplete");
 const approval = await readJson("public/data/approval.json");
-if (approval.countries?.uk || containsWithheldSource(approval)) addError("approval data still contains the withheld UK series");
-for (const country of ["de", "es"]) {
+if (approval.countries?.de || approval.countries?.uk || containsWithheldSource(approval) || /forschungsgruppe|politbarometer/i.test(JSON.stringify(approval))) addError("approval data contains a series withheld pending permission");
+for (const country of ["es"]) {
   const dataset = approval.countries?.[country];
   if (!dataset || !Array.isArray(dataset.administrations) || !/^https:\/\//.test(dataset.source?.href ?? "") || !safeText(dataset.questions?.government, 300) || !safeText(dataset.questions?.leader, 300)) addError(`${country}: approval metadata is incomplete`);
   for (const metric of ["government", "leader"]) {
@@ -222,8 +222,7 @@ for (const country of ["de", "es"]) {
     }
   }
 }
-if (approval.countries?.de?.series?.leader?.at(-1)?.date < "2026-07-31") addError("German approval update regressed behind the verified July 2026 release");
-if (!Array.isArray(approval.events) || approval.events.length < 8) addError("approval event context is too sparse");
+if (!Array.isArray(approval.events)) addError("approval event context must be an array");
 for (const event of approval.events ?? []) {
   if (!realIsoDate(event.date) || !["de", "es"].includes(event.country) || !safeText(event.labelEn, 160) || !safeText(event.labelDe, 160) || !safeText(event.labelEs, 160) || !/^https:\/\//.test(event.source ?? "")) addError(`invalid approval event at ${event.date ?? "unknown"}`);
 }

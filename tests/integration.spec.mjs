@@ -898,10 +898,7 @@ test.describe("core routes", () => {
 
     await page.goto("/?view=approval&country=de&lang=de");
     await settle(page);
-    const approvalParty = page.locator(".approval-line-legend [data-party-profile='de:union']").first();
-    await expect(approvalParty).toBeVisible();
-    await approvalParty.click();
-    await expect(page.locator(".party-profile-modal")).toContainText("Christlich Demokratische Union");
+    await expect(page.getByRole("heading", {name:"Vorübergehend nicht verfügbar"})).toBeVisible();
     await expectDocumentFits(page);
     expect(errors).toEqual([]);
   });
@@ -918,9 +915,9 @@ test.describe("core routes", () => {
     await settle(page);
     await expect(page.getByRole("heading", { level: 1, name: "Deutschland im Überblick" })).toBeVisible();
     const approvalEntry = page.locator('a[href="/de/regierung/zufriedenheit"]').first();
-    await expect(approvalEntry.locator("dd").first()).not.toHaveText("–");
+    await expect(approvalEntry).toHaveCount(0);
     const approvalRequestsBeforeCountrySwitch = approvalRequestCount;
-    expect(approvalRequestsBeforeCountrySwitch).toBeGreaterThanOrEqual(1);
+    expect(approvalRequestsBeforeCountrySwitch).toBe(0);
     await page.getByRole("button", { name: "Land auswählen" }).click();
     await page.getByRole("link", { name: /Spanien.*Kongress/i }).click();
     await settle(page);
@@ -1337,7 +1334,7 @@ test.describe("core routes", () => {
     expect(errors).toEqual([]);
   });
 
-  test("approval events stay balanced, colour-coded and readable in the default dark ten-year view", async ({ page }, testInfo) => {
+  test.skip("withheld pending permission: approval events stay balanced, colour-coded and readable in the default dark ten-year view", async ({ page }, testInfo) => {
     await page.addInitScript(() => localStorage.setItem("opinion-poll-theme", "dark"));
     await page.goto("/?view=approval&compare=0&metric=government&range=ten&display=trend&answers=positive&events=1&eventMode=key&eventCats=national%2Cgermany%2Ceurope%2Ccontroversy%2Cglobal&lang=en-GB&country=de");
     await settle(page);
@@ -1373,7 +1370,7 @@ test.describe("core routes", () => {
     await expect(page.locator(".approval-main-chart .historical-election-marker")).not.toHaveCount(0);
   });
 
-  test("approval workbench supports journalist customisation, exact embed preview and real exports", async ({ page }, testInfo) => {
+  test.skip("withheld pending permission: approval workbench supports journalist customisation, exact embed preview and real exports", async ({ page }, testInfo) => {
     const errors = watchRuntime(page);
     await page.goto("/?view=approval&country=de&compare=1&lang=en-GB&metric=leader&range=all&display=trend&answers=positive&events=1");
     await settle(page);
@@ -1477,7 +1474,7 @@ test.describe("core routes", () => {
     expect(errors).toEqual([]);
   });
 
-  test("approval embed is self-contained, configurable and excluded from indexing", async ({ page }, testInfo) => {
+  test.skip("withheld pending permission: approval embed is self-contained, configurable and excluded from indexing", async ({ page }, testInfo) => {
     const errors = watchRuntime(page);
     await page.goto("/embed.html?view=approval&country=de&compare=1&lang=de&metric=government&range=ten&display=both&answers=positive,negative&events=1&theme=dark");
     await settle(page);
@@ -1492,7 +1489,7 @@ test.describe("core routes", () => {
     expect(errors).toEqual([]);
   });
 
-  test("withheld UK approval URLs fall back to the cleared German series", async ({ page }) => {
+  test.skip("withdrawn behaviour: UK approval URLs must no longer fall back to German data", async ({ page }) => {
     const errors = watchRuntime(page);
     await page.goto("/?view=approval&country=uk&lang=en-GB");
     await settle(page);
@@ -1572,7 +1569,6 @@ test.describe("core routes", () => {
       ["current average", 620, "/embed.html?embed=1&widget=current-average&region=bundestag&lang=de&theme=light"],
       ["tendencies", 1216, "/embed.html?embed=1&widget=tendencies&region=bundestag&lang=de&theme=light"],
       ["modelled seats", 1272, "/embed.html?embed=1&widget=modelled-seats&region=bundestag&lang=de&theme=light"],
-      ["approval", 1120, "/embed.html?view=approval&country=de&compare=1&metric=leader&range=ten&display=trend&answers=positive&eventMode=key&lang=de&theme=light"],
       ["map", 1240, "/embed.html?embed=1&view=map&lang=de&theme=light&mapMode=leader&mapParty=union"],
     ];
     for (const width of [320, 760, 1200]) {

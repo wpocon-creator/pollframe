@@ -117,7 +117,7 @@ Live-Befund und verbleibendes Go/No-Go:
   `401` beantwortet. Vor Launch aktuellen Stand plus Worker-Migration deployen,
   `BUG_REPORT_ADMIN_KEY` setzen und die Produktionsabnahme aus
   `PRELAUNCH_RUNBOOK.md` durchführen.
-- Zufriedenheitsreihen ohne geklärte Wiederverwendungsrechte bleiben aus dem Release ausgeschlossen; für FGW liegt eine Freigabe mit Quellenangabe vor.
+- Zufriedenheitsreihen ohne geklärte Wiederverwendungsrechte bleiben aus dem Release ausgeschlossen. FGW-Freigabe nicht belegt: frühere Angabe korrigiert, Veröffentlichung und Import am 21.09.2026 gesperrt.
 - Verbleibende No-Gos sind weitere als „Review required“ markierte Snapshots, starke Kontosicherung,
   Branchschutz/Benachrichtigungen sowie echte iPhone-/Android- und
   Screenreader-Gegenprüfungen.

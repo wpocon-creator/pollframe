@@ -31,6 +31,8 @@ jobs:
         run: node --test tests/uk-supplement.test.mjs tests/watchlist-alerts.test.mjs tests/watchlist-reorder.test.mjs tests/publishing-column-plan.test.mjs tests/loading-performance.test.mjs
       - name: Audit dependencies
         run: npm audit --audit-level=low
+      - name: Enforce approval publication withdrawal
+        run: node --test tests/approval-withdrawal.test.mjs
       - name: Validate and build production files
         run: |
           set -euo pipefail

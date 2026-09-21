@@ -27,7 +27,7 @@ export async function collectDataFreshness(root = 'public', now = new Date()) {
     records.push(row);
   });
   await source('approval', 'data/approval.json', data => {
-    for (const metric of ['government', 'leader']) records.push(freshnessRecord(`de/approval/${metric}`, latest(data.countries?.de?.series?.[metric]), {now, maxAgeDays: 45}));
+    for (const metric of ['government', 'leader']) records.push({id: `de/approval/${metric}`, date: null, ageDays: null, status: 'withheld-pending-permission'});
     // UK Ipsos is withheld and Spanish approval is an intentional archive.
     // Neither is presented as an actively updated current series.
   });

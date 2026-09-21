@@ -1,3 +1,4 @@
+import { publicApprovalData, isWithheldApprovalRequest, approvalUnavailableResponse } from "../src/approval-publication.js";
 import {
   isPublicContentPath,
   publicCountryPath,
@@ -429,6 +430,16 @@ export class AnalyticsStore {
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+    if (isWithheldApprovalRequest(url)) return approvalUnavailableResponse(request);
+    // Never fall back to a cached upstream or old bundled FGW dataset.
+    if (decodeURIComponent(url.pathname) === "/data/approval.json") {
+      const response = await env.ASSETS.fetch(new Request(`${url.origin}/data/approval.json`));
+      let data = null;
+      try { data = await response.json(); } catch { /* Fail closed. */ }
+      return new Response(request.method === "HEAD" ? null : JSON.stringify(publicApprovalData(data)), {
+        headers: { ...JSON_HEADERS, "x-pollframe-publication-policy": "fgw-withheld-2026-09-21" },
+      });
+    }
     if (url.pathname === "/api/elections/sachsen-anhalt-2026" && request.method === "GET") {
       if (!env.ELECTION_RESULTS) return Response.json({result:null}, {headers:{"cache-control":"no-store"}});
       const id = env.ELECTION_RESULTS.idFromName("sachsen-anhalt-2026");

@@ -11,7 +11,7 @@ const report = {
   freshness: await collectDataFreshness(),
   failed: Object.entries(outcomes).filter(([, outcome]) => outcome !== "success").map(([source]) => source),
 };
-report.attention = report.freshness.filter(row => !['current', 'archive'].includes(row.status));
+report.attention = report.freshness.filter(row => !['current', 'archive', 'withheld-pending-permission'].includes(row.status));
 // Stale regional polling often reflects sparse publication, not a broken job.
 // Missing/future data and an accidentally frozen curated snapshot are failures.
 for (const row of report.attention) {

@@ -1,5 +1,6 @@
 import { readFile, writeFile, rename } from "node:fs/promises";
 import { resolve } from "node:path";
+import { PUBLISH_FGW_APPROVAL, publicApprovalData } from "../src/approval-publication.js";
 import { unzipSync, strFromU8 } from "fflate";
 import { load } from "cheerio/slim";
 import { discoverFgwCurrentDownloads, fetchWithRetry } from "./lib/approval-sources.mjs";
@@ -204,21 +205,21 @@ async function spanishSeries(existing) {
 
 const existing = await readFile(OUTPUT, "utf8").then(JSON.parse).catch(() => null);
 const fgwPoliticsUrl = `${FGW_BASE}/Politik_II/`;
-const fgwCurrentDownloads = discoverFgwCurrentDownloads(
+const fgwCurrentDownloads = PUBLISH_FGW_APPROVAL ? discoverFgwCurrentDownloads(
   await (await fetchResponse(fgwPoliticsUrl)).text(),
   fgwPoliticsUrl,
-);
-const deGovernment = dedupe([
+) : null;
+const deGovernment = PUBLISH_FGW_APPROVAL ? dedupe([
   ...await germanSeries(`${FGW_BASE}/Politik-Archiv/Legislatur_2017_-_2021/Arbeit_BR_2021.xlsx`),
   ...await germanSeries(`${FGW_BASE}/Politik-Archiv/Legislatur_2021_-_2025/5_Arbeit_BR.xlsx`),
   ...await germanSeries(fgwCurrentDownloads.government),
-].map((point) => { const term = administrationAt("de", point.date); return { ...point, leader: term.leader, party: term.party }; }));
-const deLeader = dedupe([
+].map((point) => { const term = administrationAt("de", point.date); return { ...point, leader: term.leader, party: term.party }; })) : [];
+const deLeader = PUBLISH_FGW_APPROVAL ? dedupe([
   ...await germanSeries(`${FGW_BASE}/Politik-Archiv/Legislatur_2017_-_2021/Arbeit_Merkel_2021.xlsx`, "Angela Merkel", "CDU/CSU"),
   ...await germanSeries(`${FGW_BASE}/Politik-Archiv/Legislatur_2021_-_2025/11_Arbeit_Scholz.xlsx`, "Olaf Scholz", "SPD"),
   ...await germanSeries(fgwCurrentDownloads.leader, "Friedrich Merz", "CDU/CSU"),
-]);
-const uk = INCLUDE_IPSOS ? await ukSeries() : null;
+]) : [];
+const uk = null; // Ipsos remains withheld; no scheduled-job override.
 const esRaw = REFRESH_CIS_APPROVAL
   ? await spanishSeries(existing?.countries?.es?.series ?? { government: [], leader: [] })
   : existing?.countries?.es?.series ?? { government: [], leader: [] };
@@ -230,7 +231,7 @@ const es = {
 const output = {
   generatedAt: new Date().toISOString(),
   countries: {
-    de: {
+    ...(PUBLISH_FGW_APPROVAL ? { de: {
       label: "Deutschland", flag: "🇩🇪", administrations: administrations.de,
       questions: {
         government: "Die Bundesregierung macht ihre Arbeit eher gut oder eher schlecht?",
@@ -239,7 +240,7 @@ const output = {
       source: { label: "Forschungsgruppe Wahlen · Politbarometer", href: `${FGW_BASE}/Politik_II/` },
       notes: ["Positive Bewertung (‘eher gut’), nicht Wahlabsicht.", "Die Zeitreihe wird direkt aus den offiziellen XLSX-Dateien aktualisiert."],
       series: { government: deGovernment, leader: deLeader },
-    },
+    } } : {}),
     ...(uk ? { uk: {
       label: "United Kingdom", flag: "🇬🇧", administrations: administrations.uk,
       questions: {
@@ -295,7 +296,7 @@ for (const [country, data] of Object.entries(output.countries)) {
   }
 }
 
-output.countries.de.sourceCheck = { checkedAt: output.generatedAt, urls: fgwCurrentDownloads, latest: {government: deGovernment.at(-1).date, leader: deLeader.at(-1).date} };
-await writeFile(OUTPUT + '.tmp', `${JSON.stringify(output, null, 2)}\n`);
+if (PUBLISH_FGW_APPROVAL) output.countries.de.sourceCheck = { checkedAt: output.generatedAt, urls: fgwCurrentDownloads, latest: {government: deGovernment.at(-1).date, leader: deLeader.at(-1).date} };
+await writeFile(OUTPUT + '.tmp', `${JSON.stringify(publicApprovalData(output), null, 2)}\n`);
 await rename(OUTPUT + '.tmp', OUTPUT);
-console.log(`Approval: DE ${deGovernment.length}/${deLeader.length}, UK ${uk ? `${uk.government.length}/${uk.leader.length}` : "withheld"}, ES ${es.government.length}/${es.leader.length}`);
+console.log(`Approval: DE and UK withheld pending permission; ES ${es.government.length}/${es.leader.length}`);
