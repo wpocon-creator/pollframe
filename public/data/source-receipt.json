@@ -1,0 +1,536 @@
+{
+  "reviewed": "2026-09-26",
+  "scope": "Numerical datasets used by the published site. Each original poll reference is retained in its dataset. Permissions are use-specific; linked terms and attribution conditions apply.",
+  "rights": {
+    "dawum": {
+      "status": "licensed",
+      "evidence": "https://dawum.de/API/",
+      "scope": "Numerical polling records from the ODbL API; preserve attribution, changes and derivative database access.",
+      "reviewed": "2026-09-26",
+      "uses": {
+        "display": true,
+        "storage": true,
+        "png": true,
+        "embed": true,
+        "csv": true,
+        "publicData": true,
+        "publicRepository": true,
+        "automatedFetch": true,
+        "paidProduct": true
+      }
+    },
+    "vault": {
+      "status": "licensed",
+      "evidence": "https://electiondatavault.co.uk/about/",
+      "scope": "The Vault compilation and supplied calculations; not a licence to scrape original pollster archives.",
+      "reviewed": "2026-09-26",
+      "uses": {
+        "display": true,
+        "storage": true,
+        "png": true,
+        "embed": true,
+        "csv": true,
+        "publicData": true,
+        "publicRepository": true,
+        "automatedFetch": true,
+        "paidProduct": true
+      }
+    },
+    "wikipedia": {
+      "status": "licensed",
+      "evidence": "https://creativecommons.org/licenses/by-sa/4.0/",
+      "scope": "Attributed Wikipedia numerical compilations; CC BY-SA for adapted compilations, not copied third-party articles or graphics.",
+      "reviewed": "2026-09-26",
+      "uses": {
+        "display": true,
+        "storage": true,
+        "png": true,
+        "embed": true,
+        "csv": true,
+        "publicData": true,
+        "publicRepository": true,
+        "automatedFetch": true,
+        "paidProduct": true
+      }
+    },
+    "cis": {
+      "status": "licensed",
+      "evidence": "https://www.cis.es/es/condiciones-reutilizaci%C3%B3n-datos-del-cis",
+      "scope": "Published aggregate CIS data with source, study/date, integrity and no endorsement.",
+      "reviewed": "2026-09-26",
+      "uses": {
+        "display": true,
+        "storage": true,
+        "png": true,
+        "embed": true,
+        "csv": true,
+        "publicData": true,
+        "publicRepository": true,
+        "automatedFetch": true,
+        "paidProduct": true
+      }
+    },
+    "parliament": {
+      "status": "licensed",
+      "evidence": "https://www.parliament.uk/site-information/copyright/open-parliament-licence/",
+      "scope": "Published election results with the prescribed attribution; no additional personal data.",
+      "reviewed": "2026-09-26",
+      "uses": {
+        "display": true,
+        "storage": true,
+        "png": true,
+        "embed": true,
+        "csv": true,
+        "publicData": true,
+        "publicRepository": true,
+        "automatedFetch": true,
+        "paidProduct": true
+      }
+    },
+    "bundeswahlleiterin": {
+      "status": "licensed",
+      "evidence": "https://www.bundeswahlleiterin.de/info/impressum.html",
+      "scope": "Official numerical election results with publisher credit and modification notice.",
+      "reviewed": "2026-09-26",
+      "uses": {
+        "display": true,
+        "storage": true,
+        "png": true,
+        "embed": true,
+        "csv": true,
+        "publicData": true,
+        "publicRepository": true,
+        "automatedFetch": true,
+        "paidProduct": true
+      }
+    },
+    "sachsen-anhalt": {
+      "status": "licensed",
+      "evidence": "https://statistik.sachsen-anhalt.de/wir-ueber-uns-service/agb",
+      "scope": "Official numerical results under dl-de/by-2-0; source URI and own calculation/presentation notice.",
+      "reviewed": "2026-09-26",
+      "uses": {
+        "display": true,
+        "storage": true,
+        "png": true,
+        "embed": true,
+        "csv": true,
+        "publicData": true,
+        "publicRepository": true,
+        "automatedFetch": true,
+        "paidProduct": true
+      }
+    },
+    "fgw-direct": {
+      "status": "permission-required",
+      "evidence": "https://www.forschungsgruppe.de/Imprint/",
+      "scope": "Direct approval archive: separate from FGW voting intention recorded in DAWUM.",
+      "reviewed": "2026-09-26",
+      "uses": {
+        "display": false,
+        "storage": false,
+        "png": false,
+        "embed": false,
+        "csv": false,
+        "publicData": false,
+        "publicRepository": false,
+        "automatedFetch": false,
+        "paidProduct": false
+      }
+    },
+    "ipsos-direct": {
+      "status": "permission-required",
+      "evidence": "https://www.ipsos.com/en/legal-mentions",
+      "scope": "Direct Ipsos archives, Issues Index and economic/approval tables; commercial permission not recorded.",
+      "reviewed": "2026-09-26",
+      "uses": {
+        "display": false,
+        "storage": false,
+        "png": false,
+        "embed": false,
+        "csv": false,
+        "publicData": false,
+        "publicRepository": false,
+        "automatedFetch": false,
+        "paidProduct": false
+      }
+    }
+  },
+  "datasets": [
+    {
+      "file": "/poll-data.json",
+      "rightsSource": "dawum",
+      "metadata": {
+        "rightsSource": "dawum",
+        "defaultPollsters": [
+          "1",
+          "2",
+          "3",
+          "5",
+          "6",
+          "9",
+          "13"
+        ],
+        "source": "dawum.de",
+        "sourceUrl": "https://dawum.de/API/",
+        "license": "ODC-ODbL",
+        "licenseUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+        "databaseUpdated": "2026-09-25T23:03:20+02:00",
+        "generatedAt": "2026-09-26T12:47:45.351Z",
+        "derivativeDatabaseNotice": "Derived from the dawum.de election polling database. This derivative Pollframe database is made available under the Open Database License (ODbL) 1.0.",
+        "changes": "DAWUM records from 2017; fields normalised and split by parliament. GMS, Civey and pollytix are selectable where available. Existing default institute selections retained. Pollframe calculates averages separately. Ipsos remains excluded pending permission.",
+        "inclusionRule": "Default: seven institutes. Additional DAWUM GMS, Civey and pollytix records are selectable. Methods are recorded per poll. Archive from 2017.",
+        "region": {
+          "id": "0",
+          "slug": "bundestag",
+          "mapId": null,
+          "type": "federal",
+          "name": "Deutschland",
+          "parliament": "Bundestag"
+        }
+      }
+    },
+    {
+      "file": "/state-map-data.json",
+      "rightsSource": "dawum",
+      "metadata": {
+        "source": "dawum.de",
+        "sourceUrl": "https://dawum.de/API/",
+        "license": "ODC-ODbL",
+        "licenseUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+        "databaseUpdated": "2026-09-25T23:03:20+02:00",
+        "generatedAt": "2026-09-26T12:47:45.351Z",
+        "derivativeDatabaseNotice": "Derived from the dawum.de election polling database. This derivative Pollframe database is made available under the Open Database License (ODbL) 1.0.",
+        "changes": "DAWUM records from 2017; fields normalised and split by parliament. GMS, Civey and pollytix are selectable where available. Existing default institute selections retained. Pollframe calculates averages separately. Ipsos remains excluded pending permission.",
+        "currentWindowDays": 45,
+        "movementWindowDays": 180,
+        "movementMethod": "Linear trend across published polls in the 180 days ending on each state's latest poll."
+      }
+    },
+    {
+      "file": "/data/uk-westminster-polls.json",
+      "rightsSource": "vault",
+      "metadata": {
+        "source": "UK Election Data Vault",
+        "sourceUrl": "https://electiondatavault.co.uk/data/",
+        "license": "Free commercial reuse",
+        "licenseUrl": "https://electiondatavault.co.uk/about/",
+        "generatedAt": "2026-09-26T04:53:14.789Z",
+        "supplementarySource": {
+          "name": "Wikipedia contributors",
+          "url": "https://en.wikipedia.org/wiki/Opinion_polling_for_the_next_United_Kingdom_general_election",
+          "license": "CC BY-SA 4.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/",
+          "changes": "National GB polls only; original references retained; parties not separately tracked are included in Other. Rights-pending sources excluded."
+        }
+      }
+    },
+    {
+      "file": "/data/uk-constituencies.json",
+      "rightsSource": "parliament",
+      "metadata": {
+        "source": "UK Parliament election results",
+        "sourceUrl": "https://electionresults.parliament.uk/general-elections/6",
+        "license": "Open Parliament Licence",
+        "licenseUrl": "https://www.parliament.uk/site-information/copyright/open-parliament-licence/",
+        "electionDate": "2024-07-04",
+        "generatedAt": "2026-09-26T04:53:14.789Z"
+      }
+    },
+    {
+      "file": "/data/spain-congress.json",
+      "rightsSource": "wikipedia",
+      "metadata": {
+        "source": "Wikipedia contributors · cited polling organisations",
+        "sourceUrl": "https://en.wikipedia.org/wiki/Opinion_polling_for_the_next_Spanish_general_election",
+        "archiveSourceUrls": [
+          "https://en.wikipedia.org/wiki/Opinion_polling_for_the_next_Spanish_general_election",
+          "https://en.wikipedia.org/wiki/Opinion_polling_for_the_2000_Spanish_general_election",
+          "https://en.wikipedia.org/wiki/Opinion_polling_for_the_2004_Spanish_general_election",
+          "https://en.wikipedia.org/wiki/Opinion_polling_for_the_2008_Spanish_general_election",
+          "https://en.wikipedia.org/wiki/Opinion_polling_for_the_2011_Spanish_general_election",
+          "https://en.wikipedia.org/wiki/Opinion_polling_for_the_2015_Spanish_general_election",
+          "https://en.wikipedia.org/wiki/Opinion_polling_for_the_2016_Spanish_general_election",
+          "https://en.wikipedia.org/wiki/Opinion_polling_for_the_April_2019_Spanish_general_election",
+          "https://en.wikipedia.org/wiki/Opinion_polling_for_the_November_2019_Spanish_general_election",
+          "https://en.wikipedia.org/wiki/Nationwide_opinion_polling_for_the_2023_Spanish_general_election_(2019%E2%80%932021)",
+          "https://en.wikipedia.org/wiki/Nationwide_opinion_polling_for_the_2023_Spanish_general_election_(2022)",
+          "https://en.wikipedia.org/wiki/Opinion_polling_for_the_2023_Spanish_general_election"
+        ],
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/",
+        "databaseUpdated": "2026-09-21T00:00:00.000Z",
+        "generatedAt": "2026-09-26T04:54:05.139Z",
+        "derivativeDatabaseNotice": "Pollframe extracts and normalises cited Spanish voting-intention tables and links each row to its original publication where available.",
+        "changes": "Dates normalised to ISO format; seat ranges removed; successor-party series kept separate except Podemos/UP; invalid and future rows rejected; polls from a rights-pending source temporarily excluded.",
+        "attribution": "Wikipedia contributors, Spanish general-election polling archive pages, CC BY-SA 4.0; individual poll publications remain linked per row.",
+        "region": {
+          "slug": "spain-congress",
+          "name": "España",
+          "type": "spain-federal"
+        },
+        "geographyNote": "National voting intention for elections to the Congreso de los Diputados.",
+        "defaultPollsters": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9",
+          "10",
+          "11",
+          "12",
+          "13",
+          "14",
+          "15",
+          "16",
+          "17",
+          "18",
+          "19",
+          "20",
+          "21",
+          "22",
+          "23",
+          "24",
+          "25",
+          "26",
+          "27",
+          "28",
+          "29",
+          "30",
+          "31",
+          "32",
+          "33",
+          "34",
+          "35",
+          "36",
+          "37",
+          "38",
+          "39",
+          "40",
+          "41",
+          "42",
+          "43",
+          "44",
+          "45",
+          "46",
+          "47",
+          "48",
+          "49",
+          "50",
+          "51",
+          "52",
+          "53",
+          "54",
+          "55",
+          "56",
+          "57",
+          "58",
+          "59",
+          "60",
+          "61",
+          "62",
+          "63",
+          "64",
+          "65",
+          "66",
+          "67",
+          "68",
+          "69",
+          "70",
+          "71",
+          "72",
+          "73",
+          "74",
+          "75",
+          "76",
+          "77",
+          "78",
+          "79",
+          "80",
+          "81",
+          "82",
+          "83",
+          "84",
+          "85"
+        ],
+        "publicationBlackoutDays": 5,
+        "publicationBlackoutSource": "https://www.boe.es/buscar/act.php?id=BOE-A-1985-11672#a69",
+        "electionResults": {
+          "2000-03-12": {
+            "401": 44.5,
+            "402": 34.2,
+            "406": 0.8,
+            "409": 1.5,
+            "410": 0.8,
+            "416": 8.5,
+            "418": 5.5,
+            "420": 4.2
+          },
+          "2004-03-14": {
+            "401": 37.7,
+            "402": 42.6,
+            "406": 2.5,
+            "409": 1.6,
+            "410": 0.8,
+            "416": 6.6,
+            "418": 5,
+            "420": 3.2
+          },
+          "2008-03-09": {
+            "401": 39.9,
+            "402": 43.9,
+            "406": 1.2,
+            "409": 1.2,
+            "410": 0.8,
+            "416": 5,
+            "418": 3.8,
+            "419": 1.2,
+            "420": 3
+          },
+          "2011-11-20": {
+            "401": 44.6,
+            "402": 28.8,
+            "406": 1.1,
+            "409": 1.3,
+            "410": 0.8,
+            "416": 7.6,
+            "418": 6.9,
+            "419": 4.7,
+            "420": 4.2
+          },
+          "2015-12-20": {
+            "401": 28.7,
+            "402": 22,
+            "405": 20.7,
+            "406": 2.4,
+            "408": 0.9,
+            "409": 1.2,
+            "416": 4.2,
+            "417": 13.9,
+            "418": 3.7,
+            "420": 2.3
+          },
+          "2016-06-26": {
+            "401": 33,
+            "402": 22.6,
+            "405": 21.2,
+            "406": 2.6,
+            "408": 0.8,
+            "409": 1.2,
+            "416": 3.5,
+            "417": 13.1,
+            "420": 2
+          },
+          "2019-04-28": {
+            "401": 16.7,
+            "402": 28.7,
+            "403": 10.3,
+            "405": 14.3,
+            "406": 3.9,
+            "408": 1,
+            "409": 1.5,
+            "416": 4.8,
+            "417": 15.9,
+            "420": 1.9
+          },
+          "2019-11-10": {
+            "401": 20.8,
+            "402": 28,
+            "403": 15.1,
+            "405": 12.9,
+            "406": 3.6,
+            "407": 2.2,
+            "408": 1.1,
+            "409": 1.6,
+            "410": 0.5,
+            "411": 0.5,
+            "412": 0.5,
+            "416": 13.2
+          },
+          "2023-07-23": {
+            "401": 33.1,
+            "402": 31.7,
+            "403": 12.4,
+            "404": 12.3,
+            "406": 1.9,
+            "407": 1.6,
+            "408": 1.4,
+            "409": 1.1,
+            "410": 0.6,
+            "411": 0.5,
+            "412": 0.2,
+            "416": 3.2
+          }
+        },
+        "electionSourceUrl": "https://infoelectoral.interior.gob.es/es/elecciones-celebradas/procesos-electorales/",
+        "electionSourceLabel": "Ministerio del Interior"
+      }
+    },
+    {
+      "file": "/data/spain-regions.json",
+      "rightsSource": "wikipedia",
+      "metadata": {
+        "generatedAt": "2026-09-26T04:54:34.745Z",
+        "methodology": "Headline vote estimates from the cited regional polling tables (raw vote-intention duplicates are excluded); the current snapshot averages each pollster's latest post-election poll within 180 days of the latest poll.",
+        "failedRegions": [],
+        "rightsSource": "wikipedia",
+        "source": "Wikipedia contributors",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/",
+        "changes": "Pollframe normalises dates/parties and calculates summaries. Original poll sources remain linked per row.",
+        "sourceUrls": [
+          "https://en.wikipedia.org/wiki/2026_Andalusian_regional_election",
+          "https://en.wikipedia.org/wiki/Next_Andalusian_regional_election",
+          "https://en.wikipedia.org/wiki/2026_Aragonese_regional_election",
+          "https://en.wikipedia.org/wiki/2027_Asturian_regional_election",
+          "https://en.wikipedia.org/wiki/Next_Balearic_regional_election",
+          "https://en.wikipedia.org/wiki/Next_Canarian_regional_election",
+          "https://en.wikipedia.org/wiki/2027_Cantabrian_regional_election",
+          "https://en.wikipedia.org/wiki/2026_Castilian-Leonese_regional_election",
+          "https://en.wikipedia.org/wiki/2027_Castilian-Manchegan_regional_election",
+          "https://en.wikipedia.org/wiki/Next_Catalan_regional_election",
+          "https://en.wikipedia.org/wiki/Next_Valencian_regional_election",
+          "https://en.wikipedia.org/wiki/2025_Extremaduran_regional_election",
+          "https://en.wikipedia.org/wiki/Next_Galician_regional_election",
+          "https://en.wikipedia.org/wiki/2027_Madrilenian_regional_election",
+          "https://en.wikipedia.org/wiki/2027_Murcian_regional_election",
+          "https://en.wikipedia.org/wiki/2027_Navarrese_regional_election",
+          "https://en.wikipedia.org/wiki/Next_Basque_regional_election",
+          "https://en.wikipedia.org/wiki/2027_Riojan_regional_election",
+          "https://en.wikipedia.org/wiki/2027_Ceuta_Assembly_election",
+          "https://en.wikipedia.org/wiki/2027_Melilla_Assembly_election"
+        ]
+      }
+    },
+    {
+      "file": "/data/election-st2026.json",
+      "rightsSource": "sachsen-anhalt",
+      "metadata": {
+        "sourceUrl": "https://wahlergebnisse.sachsen-anhalt.de/wahlen/lt26/erg_land.html",
+        "license": "dl-de/by-2-0",
+        "licenseUrl": "https://www.govdata.de/dl-de/by-2-0"
+      }
+    },
+    {
+      "file": "/spain-summary.json",
+      "section": "issues",
+      "rightsSource": "cis",
+      "metadata": {
+        "source": "Centro de Investigaciones Sociológicas",
+        "study": "3577",
+        "sourceUrl": "https://www.cis.es/es/estudios/barometro-de-septiembre-2026",
+        "studyUrl": "https://www.cis.es/documents/20117/14250083/es3577mar.pdf/ec0cb565-d864-472d-0461-add459e7b19e?version=1.0&t=1790164379049",
+        "fieldwork": [
+          "2026-09-01",
+          "2026-09-04"
+        ],
+        "licenseUrl": "https://www.cis.es/es/condiciones-reutilizaci%C3%B3n-datos-del-cis",
+        "changes": "Published aggregate percentages selected, sorted and presented in Pollframe charts."
+      }
+    }
+  ]
+}

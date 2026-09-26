@@ -6,7 +6,7 @@ import { load } from "cheerio/slim";
 import { discoverFgwCurrentDownloads, fetchWithRetry } from "./lib/approval-sources.mjs";
 
 const OUTPUT = resolve("public/data/approval.json");
-const INCLUDE_IPSOS = process.env.POLLFRAME_INCLUDE_IPSOS === "1";
+const INCLUDE_IPSOS = false; // A runtime flag is not a documented licence grant.
 const REFRESH_CIS_APPROVAL = process.env.POLLFRAME_REFRESH_CIS_APPROVAL === "1";
 const IPSOS_URL = "https://www.ipsos.com/en-uk/political-monitor-satisfaction-ratings-1997-present";
 const FGW_BASE = "https://www.forschungsgruppe.de/Umfragen/Politbarometer/Langzeitentwicklung_-_Themen_im_Ueberblick";

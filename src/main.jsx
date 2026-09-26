@@ -13,6 +13,7 @@ import { requestWasAborted } from "./network.js";
 import { SITE_ORIGIN, publicShareOrigin } from "./site-origin.js";
 import { localizedCanonical, languageAlternates } from "./seo-locale.js";
 import { PngExportButton } from "./png-export-button.jsx";
+import { pollReuseDetails, publicationCredit } from './source-attribution.js';
 import {
   publicCountryPath,
   publicPagePath,
@@ -966,7 +967,7 @@ const copy = {
     limitsTitle: "Was der Wert nicht sagt",
     limitsText: "Umfragen sind Momentaufnahmen mit Unsicherheit. Der Durchschnitt korrigiert derzeit weder institutsspezifische Effekte noch Stichprobenfehler. Die geglättete Linie verbindet berechnete Stützpunkte; amtliche Wahlergebnisse erscheinen separat als Rauten. Tendenzkarten bewerten 90-Tage-Änderungen ab ±0,4 Prozentpunkten als leicht und ab ±1,2 als deutlich. Keine dieser Darstellungen ist eine Wahlprognose.",
     sourceTitle: "Quelle und Lizenz",
-    sourceText: "Die einzelnen Umfragen seit 2017 stammen aus der offenen DAWUM-Datenbank (ODbL 1.0). Pollframe wählt die Institute je Parlament aus (Bundestag: sieben; Länder: zusätzlich GMS und Civey), vereinheitlicht Felder und berechnet daraus eigene Mittelwerte und Trends. Die Wahlergebnisse 2017, 2021 und 2025 stammen von der Bundeswahlleiterin, Wiesbaden; Prozentwerte wurden gekürzt und grafisch neu dargestellt.",
+    sourceText: "Die einzelnen Umfragen seit 2017 stammen aus der offenen DAWUM-Datenbank (ODbL 1.0). Pollframe verwendet standardmäßig sieben Institute für den Bundestag, bei den Ländern zusätzlich GMS und Civey; weitere Reihen sind wählbar. Pollframe vereinheitlicht Felder und berechnet eigene Mittelwerte und Trends. Die Wahlergebnisse 2017, 2021 und 2025 stammen von der Bundeswahlleiterin, Wiesbaden; Prozentwerte wurden gekürzt und grafisch neu dargestellt.",
     electionSource: "Wahlergebnisse",
     lastPoll: "Letzte enthaltene Umfrage",
     basedOn: (count) => `Mittel aus ${count} Instituten`,
@@ -1149,7 +1150,7 @@ const copy = {
     limitsTitle: "What the figure does not show",
     limitsText: "Polls are uncertain snapshots. The average does not currently adjust for pollster-specific effects or sampling error. The smoothed line connects calculated points; official election results are shown separately as diamonds. Tendency cards classify 90-day changes from ±0.4 percentage points as slight and from ±1.2 as clear. None of these displays is an election forecast.",
     sourceTitle: "Source and licence",
-    sourceText: "Individual polls since 2017 come from the open DAWUM database (ODbL 1.0). Pollframe selects pollsters by parliament (Bundestag: seven; states: additionally GMS and Civey), normalises fields and calculates its own averages and trends. The 2017, 2021 and 2025 election results come from the Federal Returning Officer, Wiesbaden; percentages were shortened and presented in a new graphic form.",
+    sourceText: "Individual polls since 2017 come from the open DAWUM database (ODbL 1.0). Pollframe defaults to seven Bundestag pollsters, plus GMS and Civey for states; additional series are selectable. Pollframe normalises fields and calculates its own averages and trends. The 2017, 2021 and 2025 election results come from the Federal Returning Officer, Wiesbaden; percentages were shortened and presented in a new graphic form.",
     electionSource: "Election results",
     lastPoll: "Latest included poll",
     basedOn: (count) => `Average of ${count} pollsters`,
@@ -1173,7 +1174,7 @@ copy["en-US"] = {
   customize: "Customize chart",
   percentagePoints90: (delta) => `${delta > 0 ? "+" : ""}${delta.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} percentage points in 90 days`,
   sourceTitle: "Source and license",
-  sourceText: "Individual polls since 2017 come from the open DAWUM database (ODbL 1.0). Pollframe selects pollsters by parliament (Bundestag: seven; states: additionally GMS and Civey), normalizes fields, and calculates its own averages and trends. The 2017, 2021, and 2025 election results come from the Federal Returning Officer, Wiesbaden; percentages were shortened and presented in a new graphic form.",
+  sourceText: "Individual polls since 2017 come from the open DAWUM database (ODbL 1.0). Pollframe defaults to seven Bundestag pollsters, plus GMS and Civey for states; additional series are selectable. Pollframe normalizes fields and calculates its own averages and trends. The 2017, 2021, and 2025 election results come from the Federal Returning Officer, Wiesbaden; percentages were shortened and presented in a new graphic form.",
 };
 
 copy.es = {
@@ -2011,7 +2012,7 @@ function mainChartInfo(locale, regionType, mode, weightedUk = false) {
       points: "Jeder Punkt ist der Durchschnitt der zu diesem Zeitpunkt verfügbaren Institute – nicht eine einzelne Umfrage.",
       both: "Die geglättete Trendlinie und die ungeschönten Durchschnittspunkte werden gemeinsam gezeigt.",
       uk: "Der britische Standard verwendet den qualitätsgewichteten 14-Tage-Durchschnitt des UK Election Data Vault. Pollframe stellt diese Quellwerte dar und glättet sie im Trendmodus passend zum sichtbaren Zeitraum.",
-      germany: "Die deutsche Reihe basiert auf der DAWUM-Datenbank unter ODbL 1.0 und beginnt bei Pollframe 2017. Für den Bundestag umfasst sie sieben ausgewählte Institute, für die Bundesländer zusätzlich GMS und Civey. Die Erhebungsmethode steht bei jeder Umfrage. Fehlende Parteiwertungen werden ausgelassen und nicht als null Prozent behandelt.",
+      germany: "Die deutsche Reihe basiert auf der DAWUM-Datenbank unter ODbL 1.0 und beginnt bei Pollframe 2017. Standardmäßig sind sieben Bundestagsinstitute ausgewählt, bei den Ländern zusätzlich GMS und Civey. Weitere DAWUM-Reihen sind wählbar. Die Erhebungsmethode steht bei jeder Umfrage. Fehlende Parteiwertungen werden ausgelassen und nicht als null Prozent behandelt.",
       spain: "Die spanische Reihe umfasst nationale Wahlabsicht zum Congreso de los Diputados und wird aus den zitierten Umfragetabellen von Wikipedia unter CC BY-SA 4.0 samt Originalverweisen aufbereitet. Parteien, Bündnisse und Nachfolgeorganisationen bleiben grundsätzlich getrennt; fehlende Werte sind keine Nullwerte.",
       ukLimit: "Westminster-Umfragen beziehen sich hier auf Großbritannien – England, Schottland und Wales –, nicht auf Nordirland. Die Reihe stammt vom UK Election Data Vault und ist zur kostenlosen kommerziellen Weiterverwendung freigegeben. Ältere Archivpunkte können weniger Begleitangaben enthalten als neuere Veröffentlichungen.",
       interpretation: "Linien verbinden diskrete Messpunkte und können zwischen ihnen eine Entwicklung suggerieren, die nicht direkt erhoben wurde. Kleine Unterschiede können Stichprobenfehler, Rundung, Erhebungsmethode, Feldzeit oder typische Institutseffekte widerspiegeln. Die automatisch angepasste Y-Achse beginnt nicht zwingend bei null.",
@@ -2026,7 +2027,7 @@ function mainChartInfo(locale, regionType, mode, weightedUk = false) {
       points: "Each point is the mean of the pollsters available at that date, not an individual poll.",
       both: "The smoothed trend and the unsmoothed average points are shown together.",
       uk: "The UK default uses UK Election Data Vault’s quality-weighted 14-day average. Pollframe plots those source values and, in trend mode, smooths them for the visible time span.",
-      germany: "The German series uses DAWUM’s ODbL 1.0 database and starts on Pollframe in 2017. It covers seven selected pollsters for the Bundestag, plus GMS and Civey for state parliaments. Each poll lists its collection method. Missing party readings are omitted rather than treated as zero.",
+      germany: "The German series uses DAWUM’s ODbL 1.0 database and starts on Pollframe in 2017. The default selects seven Bundestag pollsters, plus GMS and Civey for states. Additional DAWUM series are selectable. Each poll lists its collection method. Missing party readings are omitted rather than treated as zero.",
       spain: "The Spanish series covers national voting intention for the Congreso de los Diputados and is normalised from Wikipedia’s cited polling tables under CC BY-SA 4.0, with links to original releases. Parties, alliances and successors are generally kept separate; missing values are not zeroes.",
       ukLimit: "Westminster polling here covers Great Britain—England, Scotland and Wales—not Northern Ireland. The series comes from UK Election Data Vault and is available for free commercial reuse. Older archive points may carry less supporting metadata than recent releases.",
       interpretation: "Lines connect discrete observations and can imply movement between dates that was not itself measured. Small differences may reflect sampling uncertainty, rounding, fieldwork dates, mode or persistent pollster effects. The automatically fitted vertical axis does not necessarily start at zero.",
@@ -2041,7 +2042,7 @@ function mainChartInfo(locale, regionType, mode, weightedUk = false) {
       points: "Cada punto es la media de los institutos disponibles en esa fecha, no una encuesta individual.",
       both: "Se muestran a la vez la tendencia suavizada y los puntos medios sin suavizar.",
       uk: "La vista británica predeterminada usa la media de 14 días ponderada por calidad de UK Election Data Vault. Pollframe representa esos valores y los suaviza según el periodo visible en el modo tendencia.",
-      germany: "La serie alemana usa la base de datos de DAWUM bajo ODbL 1.0 y comienza en Pollframe en 2017. Incluye siete institutos para el Bundestag y, además, GMS y Civey para los parlamentos regionales. Cada encuesta indica su método. Los datos ausentes de un partido se omiten y no se consideran cero.",
+      germany: "La serie alemana usa la base de datos de DAWUM bajo ODbL 1.0 y comienza en Pollframe en 2017. Por defecto se seleccionan siete institutos para el Bundestag, más GMS y Civey para los estados. Se pueden seleccionar otras series de DAWUM. Cada encuesta indica su método. Los datos ausentes de un partido se omiten y no se consideran cero.",
       spain: "La serie española mide intención de voto nacional al Congreso de los Diputados y se normaliza a partir de las tablas citadas por Wikipedia bajo CC BY-SA 4.0, con enlaces a las publicaciones originales. Partidos, coaliciones y sucesores se mantienen por regla general separados; un dato ausente no es cero.",
       ukLimit: "Las encuestas de Westminster cubren Gran Bretaña —Inglaterra, Escocia y Gales—, no Irlanda del Norte. La serie procede de UK Election Data Vault y permite la reutilización comercial gratuita. Los puntos históricos más antiguos pueden tener menos metadatos que las publicaciones recientes.",
       interpretation: "Las líneas unen observaciones discretas y pueden sugerir un movimiento entre fechas que no se midió directamente. Las diferencias pequeñas pueden deberse a incertidumbre muestral, redondeo, fechas de campo, método o efectos propios de cada instituto. El eje vertical automático no empieza necesariamente en cero.",
@@ -3050,7 +3051,7 @@ function ConstituencyEmbedView({ locale, constituencyData, slug }) {
   const selected = constituencyData.constituencies.find((seat) => seat.slug === slug);
   if (!selected) return <div className="embed-loading">{locale === "de" ? "Wahlkreis nicht gefunden" : "Constituency not found"}</div>;
   const shareUrl = `/?view=uk-constituencies&seat=${encodeURIComponent(selected.slug)}&lang=${encodeURIComponent(locale)}`;
-  return <main className="widget-embed-page widget-embed-constituency"><header className="embed-header"><div><span className="embed-brand"><BrandMark/>POLLFRAME</span><h1>{locale === "de" ? "Wahlkreisergebnis 2024" : "2024 constituency result"}</h1></div><span>UK Parliament</span></header><ConstituencyResultCard selected={selected} locale={locale} embed/><footer className="embed-footer"><span>UK Parliament · Open Parliament Licence v3.0</span><a href={shareUrl} target="_blank" rel="noreferrer">{locale === "de" ? "Interaktiv öffnen" : "Open interactive"} <Icon name="external" size={13}/></a></footer></main>;
+  return <main className="widget-embed-page widget-embed-constituency"><header className="embed-header"><div><span className="embed-brand"><BrandMark/>POLLFRAME</span><h1>{locale === "de" ? "Wahlkreisergebnis 2024" : "2024 constituency result"}</h1></div><span>UK Parliament</span></header><ConstituencyResultCard selected={selected} locale={locale} embed/><footer className="embed-footer"><span>Contains Parliamentary information licensed under the <a href="https://www.parliament.uk/site-information/copyright/open-parliament-licence/">Open Parliament Licence v3.0</a>.</span><a href={shareUrl} target="_blank" rel="noreferrer">{locale === "de" ? "Interaktiv öffnen" : "Open interactive"} <Icon name="external" size={13}/></a></footer></main>;
 }
 
 function UKConstituencyPage({ locale, constituencyData }) {
@@ -3884,6 +3885,7 @@ function DataAttribution({
       <a href={sourceUrl} target="_blank" rel="noreferrer">{source}</a>{" "}
       (<a href={licenseUrl} target="_blank" rel="noreferrer">{license}</a>)
       {metadata?.supplementarySource && <> · <a href={metadata.supplementarySource.url} target="_blank" rel="noreferrer">Wikipedia contributors</a> (<a href={metadata.supplementarySource.licenseUrl} target="_blank" rel="noreferrer">CC BY-SA 4.0</a>)</>}
+      {" · "}{l("Eigene Darstellung/Berechnung", "Own presentation/calculation", "Representación/cálculo propios")}{" · "}<a href="https://pollframe.com/sources" target="_blank" rel="noreferrer">{l("Quellen und Nutzungsbedingungen", "Sources and reuse terms", "Fuentes y condiciones de reutilización")}</a>
       {metadata?.databaseUpdated && <> · {l("Stand", "updated", "actualizado")} {formatDate(metadata.databaseUpdated.slice(0, 10), locale, { year: true })} ({formatDataAge(metadata.databaseUpdated.slice(0, 10), locale)})</>}
       {includeElection && (
         <> · {l("Wahlergebnisse", "Election results", "Resultados electorales")}:{" "}
@@ -3979,6 +3981,7 @@ function downloadPollCsv({ pollData, selectedPollsters, regionSlug }) {
   const header = [
     "publication_date", "fieldwork_start", "fieldwork_end", "pollster", "sample",
     "method", ...partyEntries.map(([, label]) => label), "source_url", "license",
+    "license_url", "compilation_source", "compilation_url", "changes",
   ];
   const rows = pollData.polls
     .filter((poll) => selectedPollsters.includes(poll.pollster))
@@ -3991,7 +3994,11 @@ function downloadPollCsv({ pollData, selectedPollsters, regionSlug }) {
       poll.method ?? "",
       ...partyEntries.map(([partyId]) => poll.results[partyId] ?? ""),
       buildPollSourceUrl(regionSlug, poll, pollData.metadata),
-      pollData.metadata?.license ?? "ODbL 1.0",
+      pollReuseDetails(pollData.metadata, poll).license,
+      pollReuseDetails(pollData.metadata, poll).licenseUrl,
+      pollReuseDetails(pollData.metadata, poll).source,
+      pollReuseDetails(pollData.metadata, poll).compilationUrl,
+      pollReuseDetails(pollData.metadata, poll).changes,
     ]);
   const csv = `\uFEFF${[header, ...rows].map((row) => row.map(csvCell).join(",")).join("\r\n")}\r\n`;
   const blobUrl = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
@@ -4176,7 +4183,8 @@ async function renderElementPng({ element, filename, title, subtitle, locale, cr
   const footerTitle = document.createElement("span");
   footerTitle.textContent = title;
   const creditNode = document.createElement("span");
-  creditNode.textContent = credit;
+  creditNode.className = "publication-credit";
+  creditNode.textContent = publicationCredit(credit, locale);
   footer.append(footerTitle, creditNode);
   surface.append(header, content, footer);
   const clone = element.cloneNode(true);
@@ -4281,10 +4289,10 @@ function WidgetShareModal({
   const credit = creditOverride ?? (region.type === "uk-federal"
     ? "UK Election Data Vault · Wikipedia contributors (CC BY-SA 4.0) · Pollframe"
     : region.type === "spain-federal"
-      ? "Electograph · Pollframe"
+      ? "Wikipedia contributors · CC BY-SA 4.0 · Pollframe"
       : "DAWUM · ODbL 1.0 · Pollframe");
   const code = iframeMarkup({ src: embedUrl, title, height: embedHeight });
-  const sourceNote = `${title} — ${subtitle}. ${credit}. ${shareUrl}`;
+  const sourceNote = `${title} — ${subtitle}.\n${publicationCredit(credit, locale)}\n${shareUrl}`;
   const copy = async (value, kind) => {
     setCopyError(false);
     try {
@@ -4479,7 +4487,7 @@ function EmbedModal({
   };
   const copyCode = () => copy(code, setCopied, "embed_code_copied");
   const copyLink = () => copy(shareUrl, setLinkCopied, "share_link_copied");
-  const copyCredit = () => copy(`${t.chartTitle}. ${t.sourceText} ${shareUrl}`, setCreditCopied, "source_note_copied");
+  const copyCredit = () => copy(`${t.chartTitle}. ${publicationCredit(t.sourceText, locale)} ${shareUrl}`, setCreditCopied, "source_note_copied");
 
   if (!open) return null;
   return (
@@ -5346,7 +5354,7 @@ function MapEmbedModal({ open, onClose, t, locale, mode, partyId }) {
   };
   const copyCode = () => copy(code, setCopied, "embed_code_copied");
   const copyLink = () => copy(shareUrl, setLinkCopied, "share_link_copied");
-  const copyCredit = () => copy(`${isGerman ? "Pollframe Deutschlandkarte" : "Pollframe map of Germany"}. MapSVG · CC BY 4.0 · Pollframe. ${shareUrl}`, setCreditCopied, "source_note_copied");
+  const copyCredit = () => copy(`${isGerman ? "Pollframe Deutschlandkarte" : "Pollframe map of Germany"}. ${publicationCredit("DAWUM · MapSVG", locale)} ${shareUrl}`, setCreditCopied, "source_note_copied");
   if (!open) return null;
   return (
     <ModalPortal><div className="overlay modal-overlay" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
@@ -7182,8 +7190,8 @@ function LicencesPage({ locale }) {
           {isGerman ? " bereitgestellt." : "."}
         </p>
         <p>{isGerman
-          ? "Änderungen durch Pollframe: Daten ab 2017 von sieben ausgewählten Instituten für den Bundestag, für die Bundesländer zusätzlich GMS und Civey; Vereinheitlichung und Umbenennung von Feldern; Aufteilung nach Parlamenten; Berechnung gleich gewichteter Institutsmittel und linearer Ländertrends. Ein weiteres Institut ist bis zur Klärung der Nutzungsrechte vorübergehend ausgeschlossen. Die herunterladbaren JSON-Dateien enthalten den Quellen- und Lizenzhinweis ebenfalls."
-          : "Changes by Pollframe: filtering to seven selected pollsters and data from 2017; normalising and renaming fields; splitting records by parliament; calculating equally weighted pollster averages and linear state trends. One further pollster is temporarily excluded while reuse rights are clarified. Downloadable JSON files also contain the source and licence notice."}</p>
+          ? "Änderungen durch Pollframe: Daten ab 2017, mit sieben Bundestagsinstituten in der Standardauswahl und zusätzlich GMS und Civey bei den Ländern; weitere Reihen sind wählbar; Vereinheitlichung und Umbenennung von Feldern; Aufteilung nach Parlamenten; Berechnung gleich gewichteter Institutsmittel und linearer Ländertrends. Ein weiteres Institut ist bis zur Klärung der Nutzungsrechte vorübergehend ausgeschlossen. Die herunterladbaren JSON-Dateien enthalten den Quellen- und Lizenzhinweis ebenfalls."
+          : "Changes by Pollframe: data from 2017, seven default Bundestag pollsters plus GMS and Civey for states, with additional selectable series; normalising and renaming fields; splitting records by parliament; calculating equally weighted pollster averages and linear state trends. One further pollster is temporarily excluded while reuse rights are clarified. Downloadable JSON files also contain the source and licence notice."}</p>
       </section>
 
       <section className="licence-card">
@@ -7270,7 +7278,7 @@ function LicencesPage({ locale }) {
 
 Copyright (c) Meta Platforms, Inc. and affiliates.
 Copyright (c) 2017-2025 W.Y.
-Copyright (c) React Map contributors.
+Copyright (c) 2024 Shubham.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -7290,6 +7298,15 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.`}</pre>
         </details>
+      </section>
+
+      <section className="licence-card" id="reuse">
+        <h2>{locale === 'es' ? 'Reutilización y archivos de origen' : isGerman ? 'Weiterverwendung und Quellenarchive' : 'Reuse and source archives'}</h2>
+        <p>{locale === 'es' ? 'Regiones españolas: tablas de Wikipedia contributors, CC BY-SA 4.0. Pollframe adapta fechas y partidos y calcula resúmenes. Archivos y condiciones en el registro:' : isGerman ? 'Spanische Regionen: Tabellen der Wikipedia contributors, CC BY-SA 4.0. Pollframe vereinheitlicht Daten und Parteien und berechnet Zusammenfassungen. Archivseiten und Bedingungen im Quellenverzeichnis:' : 'Spanish regions: Wikipedia contributors’ tables, CC BY-SA 4.0. Pollframe normalises dates/parties and calculates summaries. Archive pages and conditions are in the source receipt:'}</p>
+        <p><a href="/data/source-receipt.json">{locale === 'es' ? 'Registro de fuentes y permisos (JSON)' : isGerman ? 'Quellenverzeichnis und Nutzungsumfang (JSON)' : 'Source receipt and permission scope (JSON)'}</a>{' · '}<a href="https://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>{' · '}<a href="/data/spain-regions.json">{isGerman ? 'Regionaldaten mit Quellen' : locale === 'es' ? 'Datos regionales y fuentes' : 'Regional data and sources'}</a></p>
+        <p>{locale === 'es' ? 'Resultados de Sajonia-Anhalt: Statistisches Landesamt Sachsen-Anhalt, Halle (Saale) 2026. Representación/cálculo propios.' : isGerman ? 'Wahlergebnisse Sachsen-Anhalt: Statistisches Landesamt Sachsen-Anhalt, Halle (Saale) 2026. Eigene Darstellung/Berechnung.' : 'Sachsen-Anhalt election results: Statistisches Landesamt Sachsen-Anhalt, Halle (Saale) 2026. Own presentation/calculation.'}{' '}<a href="https://wahlergebnisse.sachsen-anhalt.de/wahlen/lt26/erg_land.html">{isGerman ? 'Originaldaten' : locale === 'es' ? 'Datos originales' : 'Original data'}</a>{' · '}<a href="https://www.govdata.de/dl-de/by-2-0">dl-de/by-2-0</a></p>
+        <p>Inter — Copyright 2016 The Inter Project Authors. <a href="/licenses/Inter-OFL.txt">SIL Open Font License 1.1</a>.</p>
+        <p>{locale === 'es' ? 'Alemania: GMS, Civey y pollytix también son seleccionables cuando hay datos; no cambia la selección predeterminada.' : isGerman ? 'Deutschland: GMS, Civey und pollytix sind zusätzlich wählbar, soweit vorhanden. Die Standardauswahl bleibt unverändert.' : 'Germany: GMS, Civey and pollytix are additionally selectable where available. The default selection is unchanged.'}</p>
       </section>
 
       <section className="licence-card">
@@ -7968,8 +7985,8 @@ function RegionalApp() {
       ? "Umfragen sind Momentaufnahmen mit Unsicherheit. Der Durchschnitt korrigiert derzeit weder institutsspezifische Effekte noch Stichprobenfehler. Die geglättete Linie verbindet berechnete Stützpunkte. Tendenzkarten bewerten 90-Tage-Änderungen ab ±0,4 Prozentpunkten als leicht und ab ±1,2 als deutlich. Keine Darstellung ist eine Wahlprognose."
       : "Polls are uncertain snapshots. The average does not currently adjust for pollster-specific effects or sampling error. The smoothed line connects calculated points. Tendency cards classify 90-day changes from ±0.4 percentage points as slight and from ±1.2 as clear. No display is an election forecast.",
     sourceText: isGerman
-      ? "Die einzelnen Umfragen seit 2017 stammen aus der offenen DAWUM-Datenbank (ODbL 1.0). Pollframe wählt die Institute je Parlament aus (Bundestag: sieben; Länder: zusätzlich GMS und Civey), vereinheitlicht Felder und berechnet daraus eigene Mittelwerte und Trends. Landeswahltermine in der Ereignisebene verlinken die jeweils angegebene amtliche Quelle."
-      : "Individual polls since 2017 come from the open DAWUM database (ODbL 1.0). Pollframe selects pollsters by parliament (Bundestag: seven; states: additionally GMS and Civey), normalises fields and calculates its own averages and trends. State election dates in the event layer link to the stated official source.",
+      ? "Die einzelnen Umfragen seit 2017 stammen aus der offenen DAWUM-Datenbank (ODbL 1.0). Pollframe verwendet standardmäßig sieben Institute für den Bundestag, bei den Ländern zusätzlich GMS und Civey; weitere Reihen sind wählbar. Pollframe vereinheitlicht Felder und berechnet eigene Mittelwerte und Trends. Landeswahltermine in der Ereignisebene verlinken die jeweils angegebene amtliche Quelle."
+      : "Individual polls since 2017 come from the open DAWUM database (ODbL 1.0). Pollframe defaults to seven Bundestag pollsters, plus GMS and Civey for states; additional series are selectable. Pollframe normalises fields and calculates its own averages and trends. State election dates in the event layer link to the stated official source.",
     };
   }, [baseT, locale, region, isGerman]);
 
@@ -8704,7 +8721,7 @@ function RegionalApp() {
                       label={t.exportPng}
                       profile="chart"
                       className="widget-share-trigger widget-png-trigger"
-                      credit={region.type === "uk-federal" ? "UK Election Data Vault · Wikipedia contributors (CC BY-SA 4.0) · Pollframe" : region.type === "spain-federal" ? "Wikipedia contributors · CC BY-SA 4.0 · Pollframe" : undefined}
+                      credit={region.type === "uk-federal" ? "UK Election Data Vault · Wikipedia contributors (CC BY-SA 4.0) · Pollframe" : region.type === "spain-federal" ? "Wikipedia contributors · CC BY-SA 4.0 · Pollframe" : region.type === "federal" ? "DAWUM · Die Bundeswahlleiterin" : region.slug === "sachsen-anhalt" ? "DAWUM · Statistisches Landesamt Sachsen-Anhalt" : "DAWUM"}
                     />
                   </div>
                 </div>

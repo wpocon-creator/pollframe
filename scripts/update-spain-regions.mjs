@@ -3,6 +3,10 @@ import { resolve } from "node:path";
 import { load } from "cheerio/slim";
 import { fetchTextWithRetry, settleWithConcurrency } from "./lib/resilient-source.mjs";
 import { regionalElectionLink, validateRegionalRefresh } from "./lib/regional-source-health.mjs";
+import { regionalAttribution, CC_BY_SA, REGION_CHANGES } from '../src/source-attribution.js';
+import { assertSourceUse } from '../src/source-rights.js';
+assertSourceUse('wikipedia', 'automatedFetch');
+assertSourceUse('wikipedia', 'publicData');
 
 const USER_AGENT = "PollframeDataUpdater/1.0 (regional polling coverage audit)";
 const FETCH_TIMEOUT_MS = 20_000;
@@ -219,7 +223,9 @@ for (const [index, result] of updates.entries()) {
   }
 }
 regions.sort((a, b) => a.code.localeCompare(b.code));
+for (const region of regions) Object.assign(region, regionalAttribution(region));
 const output = { metadata: { generatedAt: new Date().toISOString(), methodology: "Headline vote estimates from the cited regional polling tables (raw vote-intention duplicates are excluded); the current snapshot averages each pollster's latest post-election poll within 180 days of the latest poll." }, regions };
+Object.assign(output.metadata, { rightsSource: 'wikipedia', source: 'Wikipedia contributors', license: 'CC BY-SA 4.0', licenseUrl: CC_BY_SA, changes: REGION_CHANGES, sourceUrls: [...new Set(regions.flatMap(region => region.sourceUrls))] });
 output.metadata.failedRegions = regions.filter(region => region.sourceCheck?.status === 'failed').map(region => region.slug);
 await writeFile(resolve("public/data/spain-regions.json.tmp"), `${JSON.stringify(output)}\n`);
 await rename(resolve("public/data/spain-regions.json.tmp"), resolve("public/data/spain-regions.json"));

@@ -1,6 +1,7 @@
 // Re-enable only after documented permission and a review of its exact scope.
 // This is not an environment toggle: a scheduled job must not override it.
-export const PUBLISH_FGW_APPROVAL = false;
+import { canUseSource } from './source-permissions.js';
+export const PUBLISH_FGW_APPROVAL = canUseSource('fgw-direct', 'display') && canUseSource('fgw-direct', 'publicData');
 
 export function publicApprovalData(data) {
   return {

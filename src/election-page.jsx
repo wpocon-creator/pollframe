@@ -609,7 +609,7 @@ export default function ElectionPage({ Header, ShareTools, embed = false }) {
                 </>
               )}
             </ElectionCard>
-            {embed ? <footer className="election-sources election-embed-sources"><a href={SOURCE} target="_blank" rel="noreferrer">Statistisches Landesamt Sachsen-Anhalt · 2026</a>{" · "}<a href="https://www.govdata.de/dl-de/by-2-0" target="_blank" rel="noreferrer">dl-de/by-2-0</a>{embedWidget === "comparison" && baseline === "poll" && <> · <a href="https://dawum.de/API/" target="_blank" rel="noreferrer">DAWUM · ODbL 1.0</a></>}{" · "}<a href={`/?view=election-st2026&lang=${locale}`} target="_blank" rel="noreferrer">Pollframe ↗</a></footer> : <footer className="election-sources">
+            {embed ? <footer className="election-sources election-embed-sources"><a href={SOURCE} target="_blank" rel="noreferrer">Statistisches Landesamt Sachsen-Anhalt, Halle (Saale) 2026</a>{" · "}<a href="https://www.govdata.de/dl-de/by-2-0" target="_blank" rel="noreferrer">dl-de/by-2-0</a>{embedWidget === "comparison" && baseline === "poll" && <> · <a href="https://odbl.dawum.de/" target="_blank" rel="noreferrer">DAWUM · ODbL 1.0</a></>}{" · "}{l("Eigene Darstellung/Berechnung", "Own presentation/calculation", "Representación/cálculo propios")}{" · "}<a href={`/?view=election-st2026&lang=${locale}`} target="_blank" rel="noreferrer">Pollframe ↗</a></footer> : <footer className="election-sources">
               <h2>
                 {l("Daten und Quellen", "Data and sources", "Datos y fuentes")}
               </h2>

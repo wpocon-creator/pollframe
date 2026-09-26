@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "prebuild": "node scripts/validate-poll-data.mjs && node scripts/generate-seo-assets.mjs",
+    "prebuild": "node scripts/repair-source-notices.mjs && node scripts/validate-source-rights.mjs && node scripts/validate-poll-data.mjs && node scripts/generate-seo-assets.mjs",
     "dev": "vite",
     "build": "vite build",
     "postbuild": "node scripts/validate-security.mjs && node scripts/validate-performance.mjs && node scripts/validate-aggregate-analytics.mjs && node --test tests/seo-routes.test.mjs tests/domain-migration.test.mjs tests/seo-content.test.mjs",
@@ -23,7 +23,7 @@
     "data:update:spain-regions": "node scripts/update-spain-regions.mjs",
     "data:update:approval": "node scripts/update-approval-data.mjs",
     "data:map": "node scripts/build-state-map-data.mjs",
-    "data:validate": "node scripts/validate-poll-data.mjs",
+    "data:validate": "node scripts/repair-source-notices.mjs && node scripts/validate-source-rights.mjs && node scripts/validate-poll-data.mjs",
     "data:review": "node scripts/review-data-changes.mjs",
     "security:check": "node scripts/validate-security.mjs",
     "performance:check": "node scripts/validate-performance.mjs"

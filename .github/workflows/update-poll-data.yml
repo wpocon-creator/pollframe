@@ -86,6 +86,7 @@ jobs:
       - name: Validate the complete publishable snapshot
         run: |
           set -euo pipefail
+          npm run data:validate
           npm run data:review
           npm run check
 
@@ -143,6 +144,7 @@ jobs:
           cp incoming-poll-data/public/uk-summary.json public/uk-summary.json
           cp incoming-poll-data/public/spain-summary.json public/spain-summary.json
           cp -R incoming-poll-data/public/data/. public/data/
+          node scripts/validate-source-rights.mjs
           node scripts/validate-poll-data.mjs
           node scripts/generate-seo-assets.mjs --check
           git diff --check

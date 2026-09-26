@@ -141,6 +141,8 @@ async function downloadPngSample(page, button, expectedFormats, outputPath, expe
 }
 
 test.describe("PNG export chooser", () => {
+  // Network fixtures must not be bypassed by the offline service-worker cache.
+  test.use({ serviceWorkers: 'block' });
   test("column embeds reflow on resize without losing values or overflowing labels", async ({ page }, testInfo) => {
     for (const region of ["bundestag", "uk-westminster"]) {
       await page.goto(`/embed.html?widget=current-average&region=${region}&lang=de&layout=columns&theme=dark`);
@@ -484,6 +486,13 @@ test.describe("PNG export chooser", () => {
     test.skip(testInfo.project.name !== "chromium-desktop", "One representative visual export audit is sufficient.");
     test.setTimeout(180_000); // Seventeen real high-resolution downloads, not a single navigation.
     await installPngCapture(page);
+    // Exercise tied-party striping deterministically; real polls need not tie.
+    await page.route('**/state-map-data.json', async route => {
+      const response = await route.fetch();
+      const data = await response.json();
+      data.regions[0].current.results = { '101': 40, '2': 40, '4': 10, '7': 10 };
+      await route.fulfill({ response, json: data });
+    });
 
     await page.goto("/?region=bundestag&lang=de");
     await settle(page);

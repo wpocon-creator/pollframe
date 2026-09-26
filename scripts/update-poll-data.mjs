@@ -1,14 +1,17 @@
 import { mkdir, readFile, rename, stat, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { createStateMapData } from "./build-state-map-data.mjs";
-import { REGIONAL_INSTITUTES, includesInstitute } from "./lib/institute-coverage.mjs";
+import { REGIONAL_INSTITUTES, DEFAULT_FEDERAL_INSTITUTES, DEFAULT_REGIONAL_INSTITUTES, includesInstitute } from "./lib/institute-coverage.mjs";
+import { assertSourceUse } from '../src/source-rights.js';
+assertSourceUse('dawum', 'automatedFetch');
+assertSourceUse('dawum', 'publicData');
 import { validateElectionHistory } from './lib/election-history.mjs';
 
 const TRUSTED_REMOTE_SOURCE = "https://api.dawum.de/";
 const TRUSTED_SOURCE_URL = "https://dawum.de/API/";
 const TRUSTED_LICENSE_URL = "https://opendatacommons.org/licenses/odbl/1-0/";
 const DERIVATIVE_NOTICE = "Derived from the dawum.de election polling database. This derivative Pollframe database is made available under the Open Database License (ODbL) 1.0.";
-const DERIVATIVE_CHANGES = "Records from 2017; seven selected institutes for the Bundestag, additionally GMS and Civey for state parliaments; fields normalised and renamed; records split by parliament; Pollframe averages and state movements calculated separately. Polls from a rights-pending source are temporarily excluded.";
+const DERIVATIVE_CHANGES = "DAWUM records from 2017; fields normalised and split by parliament. GMS, Civey and pollytix are selectable where available. Existing default institute selections retained. Pollframe calculates averages separately. Ipsos remains excluded pending permission.";
 const MAX_SOURCE_BYTES = 25 * 1024 * 1024;
 const MAX_SURVEYS = 100_000;
 const MAX_RESULTS_PER_SURVEY = 50;
@@ -209,6 +212,8 @@ function makeRegionData(region) {
 
   return {
     metadata: {
+      rightsSource: 'dawum',
+      defaultPollsters: (region.type === 'state' ? DEFAULT_REGIONAL_INSTITUTES : DEFAULT_FEDERAL_INSTITUTES).filter(id => pollsterIds.has(id)),
       source: "dawum.de",
       sourceUrl: TRUSTED_SOURCE_URL,
       license: source.Database.License.Shortcut,
@@ -218,8 +223,8 @@ function makeRegionData(region) {
       derivativeDatabaseNotice: DERIVATIVE_NOTICE,
       changes: DERIVATIVE_CHANGES,
       inclusionRule: region.type === "state"
-        ? "Regional coverage includes GMS and Civey in addition to the seven Bundestag institutes, where present in DAWUM. Collection methods differ and are recorded per poll. The reusable archive begins in 2017."
-        : "Seven selected institutes with published fieldwork and sample metadata. The reusable DAWUM archive begins in 2017.",
+        ? "Default: seven Bundestag institutes plus GMS and Civey. Additional DAWUM pollytix records are selectable where available. Methods are recorded per poll. Archive from 2017."
+        : "Default: seven institutes. Additional DAWUM GMS, Civey and pollytix records are selectable. Methods are recorded per poll. Archive from 2017.",
       region,
       ...(region.slug === 'sachsen-anhalt' && stateElection ? {
         electionResults: {[stateElection.date]: stateElection.results},

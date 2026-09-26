@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { Icon } from "./pollframe-ui.jsx";
 import { trackAggregateEvent } from "./aggregateAnalytics.js";
 import { layoutPublishingColumns } from "./publishing-layout.js";
+import { publicationCredit } from './source-attribution.js';
 
 const PRESETS = {
   content: { width: 1600, height: null, pixelRatio: 2 },
@@ -474,7 +475,8 @@ function createExportSurface({ element, title, subtitle, locale, credit, preset,
   const footerTitle = document.createElement("span");
   footerTitle.textContent = title;
   const creditNode = document.createElement("span");
-  creditNode.textContent = credit || "Pollframe";
+  creditNode.className = "publication-credit";
+  creditNode.textContent = publicationCredit(credit, locale);
   footer.append(footerTitle, creditNode);
   surface.append(header, content, footer);
   return { surface, content, clone, format };

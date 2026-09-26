@@ -15,6 +15,7 @@ function averageAtDate(data, date, windowDays = 45) {
   const latestByPollster = new Map();
 
   for (const poll of data.polls) {
+    if (data.metadata?.defaultPollsters && !data.metadata.defaultPollsters.includes(poll.pollster)) continue;
     const pollDate = parseDate(poll.date);
     if (pollDate > target || pollDate < cutoff) continue;
     const previous = latestByPollster.get(poll.pollster);
@@ -37,7 +38,7 @@ function averageAtDate(data, date, windowDays = 45) {
 function estimateMovement(data, latestDate, windowDays = 180) {
   const end = parseDate(latestDate);
   const start = end - (windowDays * DAY);
-  const polls = data.polls.filter((poll) => parseDate(poll.date) >= start);
+  const polls = data.polls.filter((poll) => parseDate(poll.date) >= start && (!data.metadata?.defaultPollsters || data.metadata.defaultPollsters.includes(poll.pollster)));
   const dateCount = new Set(polls.map((poll) => poll.date)).size;
   if (dateCount < 2) return { observationCount: polls.length, dateCount, results: {} };
 
@@ -79,7 +80,7 @@ export function createStateMapData(regionData, metadata) {
     regions: regionData
       .filter((data) => data.metadata.region.type === "state")
       .map((data) => {
-        const latestDate = data.polls.at(-1).date;
+        const latestDate = data.polls.filter(poll => !data.metadata?.defaultPollsters || data.metadata.defaultPollsters.includes(poll.pollster)).at(-1).date;
         return {
           ...data.metadata.region,
           latestDate,

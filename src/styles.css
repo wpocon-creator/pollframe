@@ -1074,6 +1074,9 @@ body:has(.graph-info-popover[open]) { overflow: hidden; }
   font-weight: 700;
 }
 
+.png-export-footer:has(.publication-credit) { display:block; }
+.png-export-footer .publication-credit { display:block; margin-top:6px; white-space:pre-line; overflow-wrap:anywhere; line-height:1.4; }
+
 .png-export-button:disabled {
   cursor: progress;
   opacity: 0.72;
@@ -8315,7 +8318,7 @@ body > #root > footer nav .footer-action:hover {
 
 @media (max-width:680px) {
   .png-options-modal.is-single-format .png-dialog-layout { grid-template-rows:minmax(0,1fr); overflow:hidden; }
-  .png-options-modal.is-single-format .png-live-preview { grid-row:1; min-height:0; }
+  .png-options-modal.is-single-format .png-live-preview { grid-row:1; min-height:210px; }
 }
 
 /* Publishing controls keep a stable relationship to the seat model heading at
