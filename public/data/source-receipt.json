@@ -215,7 +215,7 @@
         "sourceUrl": "https://electiondatavault.co.uk/data/",
         "license": "Free commercial reuse",
         "licenseUrl": "https://electiondatavault.co.uk/about/",
-        "generatedAt": "2026-09-26T16:25:41.411Z",
+        "generatedAt": "2026-09-26T22:53:30.661Z",
         "supplementarySource": {
           "name": "Wikipedia contributors",
           "url": "https://en.wikipedia.org/wiki/Opinion_polling_for_the_next_United_Kingdom_general_election",
@@ -234,7 +234,7 @@
         "license": "Open Parliament Licence",
         "licenseUrl": "https://www.parliament.uk/site-information/copyright/open-parliament-licence/",
         "electionDate": "2024-07-04",
-        "generatedAt": "2026-09-26T16:25:41.411Z"
+        "generatedAt": "2026-09-26T22:53:30.661Z"
       }
     },
     {
@@ -260,7 +260,7 @@
         "license": "CC BY-SA 4.0",
         "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/",
         "databaseUpdated": "2026-09-21T00:00:00.000Z",
-        "generatedAt": "2026-09-26T16:26:44.441Z",
+        "generatedAt": "2026-09-26T22:54:21.390Z",
         "derivativeDatabaseNotice": "Pollframe extracts and normalises cited Spanish voting-intention tables and links each row to its original publication where available.",
         "changes": "Dates normalised to ISO format; seat ranges removed; successor-party series kept separate except Podemos/UP; invalid and future rows rejected; polls from a rights-pending source temporarily excluded.",
         "attribution": "Wikipedia contributors, Spanish general-election polling archive pages, CC BY-SA 4.0; individual poll publications remain linked per row.",
@@ -474,7 +474,7 @@
       "file": "/data/spain-regions.json",
       "rightsSource": "wikipedia",
       "metadata": {
-        "generatedAt": "2026-09-26T16:27:18.439Z",
+        "generatedAt": "2026-09-26T22:55:01.421Z",
         "methodology": "Headline vote estimates from the cited regional polling tables (raw vote-intention duplicates are excluded); the current snapshot averages each pollster's latest post-election poll within 180 days of the latest poll.",
         "rightsSource": "wikipedia",
         "source": "Wikipedia contributors",
