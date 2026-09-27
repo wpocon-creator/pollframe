@@ -1,4 +1,7 @@
+import {studioPopularity} from "./studio-popularity.js";
+import {excludeAnalyticsRequest} from './analytics-quality.js';
 import { publicApprovalData, isWithheldApprovalRequest, approvalUnavailableResponse } from "../src/approval-publication.js";
+import { secureResponse, readBoundedBody, RequestError, isRecord, reserveAdminAttempt, rateAddress, reportPage } from "./security.js";
 import {
   isPublicContentPath,
   publicCountryPath,
@@ -43,8 +46,8 @@ function domainHtml(html, requestUrl, env) {
   const token = requestUrl.origin === LEGACY_SITE_ORIGIN
     ? "4e1831c7e0754afa811e25e2a7a07943"
     : requestUrl.origin === SITE_ORIGIN ? env.WEB_ANALYTICS_TOKEN : "";
-  const beacon = /^[a-f0-9]{32}$/.test(token ?? "")
-    ? `<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token":"${token}"}'></script>`
+  const beacon = !requestUrl.searchParams.has("token") && !requestUrl.searchParams.has("account") && /^[a-f0-9]{32}$/.test(token ?? "")
+    ? `<script type="module" src="/analytics-beacon.js" data-pollframe-beacon="${token}"></script>`
     : "";
   return html.replace("<!-- pollframe-web-analytics -->", beacon);
 }
@@ -161,9 +164,27 @@ async function liveDataResponse(request, env) {
     const headers = new Headers(response.headers);
     headers.set("content-type", requestUrl.pathname.endsWith(".geojson") ? "application/geo+json; charset=utf-8" : "application/json; charset=utf-8");
     headers.set("cache-control", "public, max-age=60, s-maxage=300, stale-while-revalidate=1800");
+    // This route fetches only public static files, with no client credentials.
+    // Upstream Authorization/Cookie variation does not describe our response and
+    // would correctly make the app's privacy-conscious offline cache reject it.
+    // Keep encoding variation; never forward a provider's cookies to visitors.
+    headers.set("vary", "Accept-Encoding");
+    headers.delete("set-cookie");
     headers.set("x-content-type-options", "nosniff");
     headers.set("x-robots-tag", "noindex, noarchive");
     headers.set("x-pollframe-data-release", "github-main");
+    const etag = headers.get("etag");
+    const condition = request.headers.get("if-none-match");
+    const unchanged = etag && condition?.split(",").some(value =>
+      value.trim() === "*" || value.trim().replace(/^W\//, "") === etag.replace(/^W\//, ""));
+    if (unchanged) {
+      // Validate against the current upstream release, not a browser-side age
+      // guess. Unchanged public data need not be downloaded again in full.
+      response.body?.cancel().catch(() => {});
+      headers.delete("content-length");
+      return new Response(null, { status: 304, headers });
+    }
+    if (request.method === "HEAD") response.body?.cancel().catch(() => {});
     return new Response(request.method === "HEAD" ? null : response.body, { status: response.status, headers });
   } catch {
     return env.ASSETS.fetch(request);
@@ -181,20 +202,20 @@ function clean(value, maximum) {
 function sameOrigin(request) {
   const origin = request.headers.get("origin");
   if (!origin) return request.headers.get("sec-fetch-site") === "same-origin";
-  try { return new URL(origin).host === new URL(request.url).host; } catch { return false; }
+  try { return new URL(origin).origin === new URL(request.url).origin; } catch { return false; }
 }
 
 async function fingerprint(request, secret) {
-  const address = request.headers.get("cf-connecting-ip") ?? "unknown";
+  const address = rateAddress(request.headers.get("cf-connecting-ip") ?? "unknown");
   const bytes = new TextEncoder().encode(`${address}:${secret || "pollframe-report-rate"}`);
   const digest = await crypto.subtle.digest("SHA-256", bytes);
   return [...new Uint8Array(digest)].slice(0, 12).map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
 async function authorised(request, env) {
-  const expected = clean(env.BUG_REPORT_ADMIN_KEY, 256);
-  const supplied = clean(request.headers.get("x-pollframe-admin-key"), 256);
-  if (!expected || !supplied) return false;
+  const expected = env.BUG_REPORT_ADMIN_KEY;
+  const supplied = request.headers.get("x-pollframe-admin-key");
+  if (typeof expected !== "string" || !expected || !supplied || supplied.length > 256) return false;
   const encode = (value) => crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
   const [left, right] = await Promise.all([encode(expected), encode(supplied)]);
   const leftBytes = new Uint8Array(left);
@@ -211,6 +232,20 @@ export class BugReportStore {
 
   async fetch(request) {
     const url = new URL(request.url);
+    if (url.pathname === "/auth-attempt" && request.method === "POST") {
+      const id = request.headers.get("x-pollframe-rate-id");
+      if (!/^[a-f0-9]{24}$/.test(id ?? "")) return json({ error: "Invalid rate id" }, 400);
+      const result = await reserveAdminAttempt(this.state.storage, id);
+      const alarm = await this.state.storage.getAlarm();
+      if (!alarm || alarm > Date.now() + 900_000) await this.state.storage.setAlarm(Date.now() + 900_000);
+      return json(result);
+    }
+    if (url.pathname === "/auth-reset" && request.method === "POST") {
+      const id = request.headers.get("x-pollframe-rate-id");
+      if (!/^[a-f0-9]{24}$/.test(id ?? "")) return json({ error: "Invalid rate id" }, 400);
+      await this.state.storage.delete(`auth:${id}`);
+      return json({ ok: true });
+    }
     if (request.method === "POST") return this.create(request);
     if (request.method === "GET") return this.list(url);
     if (request.method === "PATCH") return this.update(request);
@@ -230,36 +265,55 @@ export class BugReportStore {
   }
 
   async cleanup(now = Date.now()) {
+    const attempts = await this.listAll("auth:");
     const rates = await this.listAll("rate:");
     const reports = await this.listAll("report:");
     const removals = [];
-    for (const [key, times] of rates) if (!(times ?? []).some((time) => now - time < 3_600_000)) removals.push(key);
-    for (const [key, report] of reports) if (now - Date.parse(report.createdAt) > 31_536_000_000) removals.push(key);
+    let nextExpiry = Infinity;
+    const expiry = (key, until) => {
+      if (!Number.isFinite(until) || until <= now) removals.push(key);
+      else nextExpiry = Math.min(nextExpiry, until);
+    };
+    for (const [key, value] of attempts) expiry(key, value.until);
+    for (const [key, times] of rates) expiry(key, Math.max(...(times ?? [])) + 3_600_000);
+    for (const [key, report] of reports) expiry(key, Date.parse(report.createdAt) + 31_536_000_000);
     if (removals.length) await this.state.storage.delete(removals);
+    return nextExpiry;
   }
 
   async alarm() {
-    await this.cleanup();
+    const nextExpiry = await this.cleanup();
+    // Schedule the real expiry, rather than retaining identifiers until the
+    // next quarter-hour/daily sweep. Preserve any earlier concurrently set alarm.
+    const current = await this.state.storage.getAlarm();
+    const next = Math.min(nextExpiry, current && current > Date.now() ? current : Infinity);
+    if (Number.isFinite(next)) await this.state.storage.setAlarm(Math.max(Date.now() + 1000, next));
   }
 
   async create(request) {
     const rateId = clean(request.headers.get("x-pollframe-rate-id"), 64);
     const now = Date.now();
     const rateKey = `rate:${rateId}`;
-    const recent = (await this.state.storage.get(rateKey) ?? []).filter((time) => now - time < 3_600_000);
-    if (recent.length >= 5) return json({ error: "Too many reports. Please try again later." }, 429);
+    const admitted = await this.state.storage.transaction(async (transaction) => {
+      const recent = (await transaction.get(rateKey) ?? []).filter((time) => now - time < 3_600_000);
+      if (recent.length >= 5) return false;
+      await transaction.put(rateKey, [...recent, now]);
+      return true;
+    });
+    if (!admitted) return json({ error: "Too many reports. Please try again later." }, 429);
+    const currentAlarm = await this.state.storage.getAlarm();
+    if (!currentAlarm || currentAlarm > now + 3_600_000) await this.state.storage.setAlarm(now + 3_600_000);
 
     let body;
     try { body = await request.json(); } catch { return json({ error: "Invalid report" }, 400); }
+    if (!isRecord(body)) return json({ error: "Invalid report" }, 400);
     if (body.website) return json({ ok: true });
     const allowedTypes = new Set(["data", "visual", "interaction", "clarity", "translation", "other"]);
     const type = allowedTypes.has(body.type) ? body.type : "other";
     const message = clean(body.message, 1200);
     let page;
     try {
-      const parsedPage = new URL(clean(body.page, 1200));
-      if (!["http:", "https:"].includes(parsedPage.protocol)) throw new Error("Invalid protocol");
-      page = parsedPage.toString();
+      page = reportPage(clean(body.page, 1200));
     } catch { return json({ error: "Invalid page" }, 400); }
 
     const id = crypto.randomUUID();
@@ -275,9 +329,6 @@ export class BugReportStore {
       status: "new",
     };
     await this.state.storage.put(`report:${now}:${id}`, report);
-    await this.state.storage.put(rateKey, [...recent, now]);
-    const currentAlarm = await this.state.storage.getAlarm();
-    if (!currentAlarm || currentAlarm > now + 3_700_000) await this.state.storage.setAlarm(now + 3_700_000);
     return json({ ok: true, id }, 201);
   }
 
@@ -302,6 +353,7 @@ export class BugReportStore {
   async update(request) {
     let body;
     try { body = await request.json(); } catch { return json({ error: "Invalid update" }, 400); }
+    if (!isRecord(body)) return json({ error: "Invalid update" }, 400);
     const id = clean(body.id, 64);
     const status = clean(body.status, 20);
     if (!id || !["new", "reviewing", "resolved", "archived"].includes(status)) return json({ error: "Invalid update" }, 400);
@@ -319,6 +371,7 @@ const ANALYTICS_EVENTS = new Set([
   "ios_install_instructions_opened",
   "app_opened_standalone",
   "engaged_60_seconds",
+  "qualified_read_60_seconds",
   "country_switch_de",
   "country_switch_uk",
   "country_switch_es",
@@ -353,17 +406,27 @@ export class AnalyticsStore {
     this.state = state;
   }
 
+  async alarm() {
+    await this.cleanup();
+    await studioPopularity(new Request("https://analytics-store/studio"), this.state.storage);
+    const days = await this.state.storage.list({ prefix: "studio:" });
+    const analyticsDays = await this.state.storage.list({ prefix: "day:", limit: 1 });
+    if (days.size || analyticsDays.size) await this.state.storage.setAlarm(Date.now() + 86400000);
+  }
+
   async cleanup(now = Date.now()) {
     const oldestDay = new Date(now - ANALYTICS_RETENTION_DAYS * 86_400_000).toISOString().slice(0, 10);
     const days = await this.state.storage.list({ prefix: "day:" });
-    const expired = [...days.keys()].filter((key) => key.slice(4) < oldestDay);
+    const expired = [...days.keys()].filter((key) => key.slice(4) <= oldestDay);
     if (expired.length) await this.state.storage.delete(expired);
   }
 
   async fetch(request) {
+    if(new URL(request.url).pathname === "/studio")return studioPopularity(request,this.state.storage);
     if (request.method === "POST") {
       let body;
       try { body = await request.json(); } catch { return json({ error: "Invalid event" }, 400); }
+      if (!isRecord(body)) return json({ error: "Invalid event" }, 400);
       const event = clean(body.event, 48);
       if (!ANALYTICS_EVENTS.has(event)) return json({ error: "Invalid event" }, 400);
       const day = new Date().toISOString().slice(0, 10);
@@ -374,6 +437,7 @@ export class AnalyticsStore {
         await transaction.put(key, counts);
       });
       await this.cleanup();
+      if (!await this.state.storage.getAlarm()) await this.state.storage.setAlarm(Date.now() + 86400000);
       return new Response(null, { status: 204, headers: { "cache-control": "no-store" } });
     }
     if (request.method === "GET") {
@@ -393,6 +457,7 @@ export class AnalyticsStore {
           ios_install_instructions_opened: "iOS installation instructions opened; not proof of installation",
           app_opened_standalone: "Pollframe opened in installed standalone display mode; counts launches, not unique people",
           engaged_60_seconds: "Pollframe remained visibly open for at least 60 seconds; counts page sessions, not unique people",
+          qualified_read_60_seconds: "At least 60 visible seconds plus a browser-trusted interaction in this document; a reading-session proxy, not verified humans, unique people or ad-eligible impressions",
           country_switch_de: "Country menu navigations to Germany",
           country_switch_uk: "Country menu navigations to the UK",
           country_switch_es: "Country menu navigations to Spain",
@@ -427,11 +492,23 @@ export class AnalyticsStore {
   }
 }
 
-export default {
+async function adminGate(request, env) {
+  if (!env.BUG_REPORT_ADMIN_KEY || !env.BUG_REPORT_STORE) return json({ error: "Service unavailable" }, 503);
+  const store = env.BUG_REPORT_STORE.get(env.BUG_REPORT_STORE.idFromName("pollframe-bug-reports"));
+  const headers = { "x-pollframe-rate-id": await fingerprint(request, env.BUG_REPORT_ADMIN_KEY) };
+  const attempt = await store.fetch(new Request("https://bug-report-store/auth-attempt", { method: "POST", headers }));
+  if (!attempt.ok) return json({ error: "Service unavailable" }, 503);
+  const limit = await attempt.json();
+  if (!limit.allowed) return new Response(JSON.stringify({ error: "Too many attempts. Try again later." }), { status: 429, headers: { ...JSON_HEADERS, "retry-after": String(limit.retryAfter || 900) } });
+  if (!(await authorised(request, env))) return json({ error: "Not authorised" }, 401);
+  await store.fetch(new Request("https://bug-report-store/auth-reset", { method: "POST", headers }));
+  return null;
+}
+
+const application = {
   async fetch(request, env) {
     const url = new URL(request.url);
     if (isWithheldApprovalRequest(url)) return approvalUnavailableResponse(request);
-    // Never fall back to a cached upstream or old bundled FGW dataset.
     if (decodeURIComponent(url.pathname) === "/data/approval.json") {
       const response = await env.ASSETS.fetch(new Request(`${url.origin}/data/approval.json`));
       let data = null;
@@ -464,10 +541,20 @@ export default {
       if (route || url.pathname === "/") return seoPageResponse(request, env, STATE_NAMES, domainHtml);
     }
     if (["GET", "HEAD"].includes(request.method) && isLiveDataPath(url.pathname)) return liveDataResponse(request, env);
+    if (url.pathname === "/api/studio-popular") {
+      if (!["GET","POST"].includes(request.method))return json({error:"Method not allowed"},405);
+      if(request.method==="POST"&&!sameOrigin(request))return json({error:"Invalid origin"},403);
+      if(request.method==='POST'&&excludeAnalyticsRequest(request,env))return new Response(null,{status:204,headers:{'cache-control':'no-store'}});
+      const body=request.method==="POST"?await readBoundedBody(request, 128):undefined;
+      if(body && new TextEncoder().encode(body).length>128)return json({error:"Too large"},413);
+      const namespace=env.ANALYTICS_STORE.jurisdiction?.("eu")??env.ANALYTICS_STORE;
+      return namespace.get(namespace.idFromName("pollframe-aggregate-events")).fetch(new Request("https://analytics-store/studio",{method:request.method,headers:{"content-type":"application/json"},body}));
+    }
     if (url.pathname === "/api/analytics") {
       if (request.method === "POST") {
         if (!sameOrigin(request)) return json({ error: "Invalid origin" }, 403);
-        const body = await request.text();
+        if(excludeAnalyticsRequest(request,env))return new Response(null,{status:204,headers:{'cache-control':'no-store'}});
+        const body = await readBoundedBody(request, 256);
         if (new TextEncoder().encode(body).byteLength > 256) return json({ error: "Event too large" }, 413);
         const namespace = env.ANALYTICS_STORE.jurisdiction?.("eu") ?? env.ANALYTICS_STORE;
         const id = namespace.idFromName("pollframe-aggregate-events");
@@ -477,7 +564,9 @@ export default {
           body,
         }));
       }
-      if (!(await authorised(request, env))) return json({ error: "Not authorised" }, 401);
+      if (request.method !== "GET") return json({ error: "Method not allowed" }, 405);
+      const denial = await adminGate(request, env);
+      if (denial) return denial;
       const namespace = env.ANALYTICS_STORE.jurisdiction?.("eu") ?? env.ANALYTICS_STORE;
       const id = namespace.idFromName("pollframe-aggregate-events");
       return namespace.get(id).fetch(new Request("https://analytics-store/", { method: "GET" }));
@@ -488,16 +577,22 @@ export default {
       headers.set("x-robots-tag", "noindex, nofollow, noarchive");
       return new Response(response.body, { status: response.status, headers });
     }
-    if (!url.pathname.startsWith("/api/bug-reports")) return env.ASSETS.fetch(request);
+    if (url.pathname !== "/api/bug-reports") {
+      if (url.pathname.startsWith("/api/") || url.pathname.startsWith("/pf-ops/")) return json({ error: "Not found" }, 404);
+      return env.ASSETS.fetch(request);
+    }
+    if (!["GET", "POST", "PATCH"].includes(request.method)) return json({ error: "Method not allowed" }, 405);
     if (!clean(env.BUG_REPORT_ADMIN_KEY, 256)) return json({ error: "Report service is not configured" }, 503);
     if (request.method === "POST") {
       if (!sameOrigin(request)) return json({ error: "Invalid origin" }, 403);
-    } else if (!(await authorised(request, env))) {
-      return json({ error: "Not authorised" }, 401);
+    } else {
+      if (request.headers.has("origin") && !sameOrigin(request)) return json({ error: "Invalid origin" }, 403);
+      const denial = await adminGate(request, env);
+      if (denial) return denial;
     }
     let forwardedBody;
     if (!["GET", "HEAD"].includes(request.method)) {
-      forwardedBody = await request.text();
+      forwardedBody = await readBoundedBody(request, 12_000);
       if (new TextEncoder().encode(forwardedBody).byteLength > 12_000) return json({ error: "Report too large" }, 413);
     }
     const id = env.BUG_REPORT_STORE.idFromName("pollframe-bug-reports");
@@ -509,5 +604,39 @@ export default {
       body: forwardedBody,
     });
     return env.BUG_REPORT_STORE.get(id).fetch(forwarded);
+  },
+};
+
+export default {
+  async fetch(request, env) {
+    try {
+      const url = new URL(request.url);
+      const path = url.pathname;
+      if (url.protocol === "http:" && ["pollframe.com", "www.pollframe.com", "de.pollframe.workers.dev"].includes(url.hostname)) {
+        const target = domainRedirect(request) ?? url;
+        target.protocol = "https:";
+        target.port = "";
+        return secureResponse(new Response(null, { status: 308, headers: { location: target.href, "cache-control": "no-store" } }), request);
+      }
+      // Fast Cloudflare edge protection complements the durable admin counter.
+      // These ephemeral keys are never added to visitor analytics.
+      if (env.SECURITY_BURST_LIMITER && (path.startsWith("/api/") || path.startsWith("/pf-ops/"))) {
+        const key = await fingerprint(request, env.BUG_REPORT_ADMIN_KEY);
+        const { success } = await env.SECURITY_BURST_LIMITER.limit({ key });
+        if (!success) return secureResponse(new Response(JSON.stringify({ error: "Too many requests. Try again later." }), { status: 429, headers: { ...JSON_HEADERS, "retry-after": "60" } }), request);
+      }
+      if (path.startsWith("/api/auth/") || path.startsWith("/api/account/")) {
+        // Public accounts are deliberately not launched. Reject probes before
+        // loading the authentication library or touching storage/mail services.
+        if (env.ACCOUNTS_ENABLED !== "true") return secureResponse(json({ error: "Not found" }, 404), request);
+        const {handleAccounts} = await import("./accounts.js");
+        return secureResponse(await handleAccounts(request,env),request);
+      }
+      return secureResponse(await application.fetch(request, env), request);
+    }
+    catch (error) {
+      // Do not return provider errors, stack traces, secrets or internal paths.
+      return secureResponse(json({ error: error instanceof RequestError ? error.message : "Service unavailable" }, error instanceof RequestError ? error.status : 503), request);
+    }
   },
 };

@@ -3,8 +3,16 @@
   "name": "de",
   "main": "worker/index.js",
   "compatibility_date": "2026-07-30",
+  "compatibility_flags": ["nodejs_compat"],
   "workers_dev": true,
   "preview_urls": false,
+  "ratelimits": [
+    {
+      "name": "SECURITY_BURST_LIMITER",
+      "namespace_id": "1001",
+      "simple": { "limit": 120, "period": 60 }
+    }
+  ],
   "vars": {
     "WEB_ANALYTICS_TOKEN": "3c576ccf9ab3417b8a6a33bb8b22bb07"
   },

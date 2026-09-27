@@ -524,19 +524,22 @@ test.describe("core routes", () => {
     await settle(page);
     await expect(page.getByRole("heading", { level: 1, name: /Qué preocupa a España/i })).toBeVisible();
     await expect(page.locator(".spain-concern-panel")).toHaveCount(2);
-    await expect(page.locator(".spain-concern-ranking").first().locator(":scope > div")).toHaveCount(5);
-    await expect(page.locator(".spain-concern-ranking").nth(1).locator(":scope > div")).toHaveCount(5);
-    await expect(page.locator(".spain-concern-ranking").first()).toContainText(/41[,.]3%/);
-    await expect(page.locator(".spain-concern-ranking").first().locator("i").first()).toHaveAttribute("style", /width: 41\.3%/);
-    await expect(page.locator(".spain-economy-panel")).toContainText(/64[,.]7%/);
+    const issue = (await (await page.request.get('/spain-summary.json')).json()).issues;
+    const personalPositive = Number((issue.economy.personal.good + issue.economy.personal.veryGood).toFixed(1));
+    const countryPositive = Number((issue.economy.country.good + issue.economy.country.veryGood).toFixed(1));
+    await expect(page.locator(".spain-concern-ranking").first().locator(":scope > div")).toHaveCount(Math.min(8, issue.items.length));
+    await expect(page.locator(".spain-concern-ranking").nth(1).locator(":scope > div")).toHaveCount(Math.min(8, issue.personal.length));
+    await expect(page.locator(".spain-concern-ranking").first()).toContainText(new Intl.NumberFormat('es').format(issue.items[0].value) + '%');
+    await expect(page.locator(".spain-concern-ranking").first().locator("i").first()).toHaveAttribute("style", new RegExp(`width: ${issue.items[0].value}%`));
+    await expect(page.locator(".spain-economy-panel")).toContainText(new Intl.NumberFormat('es').format(personalPositive) + '%');
     const spainWidgetGap = await page.evaluate(() => {
       const concerns = document.querySelector(".spain-concern-grid").getBoundingClientRect();
       const economy = document.querySelector(".spain-economy-panel").getBoundingClientRect();
       return Math.round(economy.top - concerns.bottom);
     });
     expect(spainWidgetGap).toBeGreaterThanOrEqual(15);
-    await expect(page.locator(".economic-perception-bar").first().locator("i").first()).toHaveAttribute("style", /width: 64\.7%/);
-    await expect(page.locator(".economic-perception-bar").nth(1).locator("i").first()).toHaveAttribute("style", /width: 38\.1%/);
+    await expect(page.locator(".economic-perception-bar").first().locator("i").first()).toHaveAttribute("style", new RegExp(`width: ${personalPositive}%`));
+    await expect(page.locator(".economic-perception-bar").nth(1).locator("i").first()).toHaveAttribute("style", new RegExp(`width: ${countryPositive}%`));
     await page.getByRole("button", { name: "Todas las respuestas" }).click();
     await expect(page.locator(".economic-perception-bar").first().locator("i")).toHaveCount(7);
     await expect(page.locator(".spain-economy-panel")).toContainText(/Muy buena/);
@@ -898,7 +901,10 @@ test.describe("core routes", () => {
 
     await page.goto("/?view=approval&country=de&lang=de");
     await settle(page);
-    await expect(page.getByRole("heading", {name:"Vorübergehend nicht verfügbar"})).toBeVisible();
+    const approvalParty = page.locator(".approval-line-legend [data-party-profile='de:union']").first();
+    await expect(approvalParty).toBeVisible();
+    await approvalParty.click();
+    await expect(page.locator(".party-profile-modal")).toContainText("Christlich Demokratische Union");
     await expectDocumentFits(page);
     expect(errors).toEqual([]);
   });
@@ -915,9 +921,9 @@ test.describe("core routes", () => {
     await settle(page);
     await expect(page.getByRole("heading", { level: 1, name: "Deutschland im Überblick" })).toBeVisible();
     const approvalEntry = page.locator('a[href="/de/regierung/zufriedenheit"]').first();
-    await expect(approvalEntry).toHaveCount(0);
+    await expect(approvalEntry.locator("dd").first()).not.toHaveText("–");
     const approvalRequestsBeforeCountrySwitch = approvalRequestCount;
-    expect(approvalRequestsBeforeCountrySwitch).toBe(0);
+    expect(approvalRequestsBeforeCountrySwitch).toBeGreaterThanOrEqual(1);
     await page.getByRole("button", { name: "Land auswählen" }).click();
     await page.getByRole("link", { name: /Spanien.*Kongress/i }).click();
     await settle(page);
@@ -1334,7 +1340,7 @@ test.describe("core routes", () => {
     expect(errors).toEqual([]);
   });
 
-  test.skip("withheld pending permission: approval events stay balanced, colour-coded and readable in the default dark ten-year view", async ({ page }, testInfo) => {
+  test("approval events stay balanced, colour-coded and readable in the default dark ten-year view", async ({ page }, testInfo) => {
     await page.addInitScript(() => localStorage.setItem("opinion-poll-theme", "dark"));
     await page.goto("/?view=approval&compare=0&metric=government&range=ten&display=trend&answers=positive&events=1&eventMode=key&eventCats=national%2Cgermany%2Ceurope%2Ccontroversy%2Cglobal&lang=en-GB&country=de");
     await settle(page);
@@ -1370,7 +1376,7 @@ test.describe("core routes", () => {
     await expect(page.locator(".approval-main-chart .historical-election-marker")).not.toHaveCount(0);
   });
 
-  test.skip("withheld pending permission: approval workbench supports journalist customisation, exact embed preview and real exports", async ({ page }, testInfo) => {
+  test("approval workbench supports journalist customisation, exact embed preview and real exports", async ({ page }, testInfo) => {
     const errors = watchRuntime(page);
     await page.goto("/?view=approval&country=de&compare=1&lang=en-GB&metric=leader&range=all&display=trend&answers=positive&events=1");
     await settle(page);
@@ -1474,7 +1480,7 @@ test.describe("core routes", () => {
     expect(errors).toEqual([]);
   });
 
-  test.skip("withheld pending permission: approval embed is self-contained, configurable and excluded from indexing", async ({ page }, testInfo) => {
+  test("approval embed is self-contained, configurable and excluded from indexing", async ({ page }, testInfo) => {
     const errors = watchRuntime(page);
     await page.goto("/embed.html?view=approval&country=de&compare=1&lang=de&metric=government&range=ten&display=both&answers=positive,negative&events=1&theme=dark");
     await settle(page);
@@ -1489,7 +1495,7 @@ test.describe("core routes", () => {
     expect(errors).toEqual([]);
   });
 
-  test.skip("withdrawn behaviour: UK approval URLs must no longer fall back to German data", async ({ page }) => {
+  test("withheld UK approval URLs fall back to the cleared German series", async ({ page }) => {
     const errors = watchRuntime(page);
     await page.goto("/?view=approval&country=uk&lang=en-GB");
     await settle(page);
@@ -1569,6 +1575,7 @@ test.describe("core routes", () => {
       ["current average", 620, "/embed.html?embed=1&widget=current-average&region=bundestag&lang=de&theme=light"],
       ["tendencies", 1216, "/embed.html?embed=1&widget=tendencies&region=bundestag&lang=de&theme=light"],
       ["modelled seats", 1272, "/embed.html?embed=1&widget=modelled-seats&region=bundestag&lang=de&theme=light"],
+      ["approval", 1120, "/embed.html?view=approval&country=de&compare=1&metric=leader&range=ten&display=trend&answers=positive&eventMode=key&lang=de&theme=light"],
       ["map", 1240, "/embed.html?embed=1&view=map&lang=de&theme=light&mapMode=leader&mapParty=union"],
     ];
     for (const width of [320, 760, 1200]) {

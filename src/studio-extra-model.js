@@ -1,0 +1,345 @@
+import { HISTORY_DESIGNS } from "./studio-history-model.js";
+
+const make = (topic, profile, rows) =>
+  rows.map(([key, design, preset, de, en, es, keywords]) => ({
+    id: `${topic}-${key}`,
+    topic,
+    profile,
+    design,
+    preset,
+    country: "de",
+    art: design,
+    name: [de, en, es],
+    keywords,
+    detail: [de, en, es],
+  }));
+export const EXTRA_DESIGNS = [
+  ...make("map", "map", [
+    [
+      "original",
+      "map-original",
+      "portrait",
+      "Karte · Pollframe Original",
+      "Map · Pollframe Original",
+      "Mapa · Pollframe Original",
+      "original website webseite karte standard familiar mapa",
+    ],
+    [
+      "atlas",
+      "atlas",
+      "landscape",
+      "Karte mit Länderwerten",
+      "Map with state values",
+      "Mapa con valores regionales",
+      "landkarte atlas regional aktuell redaktion zahlen tabelle",
+    ],
+    [
+      "poster",
+      "map-poster",
+      "portrait",
+      "Deutschland im Hochformat",
+      "Germany in portrait",
+      "Alemania en vertical",
+      "karte bundesländer social hochkant geografie",
+    ],
+    [
+      "tiles",
+      "map-tiles",
+      "square",
+      "Länder-Kacheln",
+      "State tiles",
+      "Mosaico regional",
+      "regionen kacheln gleich groß vergleich dashboard bundesländer",
+    ],
+  ]),
+  ...HISTORY_DESIGNS.filter((t) =>
+    ["original", "news", "print", "rail", "briefing", "focus"].includes(
+      t.design,
+    ),
+  ).map((t) => ({
+    ...t,
+    id: `party-${t.design}`,
+    topic: "party",
+    profile: "party-history",
+    name: t.name.map((n, i) => ["Partei · ", "Party · ", "Partido · "][i] + n),
+    keywords: `${t.keywords} einzelne partei parteiverlauf single party portrait`,
+  })),
+  ...HISTORY_DESIGNS.filter(t=>!["panels","briefing","focus"].includes(t.design)).map((t) => ({
+    ...t,
+    id: `approval-${t.design}`,
+    topic: "approval",
+    profile: "approval-history",
+    name: t.name.map(
+      (n, i) =>
+        ["Zustimmung · ", "Approval · ", "Valoración · "][i] +
+        (t.design === "focus"
+          ? ["Amtszeit im Fokus", "Term in focus", "Mandato en foco"][i]
+          : n
+              .replace("Parteien", "Amtszeiten")
+              .replace("Party", "Term")
+              .replace("partido", "mandato")),
+    ),
+    keywords: `${t.keywords} zustimmung zufriedenheit kanzler regierung merz scholz merkel approval satisfaction government chancellor net bilanz`,
+  })),
+  ...make("approval-current", "approval-current", [
+    [
+      "original",
+      "native",
+      "landscape",
+      "Aktuelle Zustimmung · Pollframe Original",
+      "Current approval · Pollframe Original",
+      "Valoración actual · Pollframe Original",
+      "original website zufriedenheit aktueller stand original",
+    ],
+    [
+      "pie",
+      "pie",
+      "square",
+      "Zustimmung als Kreisdiagramm",
+      "Approval pie chart",
+      "Gráfico circular de valoración",
+      "kreis tortendiagramm pie circle circular antworten anteile",
+    ],
+    [
+      "bars",
+      "bars",
+      "landscape",
+      "Bewertungen im Vergleich",
+      "Ratings compared",
+      "Comparación de valoraciones",
+      "redaktion artikel antworten positiv negativ",
+    ],
+    [
+      "strip",
+      "strip",
+      "landscape",
+      "Das ganze Antwortbild",
+      "All answers",
+      "Todas las respuestas",
+      "100 prozent rest antwortanteile gestapelt stacked",
+    ],
+    [
+      "cards",
+      "cards",
+      "square",
+      "Zustimmung auf einen Blick",
+      "Approval at a glance",
+      "Valoración de un vistazo",
+      "social karten groß large cards",
+    ],
+    [
+      "paper",
+      "table",
+      "portrait",
+      "Politbarometer-Zahlenblatt",
+      "Politbarometer fact sheet",
+      "Ficha del Politbarometer",
+      "druck zahlen tabelle quelle print table",
+    ],
+    [
+      "dots",
+      "dots",
+      "landscape",
+      "Antwortpunkte",
+      "Answer dots",
+      "Puntos de respuestas",
+      "newsletter schlicht kompakt dotplot",
+    ],
+    [
+      "poster",
+      "poster",
+      "portrait",
+      "Stimmungsplakat",
+      "Approval poster",
+      "Cartel de valoración",
+      "social story instagram poster groß",
+    ],
+  ]),
+  ...make("seats", "seat-grid", [
+    [
+      "original",
+      "native",
+      "landscape",
+      "Sitze · Pollframe Original",
+      "Seats · Pollframe Original",
+      "Escaños · Pollframe Original",
+      "original website sitzverteilung sitzbalken standard",
+    ],
+    [
+      "wide",
+      "hemicycle",
+      "landscape",
+      "Parlamentshalbkreis",
+      "Parliament hemicycle",
+      "Hemiciclo parlamentario",
+      "redaktion parlament sitze halbkreis hemicycle seats",
+    ],
+    [
+      "grid",
+      "waffle",
+      "square",
+      "Jeder Sitz zählt",
+      "Every seat counts",
+      "Cada escaño cuenta",
+      "sitzraster punkt raster dots waffle daten",
+    ],
+    [
+      "bars",
+      "bars",
+      "landscape",
+      "Sitzstärken",
+      "Seat strengths",
+      "Escaños por partido",
+      "artikel redaktion balken sitze bars",
+    ],
+    [
+      "columns",
+      "columns",
+      "landscape",
+      "Sitzsäulen",
+      "Seat columns",
+      "Columnas de escaños",
+      "präsentation säulen fernsehen broadcast",
+    ],
+    [
+      "ring",
+      "ring",
+      "square",
+      "Das Parlament als Ring",
+      "Parliament ring",
+      "Anillo parlamentario",
+      "social kreis donut ring anteile",
+    ],
+    [
+      "portrait",
+      "table",
+      "portrait",
+      "Sitzmodell im Detail",
+      "Seat model in detail",
+      "Modelo de escaños detallado",
+      "druck tabelle faktenblatt zahlen newsroom",
+    ],
+    [
+      "square",
+      "cards",
+      "square",
+      "Sitzkarten",
+      "Seat cards",
+      "Tarjetas de escaños",
+      "social feed karten große zahlen",
+    ],
+    [
+      "strip",
+      "strip",
+      "landscape",
+      "Mehrheit im Parlament",
+      "Parliamentary majority",
+      "Mayoría parlamentaria",
+      "kompakt newsletter sitzleiste gestapelt",
+    ],
+  ]),
+  ...make("majority", "majority", [
+    [
+      "original",
+      "native",
+      "landscape",
+      "Mehrheit · Pollframe Original",
+      "Majority · Pollframe Original",
+      "Mayoría · Pollframe Original",
+      "original website koalitionen mehrheit standard",
+    ],
+    [
+      "cards",
+      "coalition-cards",
+      "square",
+      "Mehrheitskarten",
+      "Majority cards",
+      "Tarjetas de mayorías",
+      "social groß karten kompakt",
+    ],
+    [
+      "table",
+      "coalition-table",
+      "portrait",
+      "Koalitionsbriefing",
+      "Coalition briefing",
+      "Resumen de coaliciones",
+      "redaktion tabelle zahlen briefing",
+    ],
+  ]),
+  ...make("tendencies", "tendencies", [
+    [
+      "original",
+      "native",
+      "landscape",
+      "Tendenzen · Pollframe Original",
+      "Trends · Pollframe Original",
+      "Tendencias · Pollframe Original",
+      "original website parteitendenzen veränderung standard",
+    ],
+    [
+      "bars",
+      "diverging",
+      "landscape",
+      "Gewinne und Verluste",
+      "Gains and losses",
+      "Ganancias y pérdidas",
+      "änderung delta woche zuwachs verlust diverging",
+    ],
+    [
+      "dots",
+      "dumbbell",
+      "landscape",
+      "Vorher und jetzt",
+      "Then and now",
+      "Antes y ahora",
+      "vergleich zwei punkte dumbbell difference",
+    ],
+    [
+      "table",
+      "change-table",
+      "portrait",
+      "Veränderungen im Detail",
+      "Changes in detail",
+      "Cambios detallados",
+      "redaktion fakten zahlen tabelle",
+    ],
+    [
+      "cards",
+      "change-cards",
+      "square",
+      "Veränderungskarten",
+      "Change cards",
+      "Tarjetas de cambios",
+      "social karten große zahlen",
+    ],
+    [
+      "poster",
+      "change-poster",
+      "portrait",
+      "Bewegung im Parteiensystem",
+      "Shifts in polling",
+      "Cambios en las encuestas",
+      "social story plakat journalist poster",
+    ],
+  ]),
+];
+
+export const isTimelineTopic = (topic) =>
+  ["history", "party", "approval"].includes(topic);
+export function partySnapshot(snapshot, state) {
+  if (!snapshot) return null;
+  const party =
+    snapshot.rows.find((row) => row.slug === state.party) ||
+    snapshot.rows.find((row) => String(row.id) === state.party) ||
+    snapshot.rows.find(row=>row.slug===(state.region==='bayern'?'csu':'cdu')) || snapshot.rows[0];
+  return {
+    ...snapshot,
+    availableParties:snapshot.rows,
+    rows: party ? [party] : [],
+    selectedParties: party ? [party.id] : [],
+    title: party
+      ? `${party.name} · ${state.lang === "de" ? "Umfrageverlauf" : state.lang === "es" ? "Evolución electoral" : "Polling history"}`
+      : "",
+  };
+}

@@ -19,7 +19,7 @@ export function InfoPopover({ label = "Info", closeLabel = "Close", className = 
   };
   useEffect(() => () => dialogRef.current?.close(), []);
   return <details ref={detailsRef} className={`graph-info-popover ${className}`.trim()} data-export-ignore="true" onToggle={sync}>
-    <summary aria-label={label} title={label}><span className="info-glyph" aria-hidden="true">i</span></summary>
+    <summary role="button" aria-haspopup="dialog" aria-label={label} title={label}><span className="info-glyph" aria-hidden="true">i</span></summary>
     <dialog ref={dialogRef} className={`graph-info-card ${cardClassName}`.trim()} aria-label="Info" onKeyDown={(event) => {
       // Escape closes only this topmost dialog, not a party chart underneath.
       if (event.key === "Escape" || event.key === "Tab") event.stopPropagation();
@@ -165,38 +165,7 @@ export function MultiSelect({ label, summary, items, selected, onToggle }) {
   );
 }
 
-export function StaticEmbedPreview({ src, title, height, previewWidth = "article", targetHeight = 420, className = "", scrollableDesktop = true }) {
-  const containerRef = useRef(null);
-  const [availableWidth, setAvailableWidth] = useState(760);
-  const viewportWidth = previewWidth === "wide" ? 1200 : previewWidth === "phone" ? 390 : 760;
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return undefined;
-    const measure = () => setAvailableWidth(Math.max(1, container.clientWidth));
-    measure();
-    const observer = new ResizeObserver(measure);
-    observer.observe(container);
-    return () => observer.disconnect();
-  }, [previewWidth]);
-  const documentScroll = scrollableDesktop;
-  const scale = Math.min(1, availableWidth / viewportWidth);
-  const renderedWidth = Math.round(viewportWidth * scale);
-  const stageHeight = Math.round(height * scale);
-  const renderedHeight = documentScroll ? Math.min(targetHeight, stageHeight) : stageHeight;
-  return (
-    <div
-      ref={containerRef}
-      className={`embed-live-preview static-embed-preview preview-${previewWidth} ${documentScroll ? "is-document-scroll" : ""} ${className}`.trim()}
-      style={{
-        height: `${renderedHeight}px`,
-        "--embed-source-width": `${viewportWidth}px`,
-        "--embed-source-height": `${height}px`,
-        "--embed-preview-scale": scale,
-      }}
-    >
-      <div className="static-embed-stage" style={{ width: `${renderedWidth}px`, height: `${stageHeight}px` }}>
-        <iframe src={src} title={title} width={viewportWidth} height={height} scrolling="no" tabIndex={-1} aria-hidden="true" style={{ width: `${viewportWidth}px`, height: `${height}px`, transform: `scale(${scale})` }} referrerPolicy="no-referrer" sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox" />
-      </div>
-    </div>
-  );
+const EmbedPreview = React.lazy(() => import('./embed-preview.jsx'));
+export function StaticEmbedPreview(props) {
+  return <React.Suspense fallback={<div role="status">Pollframe …</div>}><EmbedPreview {...props}/></React.Suspense>;
 }

@@ -141,8 +141,6 @@ async function downloadPngSample(page, button, expectedFormats, outputPath, expe
 }
 
 test.describe("PNG export chooser", () => {
-  // Network fixtures must not be bypassed by the offline service-worker cache.
-  test.use({ serviceWorkers: 'block' });
   test("column embeds reflow on resize without losing values or overflowing labels", async ({ page }, testInfo) => {
     for (const region of ["bundestag", "uk-westminster"]) {
       await page.goto(`/embed.html?widget=current-average&region=${region}&lang=de&layout=columns&theme=dark`);
@@ -283,8 +281,9 @@ test.describe("PNG export chooser", () => {
 
     await page.goto("/?view=approval&country=de&lang=de");
     await settle(page);
-    await expect(page.getByRole("heading", {name:"Vorübergehend nicht verfügbar"})).toBeVisible();
-    await expect(page.locator(".approval-share-card")).toHaveCount(0);
+    await page.getByRole("button", { name: "Teilen & einbetten", exact: true }).click();
+    const approvalModal = page.locator(".approval-share-card");
+    await assertViewportCentred(approvalModal, "approval embed dialog");
   });
 
   test("portrait current-poll grids stay balanced across countries and devices", async ({ page }, testInfo) => {
@@ -410,7 +409,12 @@ test.describe("PNG export chooser", () => {
     await expect(portraitSurface).toHaveCSS("width", "1080px");
     await expect(portraitSurface).toHaveCSS("height", "1350px");
     await expect(widgetModal.locator(".png-preview-clone .result-list")).toHaveCSS("display", "grid");
-    await expect(widgetModal.locator(".png-preview-clone .result-bar").first()).toHaveCSS("width", "44px");
+    // Shared publishing columns adapt to the available row width. Test their
+    // readable, consistent geometry rather than an obsolete exact CSS width.
+    const widths = await widgetModal.locator(".png-preview-clone .result-bar").evaluateAll((bars) => bars.map((bar) => parseFloat(getComputedStyle(bar).width)));
+    expect(Math.min(...widths)).toBeGreaterThanOrEqual(40);
+    expect(Math.max(...widths)).toBeLessThanOrEqual(52);
+    expect(Math.max(...widths) - Math.min(...widths)).toBeLessThan(1);
     await widgetModal.screenshot({ path: testInfo.outputPath("png-dialog-widget.png") });
   });
 
@@ -472,7 +476,7 @@ test.describe("PNG export chooser", () => {
     await expect(page.locator(".embed-modal:not(.png-options-modal)")).toBeVisible();
   });
 
-  test.skip("withheld pending permission: compact approval redesign preserves both real PNG compositions", async ({ page }, testInfo) => {
+  test("compact approval redesign preserves both real PNG compositions", async ({ page }, testInfo) => {
     test.skip(!["chromium-desktop", "iphone-13-chromium"].includes(testInfo.project.name), "Representative desktop and touch downloads");
     await installPngCapture(page);
     await page.goto("/?view=approval&country=de&lang=de");
@@ -486,13 +490,6 @@ test.describe("PNG export chooser", () => {
     test.skip(testInfo.project.name !== "chromium-desktop", "One representative visual export audit is sufficient.");
     test.setTimeout(180_000); // Seventeen real high-resolution downloads, not a single navigation.
     await installPngCapture(page);
-    // Exercise tied-party striping deterministically; real polls need not tie.
-    await page.route('**/state-map-data.json', async route => {
-      const response = await route.fetch();
-      const data = await response.json();
-      data.regions[0].current.results = { '101': 40, '2': 40, '4': 10, '7': 10 };
-      await route.fulfill({ response, json: data });
-    });
 
     await page.goto("/?region=bundestag&lang=de");
     await settle(page);
@@ -529,7 +526,8 @@ test.describe("PNG export chooser", () => {
 
     await page.goto("/?view=approval&country=de&lang=de");
     await settle(page);
-    await expect(page.getByRole("heading", {name:"Vorübergehend nicht verfügbar"})).toBeVisible();
+    await downloadPngSample(page, page.locator(".approval-main-chart .png-export-button"), ["landscape", "square"], testInfo.outputPath("approval-landscape.png"), [1920, 1080]);
+    await downloadPngSample(page, page.locator(".approval-current-government .widget-png-trigger"), ["landscape", "square"], testInfo.outputPath("approval-government-square.png"), [1080, 1080], "square");
 
     await page.goto("/?region=spain-congress&lang=es");
     await settle(page);

@@ -1,0 +1,144 @@
+.studio-assistant {
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  border: 1px solid var(--studio-line, #d9dde3);
+  border-radius: 18px;
+  padding: 16px;
+  background: var(--studio-panel, #fff);
+  color: var(--studio-ink, #17202d);
+  font-size: 14px;
+}
+.studio-assistant header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.studio-assistant small {
+  opacity: 0.7;
+  font-size: 11px;
+  line-height: 1.5;
+}
+.studio-assistant-messages {
+  flex: 1;
+  min-height: 100px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  overflow-wrap: anywhere;
+}
+.studio-assistant-message {
+  padding: 10px 12px;
+  border-radius: 14px;
+  margin: 8px 0;
+  background: color-mix(in srgb, var(--studio-ink, #17202d) 5%, transparent);
+}
+.studio-assistant-message p {
+  margin: 0;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+.studio-assistant-message.is-user {
+  background: color-mix(in srgb, #3569d4 12%, transparent);
+}
+.studio-assistant-message details {
+  font-size: 12px;
+  margin-top: 8px;
+}
+.studio-assistant textarea {
+  width: 100%;
+  resize: vertical;
+  min-height: 64px;
+  max-height: 150px;
+  padding: 12px;
+  border: 1px solid var(--studio-line, #d9dde3);
+  border-radius: 12px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+}
+.studio-assistant form > div {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+.studio-assistant-offline {
+  font-size: 12px;
+  line-height: 1.5;
+}
+.studio-assistant-resizer {
+  width: 12px;
+  cursor: col-resize;
+  touch-action: none;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  align-self: stretch;
+  position: relative;
+}
+.studio-assistant-resizer::after {
+  content: "";
+  position: absolute;
+  top: 40%;
+  bottom: 40%;
+  left: 5px;
+  width: 2px;
+  background: var(--studio-line, #bbb);
+  border-radius: 2px;
+}
+.studio-assistant-resizer:hover::after,
+.studio-assistant-resizer:focus::after {
+  background: #3569d4;
+}
+.studio-assistant-gallery {
+  position: fixed;
+  z-index: 200;
+  left: 20px;
+  bottom: 20px;
+  width: min(370px, calc(100vw - 40px));
+  height: min(700px, 75dvh);
+  box-shadow: 0 16px 50px #0003;
+}
+[data-theme="dark"] .studio-assistant {
+  background: #22272e;
+  color: #f0f3f7;
+  border-color: #455061;
+}
+@media (min-width: 1100px) {
+  .is-full-editor .studio-workspace.has-assistant {
+    grid-template-columns: var(--studio-chat-width, 280px) 12px minmax(
+        260px,
+        1fr
+      ) 12px var(--studio-inspector-width, 310px);
+    gap: 0;
+  }
+}
+@media (max-width: 1099px) {
+  .studio-workspace .studio-assistant {
+    position: fixed;
+    z-index: 250;
+    left: 16px;
+    bottom: 16px;
+    width: min(340px, calc(100vw - 32px));
+    height: 70dvh;
+    box-shadow: 0 10px 40px #0004;
+  }
+  .studio-assistant-resizer {
+    display: none;
+  }
+}
+.studio-assistant-suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+.studio-assistant-suggestions button {
+  min-height: 38px;
+  padding: 7px 10px;
+  font-size: 13px;
+  white-space: normal;
+}

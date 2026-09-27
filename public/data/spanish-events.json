@@ -1,0 +1,637 @@
+{
+  "_overview": {"germany":"Alemania","federalAndStates":"Elecciones federales y regionales","germanyOverview":"Alemania de un vistazo","overviewIntro":"Primero las elecciones nacionales; debajo, los 16 estados en el mapa principal. Cada tarjeta abre una página completa de información.","countryOverview":"Resumen del país","currentHistory":"Encuestas actuales · series históricas","electionsAndMaps":"Elecciones y mapas de Alemania","nationalLevel":"Ámbito nacional","federalElection":"Elecciones federales","federalWidget":"Última encuesta, tendencia histórica, institutos, acontecimientos y modelo de escaños.","stateComparison":"Comparación de estados","stateWidget":"Compara la fuerza de los partidos y su evolución en los 16 estados con un mapa configurable.","pollsLabel":"Encuestas","sinceLabel":"Desde","latestLabel":"Más reciente","statesLabel":"Estados","viewsLabel":"Vistas","sharingLabel":"Compartir","mapLoading":"Cargando datos de los estados…","customizeMap":"Configurar mapa","embedMap":"Insertar mapa","leadingParty":"Partido líder","compareParty":"Comparar partido","largestGain":"Mayor aumento","mapQuestion":"¿Qué debe mostrar el mapa?","mapView":"Vista del mapa","chooseParty":"Elige un partido","trend180":"Tendencia · 180 días","latestAverage":"Última media del estado","leadingTitle":"Partido líder en la última media de cada estado","gainTitle":"Mayor aumento en la tendencia de 180 días","acrossStates":"entre los estados","selected":"Seleccionado","pollstersAverage":"Institutos en la media","averageNote":"La última encuesta de cada instituto en los últimos 45 días tiene el mismo peso.","mapDataNote":"El mapa y las páginas de cada estado solo muestran datos disponibles; las lagunas siguen siendo visibles.","coverageTitle":"Cobertura de datos","stateMap":"Mapa de los estados","coverageIntro":"Elige un estado para abrir su serie completa de encuestas. La intensidad del color indica la densidad de datos disponibles.","coverageGood":"Buena serie","coverageFair":"Suficiente, pero menos densa","coverageLimited":"Serie limitada","pollsWord":"encuestas","coverageAria":"Cobertura de encuestas por estado"},
+  "_categories": {
+    "national": [
+      "Elecciones federales",
+      "Todas las elecciones al Bundestag durante el periodo mostrado"
+    ],
+    "germany": [
+      "Acontecimientos nacionales",
+      "Gobierno, parlamento, sentencias y crisis políticas en Alemania"
+    ],
+    "europe": [
+      "Europa",
+      "Elecciones europeas y decisiones importantes de la Unión Europea"
+    ],
+    "global": [
+      "Acontecimientos mundiales",
+      "Grandes acontecimientos internacionales que aportan contexto temporal"
+    ],
+    "uk-election": [
+      "Elecciones generales",
+      "Elecciones a la Cámara de los Comunes"
+    ],
+    "uk-politics": [
+      "Acontecimientos nacionales",
+      "Cambios de gobierno, referendos y decisiones importantes en el Reino Unido"
+    ],
+    "uk-economy": [
+      "Economía y crisis",
+      "Acontecimientos con amplias consecuencias económicas o sociales"
+    ],
+    "state-election": [
+      "Elecciones regionales",
+      "Elecciones al parlamento de cada estado federado"
+    ]
+  },
+  "_countries": {
+    "de": {
+      "overview": "Bundestag · intención de voto",
+      "title": "Encuestas de las elecciones federales de Alemania",
+      "intro": "Encuestas actuales y evolución histórica, con fuentes y metodología transparentes y sin valoraciones políticas.",
+      "chartTitle": "Evolución de la intención de voto en Alemania",
+      "sinceElection": "Desde las elecciones de 2025",
+      "fullArchive": "Archivo completo · desde 2017",
+      "methodTitle": "Datos y metodología de Alemania",
+      "limitsText": "Las encuestas son mediciones puntuales con incertidumbre. La media no corrige los efectos propios de cada instituto ni el error de muestreo. La curva suavizada conecta puntos calculados. Las tendencias consideran leves los cambios de 90 días a partir de ±0,4 puntos porcentuales y claros a partir de ±1,2. No son pronósticos electorales.",
+      "sourceText": "Las encuestas individuales desde 2017 proceden de la base de datos abierta DAWUM (ODbL 1.0). Pollframe selecciona siete institutos, normaliza los campos y calcula medias y tendencias propias. Las fechas de elecciones regionales enlazan con la fuente oficial indicada."
+    },
+    "es": {
+      "intro": "La evolución nacional desde 1996, con una media trazable, comparación de institutos y acontecimientos documentados.",
+      "fullArchive": "Archivo completo · desde 1996"
+    },
+    "uk": {
+      "overview": "Westminster · intención de voto en Gran Bretaña",
+      "title": "Encuestas de las elecciones generales británicas",
+      "intro": "Encuestas actuales de Inglaterra, Escocia y Gales, comparación de institutos y datos históricos desde 1943.",
+      "current": "Dato más reciente",
+      "currentNote": "Última medición seleccionada",
+      "chartTitle": "Evolución de la intención de voto en Gran Bretaña",
+      "chartSubtitle": "Tendencia de los institutos seleccionados. La serie histórica ponderada se puede elegir por separado.",
+      "sinceElection": "Desde las elecciones generales de 2024",
+      "fullArchive": "Todos los datos disponibles",
+      "methodTitle": "Datos y metodología de Gran Bretaña",
+      "methodIntro": "La serie nacional abarca Gran Bretaña —Inglaterra, Escocia y Gales—, pero no Irlanda del Norte.",
+      "meanTitle": "Encuestas individuales y tendencia histórica",
+      "meanText": "Las encuestas británicas recientes complementan el archivo con las tablas citadas por los colaboradores de Wikipedia bajo CC BY-SA 4.0, con enlaces a las publicaciones originales. Los partidos adicionales se agrupan en Otros. Las fechas de publicación y del fin del trabajo de campo se registran por separado cuando se conocen. Si el archivo ponderado lleva más de 21 días de retraso respecto a las encuestas individuales, se seleccionan por defecto los institutos individuales. La tendencia histórica da el mismo peso a la última encuesta de cada instituto en los últimos 45 días. El archivo histórico ponderado sigue disponible por separado.",
+      "selectionTitle": "Comparación de institutos",
+      "selectionText": "Al seleccionar institutos individuales, Pollframe calcula, como en Alemania, una tendencia que da el mismo peso a la última encuesta de cada instituto seleccionado publicada en los últimos 45 días.",
+      "eventSelectionTitle": "Acontecimientos como contexto temporal",
+      "eventSelectionText": "Pueden añadirse elecciones generales, acontecimientos nacionales, crisis y acontecimientos mundiales. La proximidad temporal no demuestra una relación de causa y efecto.",
+      "limitsTitle": "Qué no muestra el gráfico",
+      "limitsText": "Las encuestas son mediciones puntuales con incertidumbre. En el sistema de mayoría simple por circunscripción, los porcentajes nacionales no son una previsión de escaños: las diferencias regionales y cada circunscripción determinan los 650 escaños.",
+      "sourceTitle": "Fuentes y reutilización comercial",
+      "sourceText": "Las encuestas del archivo, su tendencia ponderada y los resultados electorales proceden del UK Election Data Vault, que permite expresamente su reutilización comercial y para otros fines. Las encuestas recientes complementarias proceden de tablas de Wikipedia con licencia CC BY-SA 4.0. Pollframe normaliza los partidos y la presentación."
+    }
+  },
+  "global-financial-crisis-2008": [
+    "Crisis financiera mundial",
+    "La quiebra de Lehman Brothers marcó una escalada de la crisis financiera mundial."
+  ],
+  "financial-crisis-2008": [
+    "Plan de rescate financiero",
+    "En respuesta a la crisis financiera internacional, el Bundestag aprobó un amplio paquete de estabilización del mercado financiero alemán."
+  ],
+  "election-2009": [
+    "Elecciones federales de 2009",
+    "Elección del 17.º Bundestag."
+  ],
+  "euro-crisis-2010": [
+    "Rescate del euro",
+    "El Bundestag y el Bundesrat aprobaron garantías alemanas para el programa de ayuda a Grecia, mientras la crisis de deuda soberana europea pasaba al centro del debate político."
+  ],
+  "nuclear-phaseout-2011": [
+    "Adelanto del cierre nuclear",
+    "Tras el desastre de Fukushima, el Bundestag aprobó por amplia mayoría acelerar el abandono de la energía nuclear."
+  ],
+  "election-2013": [
+    "Elecciones federales de 2013",
+    "Elección del 18.º Bundestag."
+  ],
+  "refugee-crisis-2015": [
+    "Llegada de refugiados en 2015",
+    "El fuerte aumento de personas que buscaban protección convirtió la migración en un tema político central desde finales del verano de 2015."
+  ],
+  "brexit-referendum-2016": [
+    "Referéndum del Brexit",
+    "Una mayoría votó a favor de la salida del Reino Unido de la Unión Europea."
+  ],
+  "election-2017": [
+    "Elecciones federales de 2017",
+    "Elección del 19.º Bundestag. El resultado oficial del segundo voto se representa por separado mediante un rombo."
+  ],
+  "merkel-four": [
+    "Cuarto mandato de Merkel",
+    "El Bundestag reeligió a Angela Merkel como canciller para un cuarto mandato, con 364 votos."
+  ],
+  "eu-election-2019": [
+    "Elecciones europeas de 2019",
+    "El electorado alemán eligió a 96 miembros del Parlamento Europeo."
+  ],
+  "climate-programme-2030": [
+    "Programa climático 2030",
+    "El gabinete climático acordó medidas como un precio nacional del carbono para el transporte y la calefacción, junto con incentivos y compensaciones."
+  ],
+  "brexit": [
+    "Salida del Reino Unido de la UE",
+    "La pertenencia del Reino Unido a la UE terminó con la entrada en vigor del acuerdo de retirada."
+  ],
+  "thuringia-controversy": [
+    "Polémica elección en Turingia",
+    "Thomas Kemmerich fue elegido presidente regional con votos que incluían los de AfD. Las consecuencias nacionales se debatieron en el Bundestag."
+  ],
+  "pandemic": [
+    "La OMS declara la pandemia",
+    "La OMS calificó el brote mundial de COVID-19 como una pandemia."
+  ],
+  "contact-restrictions": [
+    "Restricciones de contacto",
+    "El Gobierno federal y los gobiernos regionales ampliaron las restricciones al contacto social durante la primera ola de la pandemia."
+  ],
+  "wirecard": [
+    "Insolvencia de Wirecard",
+    "La insolvencia, tras conocerse un agujero contable, dio lugar a una investigación parlamentaria sobre posibles fallos de supervisión."
+  ],
+  "vaccination-start": [
+    "Comienza la vacunación",
+    "Alemania y los demás Estados miembros de la UE iniciaron una campaña coordinada de vacunación contra la COVID-19, dando prioridad a los grupos más vulnerables."
+  ],
+  "mask-affair": [
+    "Caso de las mascarillas",
+    "Georg Nüßlein y Nikolas Löbel abandonaron sus grupos parlamentarios o partidos en medio de investigaciones relacionadas con contratos de mascarillas."
+  ],
+  "floods-2021": [
+    "Inundaciones de 2021",
+    "Las inundaciones extremas afectaron sobre todo a Renania-Palatinado y Renania del Norte-Westfalia; murieron más de 180 personas."
+  ],
+  "election-2021": [
+    "Elecciones federales de 2021",
+    "Elección del 20.º Bundestag. El resultado oficial se representa por separado mediante un rombo."
+  ],
+  "scholz": [
+    "Scholz, elegido canciller",
+    "El Bundestag eligió a Olaf Scholz como canciller con 395 votos."
+  ],
+  "ukraine": [
+    "Invasión de Ucrania",
+    "Las fuerzas rusas iniciaron la invasión militar a gran escala de Ucrania."
+  ],
+  "zeitenwende": [
+    "Giro en la política de defensa",
+    "En una sesión extraordinaria, el canciller Scholz anunció un cambio profundo en la política alemana de seguridad y defensa."
+  ],
+  "gas-alert": [
+    "Alerta de emergencia del gas",
+    "Tras la reducción del suministro ruso, el Gobierno activó la segunda fase del plan de emergencia del gas y pidió ahorrar energía."
+  ],
+  "cum-ex-testimony": [
+    "Scholz declara sobre Cum-Ex",
+    "Olaf Scholz volvió a declarar ante la comisión de investigación de Hamburgo sobre el banco Warburg y la posible influencia política."
+  ],
+  "energy-price-brakes": [
+    "Topes al gas y la electricidad",
+    "El Bundestag aprobó límites al precio de la electricidad, el gas y la calefacción ante el fuerte aumento de los costes energéticos."
+  ],
+  "nuclear-exit": [
+    "Cierre de las últimas nucleares",
+    "Alemania completó el abandono de la energía nuclear cuando sus tres últimas centrales dejaron de operar comercialmente."
+  ],
+  "heating-law": [
+    "Reforma energética de edificios",
+    "Tras un intenso debate público y parlamentario, el Bundestag aprobó la reforma de la ley de energía de los edificios."
+  ],
+  "israel-gaza": [
+    "Ataque de Hamás y guerra en Gaza",
+    "El ataque a gran escala de Hamás contra Israel y la posterior operación militar israelí marcaron una nueva fase del conflicto."
+  ],
+  "budget-ruling": [
+    "Sentencia sobre el presupuesto",
+    "El Tribunal Constitucional anuló el traspaso de 60.000 millones de euros de autorización de endeudamiento al Fondo para el Clima y la Transformación."
+  ],
+  "potsdam-meeting": [
+    "Investigación de Correctiv",
+    "El reportaje sobre la reunión de Potsdam desencadenó protestas en todo el país y un debate en el Bundestag. Participantes y AfD cuestionaron partes del relato."
+  ],
+  "eu-migration-pact": [
+    "Pacto europeo de migración",
+    "El Consejo de la UE aprobó diez actos legislativos para reformar el sistema común de migración y asilo."
+  ],
+  "eu-election-2024": [
+    "Elecciones europeas de 2024",
+    "Alemania eligió a sus representantes para la décima legislatura del Parlamento Europeo."
+  ],
+  "east-state-elections": [
+    "Elecciones en Sajonia y Turingia",
+    "Las elecciones regionales simultáneas en Sajonia y Turingia recibieron atención política en toda Alemania."
+  ],
+  "border-controls": [
+    "Ampliación de controles fronterizos",
+    "Los controles temporales en las fronteras interiores se ampliaron a todas las fronteras terrestres de Alemania."
+  ],
+  "brandenburg-election": [
+    "Elecciones en Brandeburgo",
+    "Elección del octavo parlamento de Brandeburgo; SPD, AfD, BSW y CDU obtuvieron representación."
+  ],
+  "us-election-2024": [
+    "Trump gana las elecciones",
+    "Donald Trump ganó las elecciones presidenciales estadounidenses y regresó a la Casa Blanca como 47.º presidente en enero de 2025."
+  ],
+  "coalition-end": [
+    "Ruptura de la coalición",
+    "El canciller Scholz solicitó la destitución del ministro de Finanzas, Lindner; el FDP abandonó el Gobierno federal."
+  ],
+  "confidence-vote": [
+    "Scholz pierde la confianza",
+    "Olaf Scholz no obtuvo la mayoría necesaria, lo que abrió la vía constitucional a unas elecciones federales anticipadas."
+  ],
+  "election-2025": [
+    "Elecciones federales de 2025",
+    "Elección anticipada del 21.º Bundestag. El resultado oficial se representa por separado mediante un rombo."
+  ],
+  "debt-reform": [
+    "Reforma del freno de la deuda",
+    "Una mayoría de dos tercios del Bundestag aprobó cambios constitucionales sobre el gasto en defensa y un fondo de infraestructuras."
+  ],
+  "coalition-agreement-2025": [
+    "Acuerdo de CDU/CSU y SPD",
+    "CDU, CSU y SPD presentaron su acuerdo de coalición «Responsabilidad por Alemania»; se firmó el 5 de mayo."
+  ],
+  "merz": [
+    "Merz, elegido canciller",
+    "Friedrich Merz fue elegido canciller en la segunda votación, con 325 votos."
+  ],
+  "bw-election": [
+    "Elecciones en Baden-Wurtemberg",
+    "Elección del 18.º parlamento de Baden-Wurtemberg."
+  ],
+  "hormuz-oil-crisis": [
+    "Crisis petrolera de Ormuz",
+    "El cierre efectivo de esta importante ruta marítima elevó los precios de la energía y los combustibles. Alemania anunció medidas, entre ellas la liberación de parte de sus reservas de petróleo."
+  ],
+  "rp-election": [
+    "Elecciones en Renania-Palatinado",
+    "Elección del 19.º parlamento de Renania-Palatinado."
+  ],
+  "uk-tehran": [
+    "Conferencia de Teherán",
+    "Churchill, Roosevelt y Stalin se reunieron por primera vez y acordaron elementos centrales de la estrategia bélica aliada."
+  ],
+  "uk-d-day": [
+    "Desembarco de Normandía",
+    "Fuerzas británicas, estadounidenses y de otros países aliados desembarcaron en Normandía y abrieron un nuevo frente en Europa occidental."
+  ],
+  "uk-ve-day": [
+    "Fin de la guerra en Europa",
+    "El Día de la Victoria en Europa marcó el final de la Segunda Guerra Mundial en el continente; semanas después se celebraron elecciones generales."
+  ],
+  "uk-nhs": [
+    "Comienza el NHS",
+    "El Servicio Nacional de Salud comenzó a funcionar, con atención sanitaria financiada principalmente mediante impuestos y gratuita en el momento de recibirla."
+  ],
+  "uk-sterling-devaluation": [
+    "Devaluación de la libra",
+    "El Gobierno redujo el tipo de cambio oficial de la libra de 2,80 a 2,40 dólares estadounidenses."
+  ],
+  "uk-joins-eec": [
+    "Ingreso en la CEE",
+    "El Reino Unido ingresó en la Comunidad Económica Europea junto con Irlanda y Dinamarca."
+  ],
+  "uk-energy-crisis": [
+    "Crisis del petróleo",
+    "La crisis del petróleo y los conflictos laborales en la minería del carbón provocaron severas restricciones energéticas; muchas empresas pasaron a una semana laboral de tres días a principios de 1974."
+  ],
+  "uk-devolution-referendums": [
+    "Referéndums de autonomía",
+    "Escocia votó claramente a favor de nuevas instituciones autónomas; Gales lo hizo por un margen estrecho una semana después."
+  ],
+  "uk-suez": [
+    "Comienza la crisis de Suez",
+    "Israel, el Reino Unido y Francia iniciaron sus operaciones militares durante la crisis de Suez."
+  ],
+  "uk-falklands": [
+    "Guerra de las Malvinas",
+    "Fuerzas argentinas ocuparon las islas Malvinas; la guerra terminó en junio de 1982."
+  ],
+  "uk-black-wednesday": [
+    "Miércoles Negro",
+    "La libra abandonó el mecanismo europeo de tipos de cambio tras amplias intervenciones en los mercados."
+  ],
+  "uk-iraq": [
+    "Comienza la guerra de Irak",
+    "La invasión de Irak encabezada por Estados Unidos comenzó con la participación de fuerzas británicas."
+  ],
+  "uk-financial-crisis": [
+    "Crisis financiera mundial",
+    "La quiebra de Lehman Brothers marcó una escalada de la crisis financiera mundial."
+  ],
+  "uk-coalition": [
+    "Coalición de Cameron",
+    "David Cameron se convirtió en primer ministro de una coalición entre conservadores y liberaldemócratas."
+  ],
+  "uk-scotland-referendum": [
+    "Referéndum en Escocia",
+    "Una mayoría votó en contra de la independencia de Escocia."
+  ],
+  "uk-brexit-referendum": [
+    "Referéndum del Brexit",
+    "El 51,9 % votó a favor de la salida del Reino Unido de la Unión Europea."
+  ],
+  "uk-may-prime-minister": [
+    "May, primera ministra",
+    "Theresa May asumió el cargo de primera ministra tras la dimisión de David Cameron."
+  ],
+  "uk-chequers-resignations": [
+    "Dimisiones por el Brexit",
+    "La propuesta del Gobierno sobre el Brexit acordada en Chequers fue seguida por las dimisiones del ministro para el Brexit, David Davis, y del ministro de Exteriores, Boris Johnson."
+  ],
+  "uk-prorogation-judgment": [
+    "Suspensión parlamentaria ilegal",
+    "El Tribunal Supremo declaró por unanimidad que el asesoramiento para suspender el Parlamento era ilegal y nulo."
+  ],
+  "uk-leaves-eu": [
+    "Salida del Reino Unido de la UE",
+    "Terminó la pertenencia del Reino Unido a la Unión Europea."
+  ],
+  "uk-pandemic": [
+    "La OMS declara la pandemia",
+    "La OMS calificó el brote mundial de COVID-19 como una pandemia."
+  ],
+  "uk-lockdown": [
+    "Primer confinamiento nacional",
+    "El Gobierno anunció amplias restricciones a la vida pública."
+  ],
+  "uk-cummings-lockdown": [
+    "Polémica por el viaje de Cummings",
+    "El principal asesor del primer ministro defendió públicamente un viaje realizado durante el confinamiento, en una importante polémica gubernamental."
+  ],
+  "uk-paterson-standards": [
+    "Polémica por Owen Paterson",
+    "El Gobierno apoyó inicialmente cambiar el procedimiento de control de la conducta parlamentaria en el caso de Owen Paterson, pero después dio marcha atrás."
+  ],
+  "uk-ukraine": [
+    "Invasión de Ucrania",
+    "Rusia inició su invasión militar a gran escala de Ucrania."
+  ],
+  "uk-partygate-report": [
+    "Informe sobre Partygate",
+    "El informe final de Sue Gray examinó reuniones celebradas en dependencias gubernamentales durante las restricciones por la COVID-19."
+  ],
+  "uk-johnson-resigns": [
+    "Johnson anuncia su dimisión",
+    "Tras una oleada de dimisiones ministeriales, Boris Johnson anunció que dejaría el liderazgo del Partido Conservador."
+  ],
+  "uk-mini-budget": [
+    "Plan fiscal de Truss",
+    "El plan de crecimiento provocó fuertes reacciones en los mercados y posteriormente fue revertido en gran parte."
+  ],
+  "uk-truss-resigns": [
+    "Truss anuncia su dimisión",
+    "Liz Truss anunció su dimisión tras 45 días como primera ministra."
+  ],
+  "uk-sunak-prime-minister": [
+    "Sunak, primer ministro",
+    "Rishi Sunak asumió el cargo de primer ministro tras Liz Truss."
+  ],
+  "uk-israel-gaza": [
+    "Ataque de Hamás y guerra en Gaza",
+    "El ataque a gran escala de Hamás contra Israel y la posterior operación militar israelí marcaron una nueva fase del conflicto."
+  ],
+  "uk-us-election-2024": [
+    "Trump gana las elecciones",
+    "Donald Trump ganó las elecciones presidenciales estadounidenses y regresó a la Casa Blanca en enero de 2025."
+  ],
+  "uk-hormuz-oil-crisis": [
+    "Crisis petrolera de Ormuz",
+    "El cierre efectivo de esta importante ruta marítima elevó los precios de la energía y los combustibles."
+  ],
+  "uk-rwanda-judgment": [
+    "Sentencia sobre Ruanda",
+    "El Tribunal Supremo confirmó que el plan entonces vigente para trasladar solicitantes de asilo a Ruanda era ilegal."
+  ],
+  "uk-starmer-prime-minister": [
+    "Starmer, primer ministro",
+    "Tras la victoria electoral laborista, Keir Starmer recibió el encargo de formar Gobierno."
+  ],
+  "uk-winter-fuel": [
+    "Cambios en la ayuda de calefacción",
+    "El Gobierno anunció que la ayuda de invierno para pensionistas pasaría a depender de prestaciones sujetas al nivel de ingresos."
+  ],
+  "uk-autumn-budget-2024": [
+    "Primer presupuesto de Starmer",
+    "Rachel Reeves presentó el primer presupuesto del nuevo Gobierno laborista, que incluía mayores cotizaciones empresariales a la Seguridad Social."
+  ],
+  "uk-welfare-reform-2025": [
+    "Reforma de las prestaciones",
+    "Los cambios propuestos para Universal Credit y PIP abrieron una prolongada disputa política."
+  ],
+  "uk-local-elections-2025": [
+    "Victoria local de Reform UK",
+    "Reform UK ganó 677 escaños y el control de diez ayuntamientos, mientras laboristas y conservadores sufrieron pérdidas considerables."
+  ],
+  "uk-welfare-revision-2025": [
+    "Revisión del plan de prestaciones",
+    "Antes de la segunda lectura del proyecto de ley, el Gobierno introdujo cambios importantes en las reglas previstas para PIP y Universal Credit."
+  ],
+  "uk-budget-2025": [
+    "Presupuesto de 2025",
+    "Rachel Reeves presentó el segundo presupuesto laborista, con cambios en los costes energéticos, las prestaciones y los impuestos."
+  ],
+  "uk-burnham-prime-minister": [
+    "Burnham sustituye a Starmer",
+    "Keir Starmer dimitió como primer ministro y Andy Burnham aceptó la invitación del rey para formar Gobierno."
+  ],
+  "uk-profumo": [
+    "Dimisión de John Profumo",
+    "El ministro de Guerra, John Profumo, dimitió tras engañar a la Cámara de los Comunes sobre su relación con Christine Keeler."
+  ],
+  "uk-eec-referendum-1975": [
+    "Referéndum sobre la CEE",
+    "El 67,2 % votó a favor de que el Reino Unido permaneciera en la Comunidad Económica Europea."
+  ],
+  "uk-winter-discontent": [
+    "Invierno del Descontento",
+    "Las huelgas generalizadas del sector público marcaron el invierno de 1978-1979 y agravaron la crisis política del Gobierno de Callaghan."
+  ],
+  "uk-miners-strike": [
+    "Comienza la huelga minera",
+    "La huelga minera de un año comenzó contra el cierre previsto de minas y se convirtió en un conflicto laboral emblemático de la etapa de Thatcher."
+  ],
+  "uk-poll-tax-crisis": [
+    "Protestas contra el impuesto local",
+    "La introducción del impuesto local por persona, conocido como Community Charge, provocó protestas masivas y se convirtió en una crisis central del Gobierno de Thatcher."
+  ],
+  "uk-good-friday-agreement": [
+    "Acuerdo de Viernes Santo",
+    "El Acuerdo de Belfast o de Viernes Santo estableció las bases del reparto de poder y de nuevas instituciones políticas en Irlanda del Norte."
+  ],
+  "uk-london-bombings": [
+    "Atentados de Londres",
+    "Los ataques coordinados contra la red de transporte de Londres causaron 52 muertes."
+  ],
+  "uk-expenses-scandal": [
+    "Escándalo de gastos parlamentarios",
+    "La publicación de las dietas y gastos de los diputados desencadenó una crisis de confianza y llevó a una regulación independiente de esas asignaciones."
+  ],
+  "_copy": {
+    "electionTomorrow": "Reparto modelizado de escaños",
+    "projectionLabel": "Modelo matemático",
+    "projectionIntro": "Reparto simplificado de escaños a partir de la última encuesta. Se muestran mayorías matemáticamente posibles, no predicciones.",
+    "seats": "Escaños",
+    "majority": "Mayoría",
+    "partiesInParliament": "Partidos en el parlamento",
+    "representedVotes": "votos representados",
+    "thresholdWatch": "Por debajo del umbral del 5 %",
+    "noThresholdParties": "Todos los partidos mostrados alcanzan al menos el 5 %.",
+    "arithmeticMajorities": "Mayorías matemáticamente posibles",
+    "projectionMethod": "Los 630 escaños se distribuyen mediante una versión simplificada del método Sainte-Laguë entre los partidos que alcanzan al menos el 5 %. Las circunscripciones, los mandatos directos, las listas regionales, los partidos de minorías nacionales y el redondeo pueden modificar el resultado real. Las coaliciones se ordenan según la proximidad de los partidos en el hemiciclo; las combinaciones con AfD aparecen después. El orden no expresa su probabilidad.",
+    "embedTitle": "Compartir este gráfico",
+    "embedText": "Inserta la vista actual como un gráfico adaptable y sin publicidad. La fuente y la licencia permanecen visibles.",
+    "embedPreview": "Código de inserción",
+    "copyCode": "Copiar código",
+    "copied": "Copiado",
+    "embedTheme": "Apariencia",
+    "embedHeight": "Altura",
+    "embedLight": "Claro",
+    "embedDark": "Oscuro",
+    "embedAuto": "Automático",
+    "embedCompact": "Compacto",
+    "embedStandard": "Estándar",
+    "embedLarge": "Grande",
+    "embedOpen": "Abrir vista previa",
+    "copyLink": "Copiar enlace a esta vista",
+    "linkCopied": "Enlace copiado",
+    "embedPrivacy": "El gráfico insertado no usa cookies, seguimiento ni scripts de terceros.",
+    "embedByline": "Encuestas electorales interactivas",
+    "settings": "Ajustes",
+    "dataInfo": "Información sobre datos y método",
+    "overview": "Congreso de los Diputados · intención de voto",
+    "title": "Encuestas de las elecciones generales en España",
+    "intro": "Valores actuales y evolución a largo plazo, comparables, trazables y sin valoración política.",
+    "current": "Última encuesta",
+    "currentNote": "Encuesta publicada más recientemente en la selección",
+    "compared": "Cambio respecto a hace 7 días",
+    "chartTitle": "Evolución de la intención de voto",
+    "chartSubtitle": "La última encuesta de cada instituto seleccionado en los 45 días anteriores tiene el mismo peso. Las líneas conectan las medias calculadas.",
+    "chartSwipe": "↔ Desliza para explorar",
+    "customize": "Configurar gráfico",
+    "share": "Compartir e insertar",
+    "exportPng": "Exportar PNG",
+    "exportPreparing": "Creando PNG…",
+    "exportReady": "PNG guardado",
+    "exportError": "No se pudo exportar",
+    "display": "Vista",
+    "trend": "Tendencia suavizada",
+    "linear": "Medias conectadas",
+    "polls": "Puntos de la media",
+    "both": "Tendencia + puntos",
+    "timeRange": "Periodo",
+    "oneMonthLong": "1 mes",
+    "threeMonths": "3 meses",
+    "sixMonths": "6 meses",
+    "yearToDate": "Año en curso",
+    "year": "1 año",
+    "twoYears": "2 años",
+    "sinceElection": "Desde las elecciones de 2023",
+    "fiveYearsLong": "5 años",
+    "fullArchive": "Archivo completo · desde 2023",
+    "events": "Acontecimientos",
+    "eventsShown": "Acontecimientos visibles",
+    "eventsNote": "Pollframe solo muestra los acontecimientos seleccionados editorialmente para este periodo. Cada uno tiene una marca: las elecciones usan líneas continuas, los principales reciben etiquetas y los demás aparecen como puntos huecos. Esto no demuestra causalidad.",
+    "lineLegend": "Líneas",
+    "pollsters": "Institutos",
+    "parties": "Partidos",
+    "sourcePrefix": "Datos de",
+    "dataUpdated": "Datos actualizados",
+    "raw": "Descargar datos (JSON)",
+    "csv": "Descargar CSV",
+    "pollTable": "Encuestas publicadas",
+    "pollTableIntro": "Últimas encuestas de los institutos seleccionados. Son valores publicados, no la media de Pollframe.",
+    "pollDate": "Fecha",
+    "fieldwork": "Trabajo de campo",
+    "sample": "Muestra",
+    "method": "Método",
+    "openSource": "Abrir fuente original",
+    "showMorePolls": "Mostrar más encuestas",
+    "methodology": "Metodología",
+    "pollRecords": "encuestas publicadas",
+    "archiveCoverage": "Cobertura",
+    "dataStandard": "Datos reutilizables · método trazable",
+    "tendencies": "Tendencia por partido",
+    "tendenciesIntro": "Comparación con la última encuesta disponible de hace 90 días.",
+    "tendencyRising": "sube",
+    "tendencySlightRising": "sube ligeramente",
+    "tendencyStable": "estable",
+    "tendencySlightFalling": "baja ligeramente",
+    "tendencyFalling": "baja",
+    "tendencyUnavailable": "Sin base comparable",
+    "partyDetail": "Evolución del partido",
+    "partyDetailIntro": "Media suavizada de los institutos seleccionados.",
+    "oneMonth": "1 M",
+    "sixMonthsShort": "6 M",
+    "yearToDateShort": "Año",
+    "twoYearsShort": "2 A",
+    "fiveYears": "5 A",
+    "maximum": "Máx.",
+    "currentValue": "Actual",
+    "changeInPeriod": "Cambio",
+    "relativeChange": "Relativo",
+    "periodHigh": "Máximo",
+    "periodLow": "Mínimo",
+    "percentagePoints": "puntos porcentuales",
+    "ppShort": " pp",
+    "versusPeriodStart": "desde el inicio",
+    "notEnoughData": "No hay una base comparable suficiente para este periodo.",
+    "eventSelectionTitle": "Selección de acontecimientos",
+    "eventSelectionText": "Se incluyen elecciones e hitos institucionales claramente fechados. Su proximidad a una variación no prueba causa y efecto; cada marca enlaza a una fuente.",
+    "language": "Idioma y región",
+    "languageHelp": "Define el idioma y los formatos de fecha y número.",
+    "appearance": "Apariencia",
+    "appearanceHelp": "Puede seguir automáticamente el tema del dispositivo.",
+    "system": "Sistema",
+    "light": "Claro",
+    "dark": "Oscuro",
+    "textSize": "Tamaño del texto",
+    "textSizeHelp": "Amplía la interfaz sin cambiar el contenido.",
+    "standard": "Estándar · 17 px",
+    "larger": "Grande · 19 px",
+    "motion": "Movimiento",
+    "motionHelp": "Reduce transiciones y animaciones.",
+    "reduced": "Reducido",
+    "close": "Cerrar",
+    "settingsTitle": "Ajustes",
+    "app": "Aplicación",
+    "installApp": "Instalar Pollframe",
+    "installNow": "Instalar gratis",
+    "appInstalled": "Instalada en este dispositivo",
+    "appUnavailable": "La instalación aparecerá cuando el navegador sea compatible.",
+    "showInstallSteps": "Ver instrucciones",
+    "iosInstallTitle": "Instalar en iPhone o iPad",
+    "iosInstallStepOne": "Abre Pollframe en Safari y toca Compartir.",
+    "iosInstallStepTwo": "Selecciona «Añadir a pantalla de inicio» y después «Añadir».",
+    "appSettingsTitle": "Pollframe en este dispositivo",
+    "appSettingsHelp": "Instálala para abrir más rápido, navegar como app y conservar la última vista sin conexión.",
+    "offlineStatus": "Sin conexión · los datos guardados pueden estar desactualizados.",
+    "cachedDataStatus": "Se muestran datos guardados.",
+    "updateReady": "Hay una nueva versión de Pollframe.",
+    "updateNow": "Actualizar",
+    "navOverview": "Resumen",
+    "navAdd": "Añadir",
+    "navPolling": "Encuestas",
+    "navMap": "Mapa",
+    "navCountries": "Países",
+    "navSettings": "Más",
+    "methodTitle": "Datos y metodología de España",
+    "methodIntro": "La vista separa encuestas publicadas, medias calculadas y resultados oficiales.",
+    "meanTitle": "Cómo se calcula la media",
+    "meanText": "En cada fecha cuenta la última encuesta de cada instituto seleccionado dentro de los 45 días anteriores. Pollframe calcula la media aritmética simple: cada instituto pesa lo mismo, con independencia de la frecuencia de publicación.",
+    "selectionTitle": "Selección de institutos",
+    "selectionText": "La vista inicial incluye todos los institutos válidos del archivo. Pueden compararse por separado; su inclusión no equivale a una clasificación de calidad.",
+    "limitsTitle": "Qué no muestra el gráfico",
+    "limitsText": "Las encuestas son estimaciones con incertidumbre. El promedio no corrige efectos propios de cada instituto ni escaños por provincia. No es una previsión electoral.",
+    "sourceTitle": "Fuente y licencia",
+    "sourceText": "Pollframe normaliza las tablas de encuestas citadas en Wikipedia bajo CC BY-SA 4.0 y conserva el enlace a la publicación original de cada fila cuando está disponible. Los resultados electorales proceden del Ministerio del Interior.",
+    "electionSource": "Resultados electorales",
+    "lastPoll": "Última encuesta incluida",
+    "onePollster": "Un instituto seleccionado",
+    "loading": "Cargando datos…",
+    "error": "No se pudieron cargar los datos.",
+    "footerLine": "Resumen basado en datos · no es una previsión",
+    "privacy": "Privacidad",
+    "licences": "Licencias",
+    "editorialStandards": "Criterios editoriales",
+    "impressum": "Aviso legal",
+    "contact": "Contacto",
+    "reportBug": "Informar de un problema",
+    "info": "Información"
+  }
+}

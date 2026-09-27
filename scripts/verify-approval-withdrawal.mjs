@@ -11,7 +11,7 @@ for (const [name, engine, viewport] of [["desktop", chromium, {width:1440,height
     await page.goto(`${origin}/?lang=de`);
     await page.getByRole("heading", {name:"Deutschland im Überblick", exact:true}).waitFor();
     assert.equal(await page.locator('a[href*="regierung/zufriedenheit"],a[href*="view=approval"]').count(), 0);
-    assert.ok(!(await page.locator("body").innerText()).includes("Studio"));
+    // Studio is now released; approval templates remain withdrawn independently.
     await page.screenshot({path:`/tmp/pollframe-withdrawal-${name}.png`,fullPage:true});
     await page.goto(`${origin}/sources?lang=de`);
     await page.getByText(/frühere Angabe einer FGW-Freigabe war nicht belegt/).waitFor();

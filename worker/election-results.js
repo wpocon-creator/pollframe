@@ -4,7 +4,9 @@ export const SEATS_SOURCE =
   "https://wahlergebnisse.sachsen-anhalt.de/wahlen/lt26/sitze.html";
 export const FIVE_DAYS = 5 * 24 * 60 * 60 * 1000;
 const START = Date.parse("2026-09-06T16:00:00Z");
-const STOP = Date.parse("2026-09-21T00:00:00Z");
+// This one-off event is closed. Even a fresh store or an archive request must
+// not restart polling after the five-day election window.
+const STOP = START + FIVE_DAYS;
 const INTERVAL = 5 * 60 * 1000;
 const clean = (value) =>
   String(value)
@@ -246,10 +248,12 @@ export class ElectionResultsStore {
     const state = (await this.ctx.storage.get("result")) || {};
     if (
       now < START ||
-      now > STOP ||
+      now >= STOP ||
       (state.firstSeenAt && now >= state.firstSeenAt + FIVE_DAYS)
-    )
+    ) {
+      await this.ctx.storage.deleteAlarm();
       return state;
+    }
     if (state.checkedAt && now - state.checkedAt < INTERVAL) return state;
     state.checkedAt = now;
     try {

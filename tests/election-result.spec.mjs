@@ -1,0 +1,25 @@
+import {test,expect} from '@playwright/test';
+test.use({serviceWorkers:'block'});
+const result={status:'partial',publishedAt:'2026-09-06T18:20:00Z',checkedAt:'2026-09-06T18:25:00Z',expiresAt:'2026-09-11T18:20:00Z',counted:1703,total:2660,validVotes:1000,rows:[{name:'AfD',share:40,votes:400},{name:'CDU',share:25,votes:250},{name:'SPD',share:15,votes:150},{name:'GRÜNE',share:10,votes:100},{name:'Die Linke',share:10,votes:100}]};
+test('no card before results or after expiry; counted results separate from polls',async({page},info)=>{
+  let current=null;
+  await page.route('**/api/elections/sachsen-anhalt-2026',route=>route.fulfill({json:{result:current}}));
+  await page.goto('/?country=de&lang=de');
+  await expect(page.locator('.germany-country-overview')).toBeVisible();
+  await expect(page.locator('.election-result-card')).toHaveCount(0);
+  current=result;
+  await page.reload();
+  const card=page.locator('.election-result-card');
+  await expect(card).toContainText('Amtlicher Zwischenstand');
+  await expect(card).toContainText('Wahl-Special · temporär');
+  await expect(card.locator('a[href*="view=election-st2026"]')).toBeVisible();
+  await expect(card.locator('svg:not(.graph-info-popover svg),.election-result-rows')).toHaveCount(0);
+  expect((await card.boundingBox()).height).toBeLessThan(180);
+  const overflows=await card.evaluate(node=>[...node.querySelectorAll('*')].filter(n=>n.getBoundingClientRect().right>innerWidth+1 && !n.closest('dialog')).map(n=>n.className));
+  expect(overflows).toEqual([]);
+  await page.screenshot({path:info.outputPath('election-count.png'),fullPage:true});
+  await page.goto('/?region=sachsen-anhalt&lang=de');
+  await expect(card).toBeVisible();
+  current={...result,expiresAt:'2026-09-01T00:00:00Z'};
+  await page.reload();await expect(card).toHaveCount(0);
+});

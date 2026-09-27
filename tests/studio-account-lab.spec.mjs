@@ -1,0 +1,47 @@
+import {test,expect} from '@playwright/test';
+test('local account registration, confirmation, login, storage and logout',async({page})=>{
+  await page.goto('/?view=studio&lang=de&topic=current');
+  await page.getByRole('button',{name:'Konto',exact:true}).click();
+  const dialog=page.getByRole('dialog',{name:'Dein Pollframe-Konto'});
+  await dialog.getByRole('button',{name:'Registrieren',exact:true}).click();
+  await dialog.getByLabel('Anzeigename').fill('Redaktion Test');
+  await dialog.getByLabel('Test-E-Mail').fill(`browser-${Date.now()}@example.test`);
+  const email=await dialog.getByLabel('Test-E-Mail').inputValue();
+  const password='Browser test passphrase 2026 unique';
+  await dialog.getByLabel('Passwort',{exact:true}).fill(password);
+  await dialog.getByRole('button',{name:'Passwort anzeigen',exact:true}).click();
+  await expect(dialog.getByLabel('Passwort',{exact:true})).toHaveAttribute('type','text');
+  await dialog.getByRole('button',{name:'Passwort verbergen',exact:true}).click();
+  await dialog.getByRole('button',{name:'Testkonto erstellen'}).click();
+  await dialog.getByRole('button',{name:'Link verwenden',exact:true}).first().click();
+  await expect(dialog.getByRole('status')).toContainText('Testadresse bestätigt');
+  await dialog.getByLabel('Test-E-Mail').fill(email);
+  await dialog.getByLabel('Passwort',{exact:true}).fill(password);
+  await dialog.locator('form').getByRole('button',{name:'Anmelden',exact:true}).click();
+  await expect(dialog).toContainText('Angemeldet als');
+  await page.evaluate(async()=>{
+    // Use the public local library's IndexedDB shape, not a backdoor account write.
+    const request=indexedDB.open('pollframe-studio-styles',1);
+    await new Promise((resolve,reject)=>{request.onupgradeneeded=()=>request.result.createObjectStore('styles',{keyPath:'id'});request.onerror=reject;request.onsuccess=resolve;});
+    const db=request.result,tx=db.transaction('styles','readwrite');
+    tx.objectStore('styles').put({id:'browser-style',name:'Testredaktion',style:{theme:'dark',font:'inter'},updatedAt:new Date().toISOString()});
+    await new Promise((resolve,reject)=>{tx.oncomplete=resolve;tx.onerror=reject;});db.close();
+  });
+  await dialog.getByRole('button',{name:'Lokale Designs und Stile im Konto sichern'}).click();
+  await expect(dialog.locator('.studio-account-documents')).toContainText('Testredaktion');
+  await dialog.getByRole('button',{name:'Abmelden',exact:true}).click();
+  await expect(dialog.getByText('Angemeldet als')).toHaveCount(0);
+  await expect(dialog.locator('.studio-account-documents')).toHaveCount(0);
+  await dialog.getByRole('button',{name:'Passwort vergessen',exact:true}).click();
+  await expect(dialog.getByLabel('Test-E-Mail')).toHaveValue(email);
+  await dialog.getByRole('button',{name:'Link anfordern',exact:true}).click();
+  await dialog.getByRole('button',{name:'Link verwenden',exact:true}).first().click();
+  await dialog.getByLabel('Neues Passwort',{exact:true}).fill(password+' changed');
+  await dialog.getByRole('button',{name:'Passwort ändern',exact:true}).click();
+  await expect(dialog.getByRole('status')).toContainText('Passwort geändert');
+  await dialog.getByLabel('Passwort',{exact:true}).fill(password+' changed');
+  await dialog.locator('form').getByRole('button',{name:'Anmelden',exact:true}).click();
+  await expect(dialog).toContainText('Angemeldet als');
+  await expect(dialog.locator('.studio-account-documents')).toContainText('Testredaktion');
+  await dialog.getByRole('button',{name:'Abmelden',exact:true}).click();
+});

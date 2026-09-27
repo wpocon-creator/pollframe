@@ -75,7 +75,11 @@ html { scrollbar-gutter: stable; }
 .spain-country-hero { position: relative; overflow: hidden; }
 .spain-overview-grid { display: grid; gap: .9rem; margin: 0 0 1rem; }
 .spain-polling-entry,.spain-issues-card,.spain-investiture-card,.spain-map-card,.spain-system-note { border: 1px solid var(--line); border-radius: 18px; background: var(--surface); color: var(--ink); box-shadow: var(--shadow); }
-.spain-polling-entry { display: grid; grid-template-columns: 1fr auto; gap: 1rem; padding: 1.15rem; text-decoration: none; position: relative; transition: border-color .16s ease, transform .16s ease; }
+.spain-polling-entry { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 1rem; padding: 1.15rem; text-decoration: none; position: relative; transition: border-color .16s ease, transform .16s ease; min-width:0; }
+.spain-polling-entry>div { min-width:0; overflow-wrap:anywhere; }
+.spain-map-heading h2 { overflow-wrap:anywhere; }
+.region-breadcrumb { flex-wrap:wrap; }
+.event-key-item strong { overflow-wrap:anywhere; }
 .spain-polling-entry:hover { border-color: color-mix(in srgb, var(--spain-red) 55%, var(--line)); transform: translateY(-1px); }
 .spain-polling-entry>div>span,.spain-issues-card header>span,.spain-investiture-card header>span,.spain-system-note>div>span { color: var(--accent); font-size: .72rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
 .spain-polling-entry h2,.spain-issues-card h2,.spain-investiture-card h2,.spain-map-card h2,.spain-system-note h2 { margin: .35rem 0 .4rem; font-size: clamp(1.35rem, 5vw, 2rem); letter-spacing: -.035em; }
@@ -568,7 +572,7 @@ html { scrollbar-gutter: stable; }
   .watch-layout-shape { height: 38px; width: 40px; }
   .notification-intro-overlay { align-items: flex-end; padding: 12px; }
   .notification-intro { padding-bottom: calc(1.25rem + env(safe-area-inset-bottom)); }
-  :root[data-standalone="true"] .mobile-app-nav { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  :root[data-standalone="true"] .mobile-app-nav { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   :root[data-standalone="true"] .watchlist-page > .region-breadcrumb { display: none; }
 }
 
@@ -1125,6 +1129,8 @@ body:has(.graph-info-popover[open]) { overflow: hidden; }
 .png-options-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
 .png-options-actions > button { width: 100%; min-width: 0; min-height: 42px; }
 .png-options-actions > button:only-child { grid-column: 1 / -1; }
+.studio-more-designs { display:flex; align-items:center; justify-content:center; gap:9px; text-decoration:none; font-size:13px; min-height:42px; }
+.png-options-actions > .studio-more-designs { grid-column:1 / -1; }
 .png-export-status { margin: .7rem 0 0 !important; text-align: center; font-weight: 720; }
 .png-export-status.is-error { color: var(--negative); }
 
@@ -2768,12 +2774,26 @@ body > #root > footer {
 }
 
 .brand {
+  flex-shrink: 0;
   display: inline-flex;
   align-items: center;
   gap: 9px;
   font-size: 0.78rem;
   font-weight: 800;
   letter-spacing: 0.105em;
+}
+.product-navigation {display:flex;align-self:stretch;align-items:stretch;gap:20px;margin-right:auto;white-space:nowrap;}
+.product-navigation a {position:relative;display:flex;align-items:center;min-height:44px;padding:4px 0;color:var(--muted);font-size:14px;font-weight:600;text-decoration:none;}
+.product-navigation a:hover,.product-navigation a[aria-current] {color:var(--ink);}
+.product-navigation a[aria-current]::after {content:"";position:absolute;left:0;right:0;bottom:12px;height:2px;border-radius:2px;background:currentColor;}
+@media(max-width:1000px) {.site-header .header-button>span {display:none;}}
+@media(max-width:600px) {.site-header .app-header-button,.site-header .brand>span {display:none;} .site-header .header-inner {gap:12px;} .product-navigation {gap:16px;} .product-navigation a {font-size:13px;} }
+@media(max-width:400px) {
+  .site-header .header-inner {display:grid;grid-template-columns:auto 1fr;gap:0 12px;}
+  .site-header .header-actions {justify-self:end;grid-column:2;grid-row:1;}
+  .site-header .product-navigation {grid-column:1 / -1;grid-row:2;justify-content:center;margin:0;gap:28px;}
+  .site-header .product-navigation a {min-height:34px;}
+  .site-header .product-navigation a[aria-current]::after {bottom:2px;}
 }
 
 .brand em {
@@ -5227,8 +5247,8 @@ body > #root > footer nav .footer-action:hover {
 }
 
 @keyframes modal-in {
-  from { opacity: 0; transform: translateY(8px) scale(0.99); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .modal-intro {
@@ -6786,7 +6806,7 @@ body > #root > footer nav .footer-action:hover {
   .watch-card-wide { grid-column: span 2; grid-row: span 1; }
   .watch-card-tall { grid-column: span 1; grid-row: span 2; }
   .watch-card-large { grid-column: span 2; grid-row: span 2; }
-  :root[data-standalone="true"] .mobile-app-nav { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  :root[data-standalone="true"] .mobile-app-nav { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
 
 @media (max-width: 360px) {
@@ -7116,15 +7136,18 @@ body > #root > footer nav .footer-action:hover {
 .approval-workbench>.approval-country-key { justify-content:flex-start; }
 
 .widget-share-tools { display:inline-flex; flex:0 0 auto; gap:.25rem; }
-.widget-share-trigger { display:grid; place-items:center; width:32px; height:32px; padding:0; border:1px solid var(--line); border-radius:8px; background:var(--surface); color:var(--muted); cursor:pointer; }
+.widget-share-trigger { display:inline-flex; align-items:center; justify-content:center; flex:0 0 auto; gap:0; width:32px; min-width:32px; height:32px; min-height:32px; padding:0; border:1px solid var(--line); border-radius:8px; background:var(--surface); color:var(--muted); cursor:pointer; }
+/* A zero-size label still made a second grid row and shifted the icon upward.
+   Icon-only buttons use one centred item; aria-label retains the full name. */
+.widget-share-trigger > span { display:none; }
+.widget-share-trigger > svg { display:block; flex:0 0 auto; margin:0; }
 .widget-png-trigger { min-width:32px; gap:0; overflow:hidden; font-size:0; }
 .spain-concern-png { min-width:32px; flex:0 0 32px; gap:0; overflow:hidden; font-size:0; }
 .widget-share-trigger:hover,.widget-share-trigger:focus-visible { border-color:var(--faint); color:var(--ink); }
 .widget-share-modal { width:min(1050px,calc(100% - 32px)); }
 .widget-share-modal .panel-header { align-items:flex-start; }
 .widget-share-modal .panel-header h2 { margin:.2rem 0 0; }
-.widget-embed-preview iframe { min-height:400px; }
-.widget-embed-page { width:min(1100px,100%); min-height:100vh; margin:0 auto; padding:18px clamp(14px,3vw,28px) 6px; background:var(--surface); color:var(--ink); }
+.widget-embed-page { width:min(1100px,100%); margin:0 auto; padding:18px clamp(14px,3vw,28px) 6px; background:var(--surface); color:var(--ink); }
 .widget-embed-page>.results-card,.widget-embed-page>.projection-section,.widget-embed-page>.tendency-section { margin-top:14px; box-shadow:none; }
 .widget-embed-page>.results-card { width:100%; }
 .widget-embed-page .results-more,.widget-embed-page .tendency-open,.widget-embed-page .coalition-watch-star { display:none; }
@@ -7150,7 +7173,6 @@ body > #root > footer nav .footer-action:hover {
   .approval-question.is-warning p { font-size:.72rem; }
   .approval-workbench>.approval-country-key { flex-wrap:nowrap; overflow-x:auto; }
   .widget-share-modal { width:100%; max-height:100vh; border-radius:0; }
-  .widget-embed-preview iframe { min-height:330px; }
   .widget-embed-page { padding:10px 9px 5px; }
   .widget-embed-page .embed-header h1 { font-size:1rem; }
   .widget-embed-page .tendency-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
@@ -7470,7 +7492,7 @@ body > #root > footer nav .footer-action:hover {
 .embed-modal>.modal-intro { grid-area:intro; margin:.1rem 0 .25rem; }
 .embed-modal>.embed-options { grid-area:options; align-self:end; }
 .embed-modal>.embed-preview-toolbar { grid-area:toolbar; align-self:end; margin:0; }
-.embed-modal>.static-embed-preview { grid-area:preview; height:min(43dvh,370px)!important; min-height:220px; }
+.embed-modal>.static-embed-preview { grid-area:preview; height:min(43dvh,var(--embed-rendered-height,370px))!important; min-height:0; align-self:start; }
 .embed-modal>.code-label { grid-area:code; min-width:0; margin:0; }
 .embed-modal>.embed-actions { grid-area:actions; align-self:start; grid-template-columns:repeat(2,minmax(0,1fr)); }
 .embed-modal>.embed-copy-error { grid-area:privacy; }
@@ -7576,7 +7598,7 @@ body > #root > footer nav .footer-action:hover {
     overflow-y:auto;
   }
   .embed-modal>.modal-intro,.embed-modal>.code-label,.embed-modal>.embed-privacy { display:none; }
-  .embed-modal>.static-embed-preview { width:100%; height:calc(100% - 12px)!important; min-height:0; align-self:start; }
+  .embed-modal>.static-embed-preview { width:100%; height:min(100%,var(--embed-rendered-height))!important; min-height:0; align-self:start; }
   .embed-options { min-width:0; grid-template-columns:1fr; }
   .embed-options .segmented { width:100%; min-width:0; }
   .embed-options .segmented button { min-width:0; padding-inline:5px; overflow-wrap:anywhere; }
@@ -8084,7 +8106,7 @@ body > #root > footer nav .footer-action:hover {
   .embed-modal:not(.png-options-modal)>.embed-privacy { display:none; }
   .embed-modal:not(.png-options-modal)>.static-embed-preview {
     width:100%;
-    height:100%!important;
+    height:min(100%,var(--embed-rendered-height))!important;
     min-height:0;
   }
   .embed-modal:not(.png-options-modal)>.code-label { min-height:0; }
@@ -8667,6 +8689,52 @@ dialog.graph-info-card a { overflow-wrap:anywhere; }
 .watchlist-v3 .watch-card-approval:has(.has-split-dates) { grid-row:span 2; }
 .watchlist-v3.is-editing .watch-card-approval { grid-row:span 2; padding-top:3.65rem; padding-bottom:4rem; }
 .watch-approval-age { display:block; margin-top:.25rem; color:var(--muted); font-size:.72rem; line-height:1.3; }
+
+/* Tiles have a minimum size, not a fixed text budget. Text enlargement, long
+   translations and edit controls must grow the row instead of clipping data. */
+.watchlist-v3 .watchlist-grid { grid-auto-rows:minmax(11rem,auto); }
+.watchlist-v3 { container-type:inline-size; }
+.watchlist-v3.is-editing .watchlist-grid { grid-auto-rows:minmax(15rem,auto); }
+.watchlist-v3 .watch-card { min-width:0; min-height:min-content; }
+.watchlist-v3 .watch-card > :not(svg,.watch-mini-map,.watch-map-loading) { flex-shrink:0; }
+.watchlist-v3 .watch-card-top { gap:.5rem; flex-wrap:wrap; }
+.watchlist-v3 .watch-card-parties h3 { white-space:normal; overflow-wrap:anywhere; }
+.watchlist-v3 .watch-majority-status { max-width:100%; width:fit-content; overflow-wrap:anywhere; }
+.watchlist-v3 .watch-snapshot-title { gap:.4rem; flex-wrap:wrap; }
+.watchlist-v3 .watch-snapshot-list { grid-template-columns:repeat(auto-fit,minmax(min(100%,9.5rem),1fr)); }
+.watchlist-v3 .watch-snapshot-list b { white-space:normal; overflow-wrap:anywhere; }
+.watchlist-v3 .watch-snapshot-list strong,.watchlist-v3 .watch-snapshot-list em { white-space:nowrap; }
+.watch-card-approval { container-type:inline-size; }
+.watch-card-approval .watch-approval-summary { table-layout:auto; }
+.watch-approval-summary :is(th,td):first-child { width:auto; }
+.watch-approval-summary thead th { overflow-wrap:anywhere; }
+@container (max-width:20rem) {
+  .watch-approval-summary thead { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); }
+  .watch-approval-summary,.watch-approval-summary tbody { display:block; }
+  .watch-approval-summary tbody tr { display:grid; grid-template-columns:minmax(0,1fr); gap:.15rem; padding-block:.35rem; }
+  .watch-approval-summary tbody th { text-align:left; padding-bottom:.2rem; }
+  .watch-approval-summary tbody td { display:flex; align-items:baseline; gap:.5rem; justify-content:space-between; white-space:normal; }
+  .watch-approval-summary tbody td > span { white-space:nowrap; }
+  .watch-approval-summary tbody td::before { content:attr(data-label); color:var(--muted); font-size:.68rem; font-weight:500; text-align:left; overflow-wrap:anywhere; }
+}
+@media (max-width:700px) {
+  :root[data-text="large"] .watchlist-v3 .watch-card { grid-column:1 / -1; grid-row:span 1; }
+  :root[data-text="large"] .watchlist-v3 .watch-card-top span:first-child { max-width:none; white-space:normal; }
+  :root[data-text="large"] .watchlist-v3 .watch-card-large .watch-sparkline { flex:none; height:7rem; }
+}
+@media (min-width:701px) and (max-width:1100px) {
+  :root[data-text="large"] .watchlist-v3 .watchlist-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+}
+/* Container queries respond to browser text enlargement too, not only our
+   own Large-text setting. Explicit spans reset before a second column could
+   be created implicitly by a wide tile. */
+@container (max-width:44rem) {
+  .watchlist-v3 .watchlist-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+}
+@container (max-width:20rem) {
+  .watchlist-v3 .watchlist-grid { grid-template-columns:minmax(0,1fr); }
+  .watchlist-v3 .watch-card,.watchlist-v3.is-editing .watch-card { grid-column:1 / -1; grid-row:span 1; }
+}
 
 /* Reserve an actual toolbar row; the title, institute, save star and majority
    badge belong below the fixed Info / publishing corners, not behind them. */

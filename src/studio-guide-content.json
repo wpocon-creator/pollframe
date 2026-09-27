@@ -1,0 +1,112 @@
+{
+  "duration": 146.53333333333333,
+  "fps": 60,
+  "recordedAt": "2026-09-26",
+  "audioLanguage": "en",
+  "scenes": [
+    {
+      "id": "opening",
+      "title": "Eine Grafik für den Artikel",
+      "en": "A graphic for an article",
+      "es": "Una gráfica para un artículo",
+      "start": 0,
+      "duration": 9.866666666666667,
+      "transcript": {
+        "en": "I want a clean graphic of the latest German poll for an article. A warmer background, a clear headline, and a style I can use again. Let's make it.",
+        "de": "Ich möchte die neueste deutsche Umfrage für einen Artikel gestalten: mit wärmerem Hintergrund, einer klaren Überschrift und einem wiederverwendbaren Stil. Los geht's.",
+        "es": "Quiero una gráfica de la última encuesta alemana para un artículo: un fondo más cálido, un titular claro y un estilo reutilizable. Vamos a crearla."
+      }
+    },
+    {
+      "id": "find",
+      "title": "Die Vorlage finden",
+      "en": "Find the starting point",
+      "es": "Encuentra la plantilla",
+      "start": 9.866666666666667,
+      "duration": 8.566666666666666,
+      "transcript": {
+        "en": "I'll search for latest polls. These previews already show the data. This first layout is a good starting point.",
+        "de": "Ich suche nach aktuellen Umfragen. Die Vorschauen zeigen bereits die Daten. Die erste Vorlage passt gut.",
+        "es": "Busco las últimas encuestas. Las vistas previas ya muestran los datos. La primera plantilla es un buen punto de partida."
+      }
+    },
+    {
+      "id": "edit",
+      "title": "Die Grafik gestalten",
+      "en": "Make the graphic yours",
+      "es": "Personaliza la gráfica",
+      "start": 18.433333333333334,
+      "duration": 44.55,
+      "transcript": {
+        "en": "Now, Edit. I'll start with the headline. Germany, the latest poll. Short enough to read at a glance. There we go. Under Text and type, I'll switch to Subtitle and add a little context. This is voting intention, not an election result. I only want to change the headline here, so I'll switch back to Title. Then Change typeface. I'll search for Georgia. There, that feels more like an editorial graphic. Back to the title. A little bigger. Not too much. Yes, that reads better. In Colours and background, I'll use a warm off-white. The party colours stay as they are.",
+        "de": "Jetzt auf Bearbeiten. Ich beginne mit der Überschrift. Deutschland: die neueste Umfrage. Kurz genug, um sie auf einen Blick zu erfassen. So passt es. Unter Text und Schrift wähle ich Untertitel und ergänze den Kontext. Es geht um die Wahlabsicht, nicht um ein Wahlergebnis. Ich möchte hier nur die Überschrift ändern und wähle deshalb wieder Titel. Dann Schriftart ändern. Ich suche nach Georgia. So wirkt die Grafik etwas redaktioneller. Zurück zur Überschrift. Etwas größer, aber nicht zu viel. Ja, so lässt sie sich besser lesen. Unter Farben und Hintergrund nehme ich ein warmes Weiß. Die Parteifarben bleiben unverändert.",
+        "es": "Ahora, Editar. Empiezo por el titular. Alemania: la última encuesta. Breve y fácil de leer de un vistazo. Así está bien. En Texto y tipografía selecciono Subtítulo para añadir contexto. Es intención de voto, no un resultado electoral. Solo quiero cambiar el titular, así que vuelvo a Título. Después, Cambiar tipografía. Busco Georgia. Así la gráfica tiene un aire más editorial. Vuelvo al titular. Un poco más grande, sin exagerar. Sí, ahora se lee mejor. En Colores y fondo elijo un blanco cálido. Los colores de los partidos no cambian."
+      }
+    },
+    {
+      "id": "save",
+      "title": "Design und Stil speichern",
+      "en": "Save the design and style",
+      "es": "Guarda el diseño y el estilo",
+      "start": 62.98333333333333,
+      "duration": 28.883333333333333,
+      "transcript": {
+        "en": "That's the look. A design saves this particular graphic. A style saves the visual choices, so I can reuse them with different data. I'll call this Germany, Editorial, and save the design. Then I'll save its style as well. Next takes me through the type, colours, and other visual settings. I'll keep the choices I've already made. And here's the name: Editorial, Paper. Save style.",
+        "de": "Die Gestaltung steht. Ein Design speichert diese konkrete Grafik. Ein Stil speichert die Gestaltung, damit ich sie mit anderen Daten wiederverwenden kann. Ich nenne das Design Deutschland, Redaktion, und speichere es. Anschließend speichere ich auch den Stil. Weiter führt mich durch Schrift, Farben und die anderen Einstellungen. Ich behalte meine bisherigen Entscheidungen bei. Der Name: Redaktion, Papier. Dann Stil speichern.",
+        "es": "Ya tengo el aspecto que buscaba. Un diseño guarda esta gráfica concreta. Un estilo guarda las decisiones visuales para reutilizarlas con otros datos. Lo llamo Alemania, Editorial, y guardo el diseño. Después guardo también su estilo. Siguiente me lleva por la tipografía, los colores y las demás opciones visuales. Mantengo mis elecciones. El nombre: Editorial, Papel. Y guardo el estilo."
+      }
+    },
+    {
+      "id": "reuse",
+      "title": "Den Stil wiederverwenden",
+      "en": "Reuse the style",
+      "es": "Reutiliza el estilo",
+      "start": 91.86666666666666,
+      "duration": 18.633333333333333,
+      "transcript": {
+        "en": "Back to the preview, then All designs. I'll try Newsroom this time. Now Apply a style. I'll choose Editorial, Paper, the one I just saved. Same typeface, same background. A different layout, without doing all that again.",
+        "de": "Zurück zur Vorschau, dann zu Alle Designs. Diesmal probiere ich Nachrichtenlage. Jetzt Stil anwenden. Ich wähle Redaktion, Papier, den gerade gespeicherten Stil. Dieselbe Schrift und derselbe Hintergrund in einer anderen Vorlage, ohne alles neu einzustellen.",
+        "es": "Vuelvo a la vista previa y después a Todos los diseños. Esta vez pruebo Noticias. Ahora, Aplicar un estilo. Elijo Editorial, Papel, el que acabo de guardar. La misma tipografía y el mismo fondo, en otra plantilla, sin repetir todo el trabajo."
+      }
+    },
+    {
+      "id": "verify",
+      "title": "Die Quelle prüfen",
+      "en": "Check the source",
+      "es": "Comprueba la fuente",
+      "start": 110.5,
+      "duration": 9.483333333333333,
+      "transcript": {
+        "en": "Before I use it, a quick check in Info. Who carried out the poll, when was it published, and what does it measure? That's the context I need for my article.",
+        "de": "Vor der Veröffentlichung schaue ich kurz in die Info: Wer hat die Umfrage durchgeführt, wann wurde sie veröffentlicht und was misst sie? Diesen Kontext brauche ich für den Artikel.",
+        "es": "Antes de usarla, compruebo la información: quién hizo la encuesta, cuándo se publicó y qué mide. Es el contexto que necesito para mi artículo."
+      }
+    },
+    {
+      "id": "publish",
+      "title": "PNG und Einbettung",
+      "en": "PNG and embed",
+      "es": "PNG e inserción",
+      "start": 119.98333333333333,
+      "duration": 19.96666666666667,
+      "transcript": {
+        "en": "For this article, I want a fixed image. An embed is the other option for a website. Check its update behaviour before you publish. Download PNG opens the final preview. I'll check the layout here, then download the image. Done. And if I need it on a website instead, Embed opens the code and its preview.",
+        "de": "Für diesen Artikel möchte ich ein festes Bild. Für eine Website kann ich stattdessen eine Einbettung nutzen. Vorher sollte ich prüfen, wie sie aktualisiert wird. PNG herunterladen öffnet die letzte Vorschau. Ich prüfe die Darstellung und lade das Bild herunter. Fertig. Und wenn ich die Grafik stattdessen auf einer Website brauche, öffnet Einbetten den Code und die Vorschau.",
+        "es": "Para este artículo quiero una imagen fija. La otra opción para una web es una inserción. Conviene comprobar cómo se actualiza antes de publicarla. Descargar PNG abre la vista previa final. Compruebo la composición y descargo la imagen. Listo. Si la necesito en una web, Insertar abre el código y su vista previa."
+      }
+    },
+    {
+      "id": "closing",
+      "title": "Bereit für den nächsten Artikel",
+      "en": "Ready for the next article",
+      "es": "Lista para el próximo artículo",
+      "start": 139.95,
+      "duration": 6.583333333333333,
+      "transcript": {
+        "en": "There's my graphic, with the source still attached. And next time, I can start with my saved style.",
+        "de": "Da ist meine Grafik, weiterhin mit Quellenangabe. Beim nächsten Mal kann ich direkt meinen gespeicherten Stil verwenden.",
+        "es": "Aquí está mi gráfica, con la fuente incluida. La próxima vez puedo empezar con mi estilo guardado."
+      }
+    }
+  ]
+}

@@ -61,7 +61,7 @@ export function coalitionRestriction(parties) {
     names.some((name) => name === "AfD" || name === "Die Linke")
   )
     return "cdu";
-  return names.includes("AfD") && names.some(name => name !== "AfD" && name !== "BSW") ? "afd" : null;
+  return null;
 }
 export function electionMajorities(allParties, total) {
   const parties = allParties.filter((party) => party.seats > 0);

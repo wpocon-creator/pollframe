@@ -23,7 +23,7 @@ function iosBrowser() {
     || (window.navigator.platform === "MacIntel" && window.navigator.maxTouchPoints > 1);
 }
 
-export function usePwaLifecycle({ disabled = false, country = "de" } = {}) {
+export function usePwaLifecycle({ disabled = false } = {}) {
   const [installPrompt, setInstallPrompt] = useState(null);
   const [installed, setInstalled] = useState(() => standaloneDisplay());
   const [online, setOnline] = useState(() => window.navigator.onLine);
@@ -84,6 +84,17 @@ export function usePwaLifecycle({ disabled = false, country = "de" } = {}) {
 
   useEffect(() => {
     if (disabled || !import.meta.env.PROD || !("serviceWorker" in window.navigator)) return undefined;
+    // Studio previews are repeatedly rebuilt with new chunk hashes. An offline
+    // worker here can retain an incompatible shell and trigger update reloads.
+    if (["localhost", "127.0.0.1", "[::1]"].includes(location.hostname) && new URLSearchParams(location.search).get("view") === "studio") {
+      navigator.serviceWorker.getRegistrations().then(registrations => {
+        for (const registration of registrations) {
+          const script = registration.active?.scriptURL || registration.waiting?.scriptURL || registration.installing?.scriptURL;
+          if (script === `${location.origin}/sw.js`) registration.unregister();
+        }
+      }).catch(() => {});
+      return undefined;
+    }
     let disposed = false;
     let updateTimer;
 
@@ -113,11 +124,9 @@ export function usePwaLifecycle({ disabled = false, country = "de" } = {}) {
         registrationRef.current = registration;
         inspectRegistration(registration);
         registration.update().catch(() => {});
-        const activeWorker = registration.active ?? registration.waiting ?? registration.installing;
-        activeWorker?.postMessage({ type: "PREFETCH_COUNTRY", country });
-        window.navigator.serviceWorker.ready.then((readyRegistration) => {
-          readyRegistration.active?.postMessage({ type: "PREFETCH_COUNTRY", country });
-        }).catch(() => {});
+        // Normal website visits cache viewed data on demand. The installed app
+        // prepares its complete offline dataset in the separate effect below;
+        // do not also download all state files twice during page startup.
         updateTimer = window.setInterval(() => registration.update().catch(() => {}), UPDATE_CHECK_INTERVAL);
       })
       .catch((error) => console.error("Pollframe app registration failed", error));
@@ -156,7 +165,7 @@ export function usePwaLifecycle({ disabled = false, country = "de" } = {}) {
       window.navigator.serviceWorker.removeEventListener("controllerchange", handleControllerChange);
       document.removeEventListener("visibilitychange", checkWhenVisible);
     };
-  }, [disabled, country]);
+  }, [disabled]);
 
   useEffect(() => {
     if (disabled || !installed || !import.meta.env.PROD || !("serviceWorker" in window.navigator)) return undefined;

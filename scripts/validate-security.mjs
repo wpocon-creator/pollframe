@@ -102,8 +102,9 @@ requireCondition(
 requireCondition(source.includes('const EMBED_PATH = "/embed.html"'), "dedicated embed entry is not enforced");
 requireCondition(/const BUG_REPORT_DASHBOARD_PATH = "\/pf-ops\/[a-f0-9]{32}\/reports"/.test(source), "internal bug-report dashboard lacks a non-obvious path");
 requireCondition(!source.includes('query.get("page") === "bug-reports"'), "internal bug-report dashboard is still exposed through the predictable page query");
-requireCondition(source.includes('sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"'), "generated embeds are not sandboxed");
-requireCondition(source.includes('referrerpolicy="no-referrer"'), "generated embeds do not suppress referrers");
+const embedMarkupSource = await read('src/embed-markup.js');
+requireCondition(embedMarkupSource.includes('sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"'), "generated embeds are not sandboxed");
+requireCondition(embedMarkupSource.includes('referrerpolicy="no-referrer"'), "generated embeds do not suppress referrers");
 requireCondition(!/sandbox="[^"]*allow-(?:forms|top-navigation|downloads)[^"]*"/.test(frontendSource), "generated embed sandbox grants an unnecessary high-risk capability");
 
 const requiredCspDirectives = [
@@ -223,7 +224,8 @@ requireCondition(
 requireCondition(
   mainHtml.includes("<!-- pollframe-web-analytics -->")
     && workerSource.includes("env.WEB_ANALYTICS_TOKEN")
-    && workerSource.includes("https://static.cloudflareinsights.com/beacon.min.js"),
+    && workerSource.includes("/analytics-beacon.js")
+    && workerSource.includes("data-pollframe-beacon"),
   "domain-specific Cloudflare Web Analytics configuration is missing",
 );
 requireCondition(embedHtml.includes('name="robots" content="noindex, nofollow, noarchive"'), "embed HTML lacks noindex");

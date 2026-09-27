@@ -198,6 +198,17 @@ for (const [index, poll] of (spain.polls ?? []).entries()) {
 if (spainSummary.congress?.latestDate !== spain.polls.at(-1)?.date || spainSummary.congress?.firstDate !== spain.polls[0]?.date) addError("Spain summary date range differs");
 if (spainSummary.congress?.lastElection?.date !== "2023-07-23" || !isRecord(spainSummary.congress?.lastElection?.results) || spainSummary.congress.lastElection.results["401"] !== spain.metadata?.electionResults?.["2023-07-23"]?.["401"]) addError("Spain comparison baseline is missing or inconsistent");
 if (!Array.isArray(spainSummary.issues?.items) || spainSummary.issues.items.length < 3 || !/^https:\/\/www\.cis\.es\//.test(spainSummary.issues?.sourceUrl ?? "")) addError("Spain CIS issue snapshot is incomplete");
+const issues = spainSummary.issues;
+if (!Array.isArray(issues?.fieldwork) || issues.fieldwork.length !== 2 || issues.fieldwork.some(date => !realIsoDate(date)) || issues.fieldwork[0] > issues.fieldwork[1]) addError('CIS fieldwork is invalid');
+for (const kind of ['personal', 'country']) {
+  const values = issues?.economy?.[kind];
+  const shares = ['veryGood','good','regular','bad','veryBad','dontKnow','noAnswer'].map(key => values?.[key]);
+  if (shares.some(value => !Number.isFinite(value) || value < 0 || value > 100) || Math.abs(shares.reduce((a,b) => a+b,0) - 100) > .6) addError(`CIS ${kind} economy is incomplete or inconsistent`);
+}
+for (const kind of ['items','personal']) {
+  const rows = issues?.[kind];
+  if (!Array.isArray(rows) || rows.length < 5 || rows.some(row => !row.id || !Number.isFinite(row.value) || row.value < 0 || row.value > 100) || new Set(rows.map(row => row.id)).size !== rows.length) addError(`CIS ${kind} ranking is invalid`);
+}
 if (spainMap.type !== "FeatureCollection" || !Array.isArray(spainMap.features) || spainMap.features.length < 19) addError("Spain autonomous-community map is incomplete");
 const approval = await readJson("public/data/approval.json");
 if (approval.countries?.de || approval.countries?.uk || containsWithheldSource(approval) || /forschungsgruppe|politbarometer/i.test(JSON.stringify(approval))) addError("approval data contains a series withheld pending permission");

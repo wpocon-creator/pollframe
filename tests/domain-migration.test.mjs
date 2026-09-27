@@ -71,7 +71,8 @@ test("analytics uses only the correct domain token, and waits for configuration 
   ]) {
     const response = await worker.fetch(new Request(url), { ...env, ...settings });
     const html = await response.text();
-    assert.equal(html.includes("beacon.min.js"), Boolean(expected));
+    assert.equal(html.includes("/analytics-beacon.js"), Boolean(expected));
+    assert.ok(response.headers.get("cache-control").includes("no-transform"));
     if (expected) assert.ok(html.includes(expected));
   }
   const embed = await readFile(new URL("../embed.html", import.meta.url), "utf8");

@@ -39,12 +39,8 @@ jobs:
       # A temporary failure or renamed file at one provider must not prevent the
       # other countries from being published. The health job still turns the
       # overall workflow red after publication so a partial failure is visible.
-      - name: Update official completed election marker
-        id: election
-        continue-on-error: true
-        timeout-minutes: 3
-        run: npm run data:update:election
-
+      # The Sachsen-Anhalt event has ended. Keep its archived result; the
+      # one-off election importer remains available for an explicit correction.
       - name: Update Germany
         id: germany
         continue-on-error: true
@@ -93,7 +89,6 @@ jobs:
       - name: Record every source outcome
         env:
           GERMANY_OUTCOME: ${{ steps.germany.outcome }}
-          ELECTION_OUTCOME: ${{ steps.election.outcome }}
           UK_OUTCOME: ${{ steps.uk.outcome }}
           SPAIN_OUTCOME: ${{ steps.spain.outcome }}
           SPAIN_ISSUES_OUTCOME: ${{ steps.spain_issues.outcome }}

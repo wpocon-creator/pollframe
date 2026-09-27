@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {parseCisIssues,cisStudyCandidates,cisStudyLinks,cisUrl,fetchCis} from '../scripts/lib/cis-issues.mjs';
 import {freshnessRecord,collectDataFreshness} from '../scripts/lib/data-freshness.mjs';
-import {includesInstitute, DEFAULT_FEDERAL_INSTITUTES} from '../scripts/lib/institute-coverage.mjs';
+import {includesInstitute} from '../scripts/lib/institute-coverage.mjs';
 import {regionalElectionLink,validateRegionalRefresh} from '../scripts/lib/regional-source-health.mjs';
 
 // Official CIS study 3571, extracted excerpts; reusable with attribution under
@@ -52,9 +52,9 @@ test('fresh fetch timestamps cannot disguise stale observations',()=>{
   assert.equal(freshnessRecord('a','2026-09-13',{now}).status,'future');
   assert.equal(freshnessRecord('a','2020-01-01',{now,archive:true}).status,'archive');
 });
-test('extra institutes are selectable without changing federal defaults; Ipsos stays excluded',()=>{
-  for(const id of ['4','16','22']){assert.equal(includesInstitute('state',id),true);assert.equal(includesInstitute('federal',id),true);assert.equal(DEFAULT_FEDERAL_INSTITUTES.includes(id),false);}
-  assert.equal(includesInstitute('state','17'),false);
+test('additional published DAWUM institutes are selectable; Ipsos stays excluded',()=>{
+  for(const id of ['4','16','22']){assert.equal(includesInstitute('state',id),true);assert.equal(includesInstitute('federal',id),true);}
+  for(const type of ['state','federal'])assert.equal(includesInstitute(type,'17'),false);
 });
 test('regional follow-up links must be the same election family on Wikipedia',()=>{
   const page='2026_Andalusian_regional_election';

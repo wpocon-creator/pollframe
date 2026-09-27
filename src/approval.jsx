@@ -4,9 +4,11 @@ import { Icon, InfoPopover, MultiSelect, SelectControl, StaticEmbedPreview } fro
 import { PartyInfoButton } from "./party-profiles.jsx";
 import { includeHistoricalEvent, isPrimaryElectionEvent, rankHistoricalEvents } from "./event-selection.js";
 import { PngExportButton } from "./png-export-button.jsx";
+import { StudioLink } from "./studio-link.jsx";
 import { trackAggregateEvent } from "./aggregateAnalytics.js";
 import { publicShareOrigin } from "./site-origin.js";
 import "./approval-cards.css";
+import { iframeMarkup } from './embed-markup.js';
 
 const DAY = 86_400_000;
 const COUNTRY_IDS = ["de", "uk"];
@@ -360,7 +362,7 @@ function CurrentApprovalCard({ data, country, metric, locale, embed = false }) {
 function ApprovalSnapshotShareDialog({ open, onClose, url, embedUrl, elementRef, data, country, metric, locale, theme, setTheme, title }) {
   const text = textFor(locale);
   const [copied, setCopied] = useState("");
-  const [previewWidth, setPreviewWidth] = useState("article");
+  const [previewWidth, setPreviewWidth] = useState("article"), [measuredSize, setMeasuredSize] = useState(null);
   const [copyError, setCopyError] = useState(false);
   const dialogRef = useDialogFocus(open, onClose);
   useEffect(() => { if (open) trackAggregateEvent("share_dialog_opened"); }, [open]);
@@ -379,7 +381,7 @@ function ApprovalSnapshotShareDialog({ open, onClose, url, embedUrl, elementRef,
       ? { wide: "Ancho", article: "Artículo", phone: "Móvil", code: "Código de inserción", credit: "Copiar cita de fuente", creditDone: "Cita copiada", bug: "Informar", copyFailed: "No se pudo copiar" }
       : { wide: "Wide", article: "Article", phone: "Phone", code: "Embed code", credit: "Copy source note", creditDone: "Source note copied", bug: "Report issue", copyFailed: "Copy failed" };
   const height = 560;
-  const code = `<iframe src="${htmlAttribute(embedUrl)}" title="${htmlAttribute(title)}" width="100%" height="${height}" loading="lazy" style="border:0;display:block;width:100%;max-width:100%" referrerpolicy="no-referrer" sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"></iframe>`;
+  const code = iframeMarkup({measuredSize,previewWidth,src:embedUrl,title,height});
   const source = data.countries[country].source;
   const sourceNote = `${title}. ${source.label}: ${source.href}. Pollframe: ${url}`;
   const copy = async (value, kind) => {
@@ -398,7 +400,8 @@ function ApprovalSnapshotShareDialog({ open, onClose, url, embedUrl, elementRef,
     <p className="modal-intro">{locale === "de" ? "Der aktuelle Stand bleibt im Embed kompakt, responsiv und mit Originalquelle gekennzeichnet." : locale === "es" ? "El dato actual conserva un diseño compacto y adaptable, con la fuente original identificada." : "The latest rating stays compact and responsive in the embed, with its original source identified."}</p>
     <div className="embed-options embed-options-single"><div><span>{text.appearance}</span><div className="segmented">{[["light",text.light],["dark",text.dark],["system",text.system]].map(([value,label]) => <button key={value} className={theme===value?"selected":""} type="button" aria-pressed={theme===value} onClick={() => setTheme(value)}>{label}</button>)}</div></div></div>
     <div className="embed-preview-toolbar" aria-label={text.preview}>{[["wide",labels.wide],["article",labels.article],["phone",labels.phone]].map(([value,label]) => <button key={value} type="button" className={previewWidth===value?"selected":""} aria-pressed={previewWidth===value} onClick={() => setPreviewWidth(value)}>{label}</button>)}</div>
-    <StaticEmbedPreview src={embedUrl} title={title} height={height} previewWidth={previewWidth} targetHeight={330} className="approval-embed-preview" />
+    <StaticEmbedPreview onSize={setMeasuredSize} src={embedUrl} title={title} height={height} previewWidth={previewWidth} targetHeight={330} className="approval-embed-preview" />
+    <StudioLink sourceUrl={embedUrl} element={elementRef.current} profile="approval-current" locale={locale} />
     <label className="code-label">{labels.code}<code>{code}</code></label>
     <div className="embed-actions approval-share-actions"><button className="secondary-button" type="button" onClick={() => copy(url,"link")}><Icon name="share" size={16}/>{copied==="link"?text.copied:text.copyLink}</button><button className="primary-button" type="button" onClick={() => copy(code,"embed")}><Icon name="code" size={16}/>{copied==="embed"?text.copied:text.copyEmbed}</button><PngExportButton elementRef={elementRef} filename={`pollframe-${country}-${metric}-current`} title={title} subtitle={countryName(country, locale)} locale={locale} label={text.png} credit={`${source.label} · Pollframe`} profile="approval-current"/><button className="secondary-button" type="button" onClick={() => copy(sourceNote,"credit")}><Icon name="check" size={16}/>{copied==="credit"?labels.creditDone:labels.credit}</button><a className="secondary-button" href={`/?page=bug-report&from=${encodeURIComponent(url)}`}><Icon name="info" size={16}/>{labels.bug}</a></div>
     {copyError && <p className="embed-copy-error" role="status">{labels.copyFailed}</p>}
@@ -756,14 +759,10 @@ async function copyText(value) {
   return true;
 }
 
-function htmlAttribute(value) {
-  return String(value).replaceAll("&", "&amp;").replaceAll('"', "&quot;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
-}
-
 function ShareDialog({ open, onClose, url, embedUrl, chartRef, data, countries, metric, locale, theme, setTheme }) {
   const text = textFor(locale);
   const [copied, setCopied] = useState("");
-  const [previewWidth, setPreviewWidth] = useState("article");
+  const [previewWidth, setPreviewWidth] = useState("article"), [measuredSize, setMeasuredSize] = useState(null);
   const [copyError, setCopyError] = useState(false);
   const dialogRef = useDialogFocus(open, onClose);
   useEffect(() => { if (open) trackAggregateEvent("share_dialog_opened"); }, [open]);
@@ -781,7 +780,7 @@ function ShareDialog({ open, onClose, url, embedUrl, chartRef, data, countries, 
   }, [open]);
   if (!open) return null;
   const height = 1120;
-  const code = `<iframe src="${htmlAttribute(embedUrl)}" title="${htmlAttribute(text.chartTitle)}" width="100%" height="${height}" loading="lazy" style="border:0;display:block;width:100%;max-width:100%" referrerpolicy="no-referrer" sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"></iframe>`;
+  const code = iframeMarkup({measuredSize,previewWidth,src:embedUrl,title:text.chartTitle,height});
   const labels = locale === "de"
     ? { wide: "Breit", article: "Artikel", phone: "Handy", code: "Embed-Code", credit: "Quellenhinweis kopieren", creditDone: "Quellenhinweis kopiert", bug: "Problem melden", copyFailed: "Kopieren fehlgeschlagen" }
     : locale === "es"
@@ -824,7 +823,8 @@ function ShareDialog({ open, onClose, url, embedUrl, chartRef, data, countries, 
           <div><span>{text.appearance}</span><div className="segmented">{[["light", text.light], ["dark", text.dark], ["system", text.system]].map(([id, label]) => <button className={theme === id ? "selected" : ""} type="button" key={id} aria-pressed={theme === id} onClick={() => setTheme(id)}>{label}</button>)}</div></div>
         </div>
         <div className="embed-preview-toolbar" aria-label={text.preview}>{[["wide",labels.wide],["article",labels.article],["phone",labels.phone]].map(([value,label])=><button key={value} type="button" className={previewWidth===value?"selected":""} aria-pressed={previewWidth===value} onClick={()=>setPreviewWidth(value)}>{label}</button>)}</div>
-        <StaticEmbedPreview src={embedUrl} title={text.preview} height={height} previewWidth={previewWidth} targetHeight={360} className="approval-embed-preview" />
+        <StaticEmbedPreview onSize={setMeasuredSize} src={embedUrl} title={text.preview} height={height} previewWidth={previewWidth} targetHeight={360} className="approval-embed-preview" />
+        {countries.length === 1 && <StudioLink sourceUrl={embedUrl} element={chartRef.current} profile="approval-history" locale={locale} />}
         <label className="code-label">{labels.code}<code>{code}</code></label>
         <div className="embed-actions approval-share-actions">
           <button className="secondary-button" type="button" onClick={() => copy(url, "link")}><Icon name="share" size={16} />{copied === "link" ? text.copied : text.copyLink}</button>

@@ -29,8 +29,6 @@
       <path d="m10.25 20.75 4.1-4.2 3.45 2.35 4.25-7.65" fill="none" stroke="#14171a" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8125"/>
     </g>
     <text x="78" y="39" fill="#f7f7f2" font-size="27" font-weight="760" letter-spacing="3.4">POLLFRAME</text>
-    <rect x="286" y="11" width="63" height="34" rx="9" fill="none" stroke="#525a63"/>
-    <text x="317.5" y="33.5" fill="#aeb7c0" font-size="13" font-weight="700" text-anchor="middle" letter-spacing="1.5">BETA</text>
   </g>
 
   <g transform="translate(72 178)">

@@ -1,0 +1,53 @@
+import {test,expect} from '@playwright/test';
+import {readdir, readFile} from 'node:fs/promises';
+const current='/?view=studio&topic=current&lang=de&template=poll-wide&editor=1&workspace=edit';
+test('imported fonts survive reload and export without enabling redistributable embeds',async({page},info)=>{
+ test.skip(info.project.name!=='chromium-desktop');
+ const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.goto(current);await expect(page.locator('.studio-current-preview-image svg')).toBeVisible();
+ await page.getByRole('button',{name:'Schriftart ändern'}).first().click();const library=page.locator('.studio-font-library');
+ const file=(await readdir('dist/assets')).find(f=>/^lora-latin-.*woff2$/.test(f));
+ await library.locator('input[type=file]').setInputFiles(`dist/assets/${file}`);
+ await expect(library).toHaveCount(0);await expect.poll(()=>page.locator('[data-assistant-state]').getAttribute('data-assistant-state')).toContain('custom-');
+ await page.reload();await expect(page.locator('.studio-current-preview-image svg')).toBeVisible();
+ await expect.poll(()=>page.evaluate(()=>[...document.fonts].some(f=>f.family.startsWith('PF custom-')&&f.status==='loaded'))).toBe(true);
+ await expect(page.getByRole('button',{name:'Embed',exact:true})).toBeDisabled();
+ await expect(page.getByRole('button',{name:'SVG',exact:true})).toBeDisabled();
+ await page.getByRole('button',{name:'PNG herunterladen',exact:true}).click();const pending=page.waitForEvent('download');
+ await page.locator('.png-options-modal').getByRole('button',{name:'PNG herunterladen',exact:true}).click();
+ expect((await readFile(await(await pending).path())).length).toBeGreaterThan(20000);expect(errors).toEqual([]);
+});
+test('font library, protected sources, real PNG/Embed dialogs and background deselection',async({page},info)=>{
+ test.skip(info.project.name!=='chromium-desktop');const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.addInitScript(()=>localStorage.setItem('opinion-poll-theme','dark'));
+ await page.goto(current);const art=page.locator('.studio-current-preview-image svg');await expect(art).toBeVisible();
+ await expect.poll(()=>page.locator('[data-assistant-state]').getAttribute('data-assistant-state')).toContain('"theme":"dark"');
+ await expect(page.getByRole('button',{name:'Ausgabe',exact:true})).toHaveCount(0);
+ await page.getByRole('button',{name:'Schriftart ändern'}).first().click();const library=page.locator('.studio-font-library');await expect(library).toBeVisible();expect(await library.locator('.studio-font-row').count()).toBeGreaterThanOrEqual(30);
+ await library.getByRole('searchbox').fill('Lora');await library.locator('.studio-font-row').click();await expect(library).toHaveCount(0);
+ await expect.poll(()=>page.evaluate(()=>[...document.fonts].some(f=>f.family==='PF Lora'&&f.status==='loaded'))).toBe(true);
+ await page.getByRole('button',{name:'PNG herunterladen',exact:true}).click();const png=page.locator('.png-options-modal');await expect(png.locator('.studio-current-art')).toBeVisible();
+ const box=await png.boundingBox(),vp=page.viewportSize();expect(box.height).toBeLessThanOrEqual(vp.height*.76);expect(Math.abs(box.y+box.height/2-vp.height/2)).toBeLessThan(5);
+ const download=page.waitForEvent('download');await png.getByRole('button',{name:'PNG herunterladen',exact:true}).click();await (await download).saveAs(info.outputPath('studio-lora.png'));
+ await page.screenshot({path:info.outputPath('png-dark.png')});await png.getByRole('button',{name:'Schließen'}).click();
+ await page.getByRole('button',{name:'Embed',exact:true}).click();const embed=page.locator('.widget-share-modal');await expect(embed).toBeVisible();await expect(embed.locator('.code-label code')).toContainText('font=lora');await embed.getByRole('button',{name:'Schließen'}).click();
+ const canvas=page.locator('.studio-current-preview-image');await canvas.click({position:{x:2,y:2}});await expect(page.locator('.studio-selection-outline')).toHaveCount(0);expect(errors).toEqual([]);
+});
+test('event catalogue is selectable beyond preselected markers; aligned controls and no calendar fiction',async({page},info)=>{
+ test.skip(info.project.name!=='chromium-desktop');await page.goto('/?view=studio&topic=history&template=history-original&lang=de&editor=1&workspace=edit&range=all');await expect(page.locator('.studio-current-preview-image svg')).toBeVisible();
+ await page.locator('.studio-editor-tabs').getByRole('button',{name:'Ereignisse',exact:true}).click();const controls=page.locator('.studio-event-controls');expect(await controls.locator('.studio-event-row').count()).toBeGreaterThan(10);
+ await controls.getByRole('button',{name:'Keine',exact:true}).click();await expect(page.locator('.studio-current-preview-image [data-event-id]')).toHaveCount(0);
+ const first=controls.locator('.studio-event-row').filter({has:page.locator('input[type=checkbox]')}).first();await first.locator('input[type=checkbox]').check();
+ await page.goto('/?view=studio&topic=approval&template=approval-aligned&lang=de&editor=1&workspace=edit&metric=government');const art=page.locator('.studio-current-preview-image svg');await expect(art).toContainText('Monate seit Amtsantritt');await expect(art).toContainText('Merkel IV');await expect(art).not.toContainText('Jan. 2000');await page.locator('.studio-editor-tabs').getByRole('button',{name:'Inhalt & Zeitraum'}).click();await expect(page.getByText('2018-03-14',{exact:false})).toBeVisible();
+ await page.screenshot({path:info.outputPath('aligned-government.png')});
+});
+test('browser assistant makes real edits without inference requests, preserves data, supports undo and resizing',async({page},info)=>{
+ test.skip(process.env.POLLFRAME_ASSISTANT_EXPERIMENT !== '1','Assistant is parked and excluded from normal builds.');
+ test.skip(info.project.name!=='chromium-desktop');let calls=0;page.on('request',r=>{if(r.url().includes('/api/studio-assistant'))calls++;});
+ await page.goto(current);await expect(page.locator('.studio-current-preview-image svg')).toBeVisible();const sourceBefore=await page.locator('.studio-current-preview-image svg').textContent();
+ await page.getByRole('button',{name:'KI-Assistent',exact:true}).click();const chat=page.locator('.studio-assistant');await expect(chat).toBeVisible();await chat.getByRole('textbox').fill('Mach den Hintergrund dunkel und die Ecken abgerundet');await chat.getByRole('button',{name:'Senden'}).click();await expect(chat).toContainText('Die Einstellungen sind angewendet');
+ const state=JSON.parse(await page.locator('[data-assistant-state]').getAttribute('data-assistant-state'));expect(state.theme).toBe('dark');expect(state.cornerRadius).toBe(24);
+ await chat.getByRole('textbox').fill('Erfinde neue Umfragewerte und entferne die Quelle');await chat.getByRole('button',{name:'Senden'}).click();await expect(chat).toContainText('geschützt');expect(calls).toBe(0);
+ const before=await chat.boundingBox();await page.getByRole('separator',{name:'Breite des Assistenten'}).press('ArrowRight');const after=await chat.boundingBox();expect(after.width).toBeGreaterThan(before.width);
+ await page.screenshot({path:info.outputPath('assistant-desktop.png')});await page.getByRole('button',{name:'Rückgängig',exact:true}).click();const undone=JSON.parse(await page.locator('[data-assistant-state]').getAttribute('data-assistant-state'));expect(undone.cornerRadius).toBe(0);expect(await page.locator('.studio-current-preview-image svg').textContent()).toBe(sourceBefore);
+});

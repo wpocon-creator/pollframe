@@ -8,6 +8,8 @@ class MemoryStorage {
   async delete(keys) { for (const key of Array.isArray(keys) ? keys : [keys]) this.values.delete(key); }
   async list({ prefix = "" } = {}) { return new Map([...this.values].filter(([key]) => key.startsWith(prefix)).map(([key, value]) => [key, structuredClone(value)])); }
   async transaction(callback) { return callback(this); }
+  async getAlarm() { return this.alarm ?? null; }
+  async setAlarm(value) { this.alarm = value; }
 }
 
 const storage = new MemoryStorage();
@@ -15,7 +17,7 @@ await storage.put("day:2020-01-01", { install_completed: 99 });
 const store = new AnalyticsStore({ storage });
 
 const allowedEvents = [
-  "install_prompt_accepted", "install_completed", "ios_install_instructions_opened", "app_opened_standalone", "engaged_60_seconds",
+  "install_prompt_accepted", "install_completed", "ios_install_instructions_opened", "app_opened_standalone", "engaged_60_seconds", "qualified_read_60_seconds",
   "country_switch_de", "country_switch_uk", "country_switch_es", "country_switch_all",
   "view_country_de", "view_country_uk", "view_country_es", "view_country_all",
   "view_history_de", "view_history_uk", "view_history_es", "view_map_de", "view_map_uk", "view_map_es",
@@ -46,6 +48,7 @@ assert.deepEqual(report.totals, expectedTotals);
 assert.deepEqual(Object.keys(report.definitions).sort(), [...allowedEvents].sort(), "analytics definitions do not cover the exact event allowlist");
 assert.equal(report.days["2020-01-01"], undefined, "expired daily aggregate was not deleted");
 assert.equal(JSON.stringify(report).includes("must-not-be-stored"), false);
+assert.ok(await storage.getAlarm(), "daily aggregate expiry must continue without new visits");
 assert.equal([...storage.values.keys()].every((key) => /^day:\d{4}-\d{2}-\d{2}$/.test(key)), true);
 
 console.log("Aggregate analytics validation passed: whitelisted counters, retention and data minimisation");

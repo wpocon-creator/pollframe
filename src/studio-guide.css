@@ -1,0 +1,203 @@
+.studio-announcement {
+  position: fixed;
+  top: calc(var(--studio-header-height, 72px) + 12px);
+  left: 50%;
+  transform: translateX(-50%);
+  /* Above the canvas, below the header's menus and native modal top layer. */
+  z-index: 25;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: min(960px, calc(100% - 32px));
+  margin: 0;
+  padding: 7px 10px 7px 54px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  box-shadow: 0 8px 28px #00000014;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 14px;
+  line-height: 1.5;
+  animation: studio-notice-arrive 0.55s both;
+}
+.studio-announcement-copy {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  text-align: center;
+}
+@keyframes studio-notice-arrive {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -38px);
+    animation-timing-function: cubic-bezier(.42, 0, .76, .55);
+  }
+  76% {
+    opacity: 1;
+    transform: translate(-50%, 2px);
+    animation-timing-function: ease-out;
+  }
+  100% {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .studio-announcement {
+    animation: none;
+  }
+}
+.studio-announcement-copy button {
+  border: 0;
+  border-radius: 0;
+  background: none;
+  color: var(--accent, #2854ce);
+  font: inherit;
+  font-weight: 650;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  padding: 5px 4px;
+  cursor: pointer;
+}
+.studio-announcement-close {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  font-size: 28px;
+  cursor: pointer;
+}
+.studio-announcement button:focus-visible {
+  outline: 2px solid var(--accent, #2854ce);
+  outline-offset: 2px;
+}
+.studio-guide-dialog.is-wide {
+  width: min(1120px, calc(100vw - 24px));
+  inset: 50dvh auto auto 50vw;
+  margin: 0;
+  transform: translate(-50%, -50%);
+}
+.studio-guide-video {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16/9;
+  background: #171b22;
+  object-fit: contain;
+  border-radius: 10px;
+}
+.studio-guide-screen {
+  position: relative;
+  /* Leave room for the dialog heading/padding in short landscape viewports,
+     so native fullscreen and timeline controls are never clipped at opening. */
+  width: min(100%, calc(52dvh * 16 / 9), calc((75dvh - 120px) * 16 / 9));
+  margin-inline: auto;
+}
+.studio-guide-transport {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  gap: 26px;
+  opacity: 0;
+  transition: opacity 0.18s;
+  pointer-events: none;
+}
+.studio-guide-screen:is(.has-transport, .is-paused) .studio-guide-transport,
+.studio-guide-transport:has(:focus-visible) {
+  opacity: 1;
+}
+.studio-guide-transport button {
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  padding: 7px;
+  border: 0;
+  border-radius: 50%;
+  color: white;
+  background: #12182299;
+  pointer-events: none;
+  cursor: pointer;
+}
+.studio-guide-screen:is(.has-transport, .is-paused)
+  .studio-guide-transport
+  button,
+.studio-guide-transport:has(:focus-visible) button {
+  pointer-events: auto;
+}
+.studio-guide-transport svg {
+  width: 32px;
+  height: 32px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+}
+.studio-guide-transport .studio-guide-play {
+  width: 60px;
+  height: 60px;
+}
+.studio-guide-transport text {
+  fill: currentColor;
+  stroke: none;
+  text-anchor: middle;
+  font:
+    bold 14px Arial,
+    sans-serif;
+}
+.studio-guide-credit {
+  text-align: right;
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 8px !important;
+}
+.studio-guide-context {
+  font-size: 14px;
+  color: var(--muted);
+}
+.studio-guide-chapters {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+.studio-guide-chapters button {
+  border: 0;
+  border-left: 3px solid transparent;
+  background: none;
+  color: var(--ink);
+  padding: 10px;
+  text-align: left;
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.4;
+  cursor: pointer;
+}
+.studio-guide-chapters button[aria-current] {
+  border-left-color: var(--accent, #2854ce);
+  background: var(--surface-strong, var(--surface));
+  font-weight: 650;
+}
+.studio-guide-chapters time {
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+  margin-right: 6px;
+}
+.studio-guide-dialog h3 {
+  font-size: 17px;
+}
+@media (max-width: 600px) {
+  .studio-guide-chapters {
+    grid-template-columns: 1fr;
+  }
+  .studio-guide-dialog .studio-resource-body {
+    padding: 12px;
+  }
+  .studio-announcement {
+    gap: 4px;
+    padding: 6px 12px;
+  }
+}

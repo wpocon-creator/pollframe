@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { Icon } from "./pollframe-ui.jsx";
 import { trackAggregateEvent } from "./aggregateAnalytics.js";
 import { layoutPublishingColumns } from "./publishing-layout.js";
+import { StudioLink } from "./studio-link.jsx";
 import { publicationCredit } from './source-attribution.js';
 
 const PRESETS = {
@@ -279,6 +280,8 @@ function prepareExportClone(clone, { format, preset, profile, locale }) {
   clone.style.setProperty("margin", "0");
   if (profile === "election") {
     clone.querySelectorAll("[data-election-time]").forEach(node => { node.textContent = `${locale === "de" ? "Amtlicher Datenstand" : locale === "es" ? "Datos oficiales" : "Official source updated"}: ${node.dataset.electionTime} (Europe/Berlin)`; });
+    // Exports carry an absolute source timestamp so the picture cannot claim
+    // to be 'five minutes old' tomorrow. Content height avoids empty frames.
   }
   if (clone.dataset.publicationDate) {
     const date = new Date(`${clone.dataset.publicationDate}T12:00:00Z`);
@@ -581,7 +584,7 @@ function useExportDialog(open, onClose) {
   return dialogRef;
 }
 
-function PngPreview({ element, preset, profile, theme, setTheme, title, subtitle, locale, credit, copy }) {
+export function PngPreview({ element, preset, profile, theme, setTheme, title, subtitle, locale, credit, copy = copyFor(locale), maxWidth = 520 }) {
   const liveRef = useRef(null);
   const canvasRef = useRef(null);
   const stageRef = useRef(null);
@@ -599,14 +602,14 @@ function PngPreview({ element, preset, profile, theme, setTheme, title, subtitle
       const ratio = format.height ? format.width / format.height : 4 / 3;
       const availableWidth = Math.max(120, live.clientWidth - horizontalInset);
       const availableHeight = Math.max(110, live.clientHeight - verticalInset - (toolbar?.offsetHeight ?? 0) - gap);
-      const width = Math.min(520, availableWidth, availableHeight * ratio);
+      const width = Math.min(maxWidth, availableWidth, availableHeight * ratio);
       canvas.style.setProperty("width", `${Math.floor(width)}px`);
     };
     const frame = requestAnimationFrame(fitFrame);
     const observer = new ResizeObserver(fitFrame);
     observer.observe(live);
     return () => { cancelAnimationFrame(frame); observer.disconnect(); };
-  }, [format.height, format.width, preset]);
+  }, [format.height, format.width, preset, maxWidth]);
   useEffect(() => {
     const stage = stageRef.current;
     if (!stage || !element) return undefined;
@@ -664,7 +667,7 @@ function PngPreview({ element, preset, profile, theme, setTheme, title, subtitle
   </div>;
 }
 
-export function PngExportModal({ open, onClose, elementRef, filename, title, subtitle, locale = "en-GB", credit, profile = "chart" }) {
+export function PngExportModal({ open, onClose, elementRef, filename, title, subtitle, locale = "en-GB", credit, profile = "chart", studio = null }) {
   const config = PROFILES[profile] ?? PROFILES.chart;
   const [preset, setPreset] = useState(config.recommended);
   const [theme, setTheme] = useState("light");
@@ -674,24 +677,26 @@ export function PngExportModal({ open, onClose, elementRef, filename, title, sub
   const nativeShareAvailable = typeof navigator.share === "function" && typeof File === "function";
   const touchShare = nativeShareAvailable && typeof matchMedia === "function" && matchMedia("(pointer: coarse)").matches;
   useEffect(() => { if (open) { setPreset(config.recommended); setTheme(preferredExportTheme()); setStatus("idle"); trackAggregateEvent("png_dialog_opened"); } }, [open, profile, config.recommended]);
-  const singleFormat = config.formats.length === 1;
+  const singleFormat = Boolean(studio) || config.formats.length === 1;
   const note = copy[`${config.copyKey}Note`] ?? copy.chartNote;
   const exportPng = async (action) => {
     if (status === "working") return;
     setStatus("working");
     try {
-      const rendered = await renderElementPng({ element: elementRef.current, filename, title, subtitle, locale, credit, preset, profile, theme });
+      const rendered = studio ? await studio.render() : await renderElementPng({ element: elementRef.current, filename, title, subtitle, locale, credit, preset, profile, theme });
       if (action === "share" && nativeShareAvailable) {
         const file = new File([rendered.blob], rendered.filename, { type: "image/png" });
         if (!navigator.canShare || navigator.canShare({ files: [file] })) {
           await navigator.share({ files: [file], title });
           setStatus("shared");
+          studio?.onPublished?.();
           trackAggregateEvent("png_export_shared");
           return;
         }
       }
       triggerBlobDownload(rendered.blob, rendered.filename);
       setStatus("done");
+      studio?.onPublished?.();
       trackAggregateEvent("png_export_downloaded");
     } catch (error) {
       if (error?.name === "AbortError") setStatus("idle");
@@ -711,10 +716,11 @@ export function PngExportModal({ open, onClose, elementRef, filename, title, sub
               {config.formats.map((format) => <button key={format} type="button" role="radio" aria-checked={preset === format} className={preset === format ? "selected" : ""} onClick={() => { setPreset(format); setStatus("idle"); }}><span className={`png-format-shape is-${format}`} aria-hidden="true" /><span><strong>{profileCopy(copy, config, format)}{format === config.recommended && <em>{copy.recommended}</em>}</strong><small>{profileCopy(copy, config, format, "Meta")}</small></span></button>)}
             </div>
           </div>}
-          <PngPreview element={elementRef.current} preset={preset} profile={profile} theme={theme} setTheme={(value) => { setTheme(value); setStatus("idle"); }} title={title} subtitle={subtitle} locale={locale} credit={credit} copy={copy} />
+          {studio ? studio.preview : <PngPreview element={elementRef.current} preset={preset} profile={profile} theme={theme} setTheme={(value) => { setTheme(value); setStatus("idle"); }} title={title} subtitle={subtitle} locale={locale} credit={credit} copy={copy} />}
         </div>
         {touchShare && <p className="png-share-help">{copy.systemHelp}</p>}
         <div className="png-options-actions">
+          {!studio && <StudioLink profile={profile} locale={locale} element={elementRef.current} context={{theme}} />}
           <button className="primary-button" type="button" disabled={status === "working"} onClick={() => exportPng(touchShare ? "share" : "download")}><Icon name={touchShare ? "share" : "download"} size={17}/>{touchShare ? copy.save : copy.download}</button>
           {nativeShareAvailable && !touchShare && <button className="secondary-button" type="button" disabled={status === "working"} onClick={() => exportPng("share")}><Icon name="share" size={17}/>{copy.save}</button>}
           {touchShare && <button className="secondary-button" type="button" disabled={status === "working"} onClick={() => exportPng("download")}><Icon name="download" size={17}/>{copy.download}</button>}

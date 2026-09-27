@@ -21,7 +21,8 @@ test("offline asset walk includes Vite dependency-map CSS and relative imports e
     fetched.push(path);
     return new Response(bodies.get(path) ?? "missing", { status: bodies.has(path) ? 200 : 404 });
   };
-  const walk = new Function("fetch", "self", `${code}; return cacheBuiltAssetGraph;`)(fetch, { location: { origin } });
+  const policy = worker.slice(worker.indexOf("function isPrivateRequest"), worker.indexOf("async function", worker.indexOf("function canCacheResponse")));
+  const walk = new Function("fetch", "self", `${policy}\n${code}; return cacheBuiltAssetGraph;`)(fetch, { location: { origin } });
   await walk({ put: async (url) => cached.push(new URL(url).pathname) }, ["/assets/main.js"]);
   assert.deepEqual(fetched.sort(), [...bodies.keys()].sort());
   assert.deepEqual(cached.sort(), [...bodies.keys()].sort());

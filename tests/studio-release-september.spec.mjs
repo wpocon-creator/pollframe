@@ -1,0 +1,87 @@
+import {test,expect} from "@playwright/test";
+import {readFile} from "node:fs/promises";
+import {unzipSync,strFromU8} from "fflate";
+const editor="/?view=studio&lang=de&editor=1&workspace=edit&template=history-original&range=year";
+test("events fill layers, catalogue pins/excludes, menus stay anchored",async({page},info)=>{
+  const errors=[];page.on("pageerror",e=>errors.push(e.message));
+  const events=["2026-01-15","2026-04-15","2026-07-15"].map((date,i)=>({id:`custom-test${i}`,date,label:`Redaktionsnotiz ${i+1}`}));
+  await page.goto(editor+"&historyCustomEvents="+encodeURIComponent(JSON.stringify(events)));
+  const svg=page.locator(".studio-current-preview-image > svg");
+  // Font-aware packing may fit fewer automatic labels; all three explicitly
+  // requested, well-spaced notes must fit regardless of the current catalogue.
+  for(let i=0;i<3;i++)await expect(svg.locator(`[data-event-id="custom-test${i}"] .event-label-bg`)).toBeVisible();
+  expect(await svg.locator(".event-label-bg").count()).toBeGreaterThanOrEqual(3);
+  const tools=page.locator(".studio-inspector-panel");
+  await tools.getByRole("button",{name:"Ereignisse",exact:true}).click();
+  await tools.getByRole("button",{name:/Ereignisse auswählen/}).click();
+  const dialog=page.getByRole("dialog",{name:"Ereignisse auswählen"});
+  await dialog.getByRole("searchbox").fill("Redaktionsnotiz 2");
+  const combo=dialog.getByRole("combobox",{name:"Auswahl für Redaktionsnotiz 2",exact:true});
+  await combo.click();
+  const list=dialog.getByRole("listbox");
+  const anchor=await combo.boundingBox(),menu=await list.boundingBox();
+  expect(Math.min(Math.abs(menu.y-anchor.y-anchor.height),Math.abs(menu.y+menu.height-anchor.y))).toBeLessThan(12);
+  await dialog.getByRole("option",{name:"Ausblenden",exact:true}).click();
+  await expect(svg.locator('[data-event-id="custom-test1"]')).toHaveCount(0);
+  await page.screenshot({path:info.outputPath("event-catalogue.png")});
+  await dialog.getByRole("button",{name:"Schließen",exact:true}).click();
+  await svg.locator('[data-event-id="custom-test0"] .event-label-bg').click();
+  await page.locator(".studio-selection-bubble").click();
+  await expect(page.locator(".studio-selection-dialog .studio-editor-tabs")).toHaveCount(0);
+  await expect(page.locator(".studio-selection-dialog")).toBeVisible();
+  expect(errors).toEqual([]);
+});
+test("style wizard and library use real current data; applying style preserves filters",async({page},info)=>{
+  await page.goto("/?view=studio&lang=de&topic=current");
+  await page.getByRole("button",{name:"Meine Designs",exact:true}).click();
+  await page.getByRole("button",{name:"Stile",exact:true}).click();
+  await page.getByRole("button",{name:"+ Neuen Stil erstellen",exact:true}).click();
+  const wizard=page.getByRole("dialog");
+  await expect(wizard.locator(".studio-style-chart-preview svg")).toBeVisible();
+  await wizard.getByRole("button",{name:"Weiter",exact:true}).click();
+  await wizard.getByRole("button",{name:"Dunkel",exact:true}).click();
+  for(let i=0;i<3;i++)await wizard.getByRole("button",{name:"Weiter",exact:true}).click();
+  await wizard.getByLabel("Stilname",{exact:true}).fill("Redaktion Nacht");
+  await wizard.getByRole("button",{name:"Stil speichern",exact:true}).click();
+  await expect(page.locator(".studio-library-grid")).toContainText("Redaktion Nacht");
+  await page.screenshot({path:info.outputPath("style-library.png")});
+  await page.goto("/?view=studio&lang=de&editor=1&template=history-original&range=year&mode=linear&headline=Redaktion");
+  await page.getByRole("button",{name:"Stil anwenden",exact:true}).click();
+  await page.getByRole("dialog").getByRole("button",{name:/Redaktion Nacht/}).click();
+  await expect.poll(()=>new URL(page.url()).searchParams.get("theme")).toBe("dark");
+  const params=new URL(page.url()).searchParams;
+  expect(params.get("range")).toBe("year");expect(params.get("mode")).toBe("linear");expect(params.get("headline")).toBe("Redaktion");
+});
+test("normal history separates poll dots from line values and shows interval changes",async({page},info)=>{
+  await page.goto("/?region=bundestag&lang=de");
+  await expect(page.locator(".latest-individual-poll").first()).toBeVisible();
+  await expect(page.locator(".latest-poll-legend")).toContainText("INSA");
+  expect(await page.locator(".series-period-delta").count()).toBeGreaterThan(3);
+  await page.locator(".chart-region").screenshot({path:info.outputPath("historical-endpoints.png")});
+});
+test("publication package contains a nonempty PNG and exact data/settings receipt",async({page},info)=>{
+  await page.goto(editor);
+  await expect(page.locator(".studio-current-preview-image svg")).toBeVisible();
+  await page.getByRole("button",{name:"Info",exact:true}).click();
+  const dialog=page.getByRole("dialog");
+  await expect(dialog).toContainText("Institute im letzten Durchschnitt");
+  await expect(dialog).toContainText("INSA");
+  const pending=page.waitForEvent("download");
+  await dialog.getByRole("button",{name:"Publikationspaket herunterladen",exact:true}).click();
+  const download=await pending,bytes=await readFile(await download.path());
+  const files=unzipSync(bytes);
+  expect(files["graphic.png"].length).toBeGreaterThan(15000);
+  expect(strFromU8(files["caption.txt"])).toContain("INSA");
+  const data=JSON.parse(strFromU8(files["data.json"]));
+  expect(data.snapshot.latestCalculation.polls.length).toBeGreaterThan(1);
+  expect(data.snapshot.latestIndividual.institute).toBe("INSA");
+  expect(JSON.parse(strFromU8(files["settings.json"])).settings.template).toBe("history-original");
+  await download.saveAs(info.outputPath("publication.zip"));
+});
+test("Germany entry includes a desktop historical preview, not on phones",async({page},info)=>{
+  await page.goto("/?lang=de");
+  await expect(page.locator(".overview-history-preview svg")).toBeVisible();
+  await page.locator(".overview-history-preview").screenshot({path:info.outputPath("overview-history.png")});
+  await page.setViewportSize({width:390,height:844});
+  await expect(page.locator(".overview-history-preview")).toHaveCount(0);
+});

@@ -1,6 +1,8 @@
 import React, { Suspense, lazy, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { createRoot } from "react-dom/client";
+import { pollCalculationReceipt } from "./poll-calculation-receipt.js";
+import { makeAverageSeries, makeTrend, POLL_CALCULATOR_VERSION } from "./poll-history-calculator.js";
 const ElectionResult = lazy(() => import("./election-result.jsx"));
 import { usePwaLifecycle } from "./pwa.js";
 import { useWatchlistReorder } from "./watchlistReorder.js";
@@ -9,11 +11,23 @@ import { Icon, InfoPopover, MultiSelect, SelectControl, StaticEmbedPreview } fro
 import { PartyInfoButton, PartyInfoModalHost } from "./party-profiles.jsx";
 import { includeHistoricalEvent, isPrimaryElectionEvent, rankHistoricalEvents } from "./event-selection.js";
 import { trackAggregateEvent, trackAggregateEventOnce } from "./aggregateAnalytics.js";
+import { analyticsExcluded } from '../public/analytics-preference.js';
+import { observeUsage } from './usage-quality.js';
 import { requestWasAborted } from "./network.js";
 import { SITE_ORIGIN, publicShareOrigin } from "./site-origin.js";
 import { localizedCanonical, languageAlternates } from "./seo-locale.js";
 import { PngExportButton } from "./png-export-button.jsx";
 import { pollReuseDetails, publicationCredit } from './source-attribution.js';
+import { StudioLink } from "./studio-link.jsx";
+import { EventMarkerGlyph } from "./event-marker-glyph.jsx";
+import { eventLabelMetrics } from "./event-marker-layout.js";
+import { iframeMarkup } from './embed-markup.js';
+import { StudioLoadBoundary } from "./studio-load-boundary.jsx";
+import { continuousSmoothPath, continuousLinearPath } from "./chart-paths.js";
+import { PARTY_DEFINITIONS, UK_PARTY_DEFINITIONS } from "./party-definitions.js";
+import { useSpanishLocale, spanishEvent, spanishSection, spanishText } from "./spanish-locale.js";
+import { pollMethodLabel } from "./poll-method-label.js";
+import { PUBLISH_FGW_APPROVAL } from "./approval-publication.js";
 import {
   publicCountryPath,
   publicPagePath,
@@ -22,7 +36,11 @@ import {
   routeQueryForLocation,
 } from "./public-routes.js";
 import "@fontsource-variable/inter/wght.css";
-const ApprovalPage = lazy(() => import("./approval.jsx").then((module) => ({ default: module.ApprovalPage })));
+// Withheld content must not ship a dormant renderer. Keep the implementation
+// recoverable, but let the bundler remove it until the publication policy changes.
+const ApprovalPage = PUBLISH_FGW_APPROVAL
+  ? lazy(() => import("./approval.jsx").then((module) => ({ default: module.ApprovalPage })))
+  : () => null;
 import {
   SPAIN_EVENT_CATEGORIES,
   SPAIN_PARTY_DEFINITIONS,
@@ -94,39 +112,6 @@ const DAWUM_POLLSTER_PATHS = {
   "9": "Allensbach",
   "13": "YouGov",
 };
-const PARTY_DEFINITIONS = [
-  // Plenary order from left to right (as viewed from the Bundestag presidium).
-  // BSW's position reflects its last official Bundestag seating; regional
-  // parties are placed beside the closest comparable parliamentary group.
-  { id: "23", slug: "bsw", name: "BSW", color: "#79566f" },
-  { id: "5", slug: "left", name: "Linke", color: "#9b438b" },
-  { id: "2", slug: "spd", name: "SPD", color: "#d9485f" },
-  { id: "4", slug: "greens", name: "Grüne", color: "#3b9950" },
-  { id: "10", slug: "ssw", name: "SSW", color: "#315e9f" },
-  { id: "3", slug: "fdp", name: "FDP", color: "#d7aa00" },
-  { id: "8", slug: "free-voters", name: "Freie Wähler", color: "#e27b22" },
-  { id: "1", slug: "union", name: "CDU/CSU", color: "var(--party-union)" },
-  { id: "101", slug: "cdu", name: "CDU", color: "var(--party-union)" },
-  { id: "102", slug: "csu", name: "CSU", color: "#4d82b8" },
-  { id: "14", slug: "bvb-fw", name: "BVB/FW", color: "#cf6b28" },
-  { id: "7", slug: "afd", name: "AfD", color: "#178ec5" },
-];
-
-const UK_PARTY_DEFINITIONS = [
-  // Broad parliamentary seating order, used only to make repeated legends
-  // predictable. It is not an editorial left/right score.
-  { id: "202", slug: "green", name: "Green", color: "#4b9b4a" },
-  { id: "201", slug: "labour", name: "Labour", color: "#d83b55" },
-  { id: "203", slug: "snp", name: "SNP", color: "#d2aa00" },
-  { id: "204", slug: "plaid", name: "Plaid Cymru", color: "#2f8f68" },
-  { id: "205", slug: "liberal-democrats", name: "Liberal Democrats", color: "#e79a00" },
-  { id: "206", slug: "conservative", name: "Conservative", color: "#1875b9" },
-  { id: "207", slug: "reform", name: "Reform UK", color: "#16a5a3" },
-  { id: "208", slug: "ukip", name: "UKIP", color: "#6f4b8b" },
-  { id: "210", slug: "change-uk", name: "Change UK", color: "#282f65" },
-  { id: "211", slug: "sdp", name: "SDP", color: "#8a2d35" },
-  { id: "209", slug: "other", name: "Other", color: "#7c858f" },
-];
 const UK_MAP_PARTY_DEFINITIONS = [
   ...UK_PARTY_DEFINITIONS,
   { id: "301", slug: "sinn-fein", name: "Sinn Féin", color: "#3f8c55" },
@@ -753,6 +738,9 @@ function regionEvents(region) {
     shortEn: `${region.name} vote`,
     detailDe: `Wahl zum ${region.parliament} in ${region.name}.`,
     detailEn: `Election to the ${region.parliament} in ${region.name}.`,
+    es: `Elecciones en ${region.name} · ${date.slice(0, 4)}`,
+    shortEs: `Elecciones en ${region.name}`,
+    detailEs: `Elecciones al parlamento regional de ${region.name}.`,
     source: "https://www.bundeswahlleiterin.de/service/landtagswahlen.html",
   }));
   return [
@@ -774,26 +762,14 @@ function regionEventCategories(region) {
 }
 
 function eventText(event, locale, kind = "label") {
+  if (locale === "es") event = spanishEvent(event);
   if (locale === "es") return kind === "short" ? event.shortEs ?? event.es ?? event.shortEn : kind === "detail" ? event.detailEs ?? event.detailEn : event.es ?? event.en;
   if (locale === "de") return kind === "short" ? event.shortDe ?? event.de ?? event.shortEn : kind === "detail" ? event.detailDe ?? event.detailEn : event.de ?? event.en;
   return kind === "short" ? event.shortEn ?? event.en ?? event.shortDe : kind === "detail" ? event.detailEn ?? event.detailDe : event.en ?? event.de;
 }
 
-function wrapEventLines(value, maxCharacters) {
-  const words = String(value ?? "").trim().split(/\s+/).filter(Boolean);
-  const lines = [];
-  let line = "";
-  for (const word of words) {
-    const candidate = line ? `${line} ${word}` : word;
-    if (!line || candidate.length <= maxCharacters) { line = candidate; continue; }
-    lines.push(line);
-    line = word;
-  }
-  if (line) lines.push(line);
-  return lines.length ? lines : [""];
-}
-
 function eventCategoryText(category, locale, description = false) {
+  if (locale === "es" && spanishSection("_categories")?.[category.id]) return spanishSection("_categories")[category.id][description ? 1 : 0];
   if (locale === "es") return description ? category.esDescription ?? category.enDescription : category.es ?? category.en;
   if (locale === "de") return description ? category.deDescription : category.de;
   return description ? category.enDescription : category.en;
@@ -870,7 +846,6 @@ const copy = {
     tendencyFalling: "rückläufig",
     tendencyUnavailable: "Keine vergleichbare Basis",
     openParty: (party) => `Detailansicht für ${party} öffnen`,
-    percentagePoints90: (delta) => `${delta > 0 ? "+" : ""}${delta.toLocaleString("de-DE", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} Prozentpunkte in 90 Tagen`,
     partyDetail: "Parteiverlauf",
     partyDetailTitle: (party) => `${party} im Zeitverlauf`,
     partyDetailIntro: "Geglätteter Durchschnitt der aktuell ausgewählten Institute.",
@@ -916,7 +891,7 @@ const copy = {
     noThresholdParties: "Alle dargestellten Parteien liegen bei mindestens 5 %.",
     arithmeticMajorities: "Rechnerische Mehrheiten",
     seatsOutOf: (seats) => `${seats} von 630 Sitzen`,
-    projectionMethod: "630 Sitze werden mit einem vereinfachten Sainte-Laguë-Verfahren auf Parteien mit mindestens 5 % verteilt. Wahlkreise, Grundmandate, Landeslisten, Minderheitenparteien und Rundungseffekte können das tatsächliche Ergebnis verändern. Koalitionen sind redaktionell nach parlamentarischer Sitznähe geordnet; Kombinationen mit der AfD stehen nachrangig. Die Reihenfolge ist keine Wahrscheinlichkeitsangabe.",
+    projectionMethod: "630 Sitze werden mit einem vereinfachten Sainte-Laguë-Verfahren auf Parteien mit mindestens 5 % verteilt. Wahlkreise, Grundmandate, Landeslisten, Minderheitenparteien und Rundungseffekte können das tatsächliche Ergebnis verändern. Eine rechnerische Mehrheit ist keine Vorhersage einer Regierungsbildung.",
     close: "Schließen",
     settingsTitle: "Einstellungen",
     app: "App",
@@ -1053,7 +1028,6 @@ const copy = {
     tendencyFalling: "falling",
     tendencyUnavailable: "No comparable baseline",
     openParty: (party) => `Open detailed view for ${party}`,
-    percentagePoints90: (delta) => `${delta > 0 ? "+" : ""}${delta.toLocaleString("en-GB", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} percentage points in 90 days`,
     partyDetail: "Party history",
     partyDetailTitle: (party) => `${party} over time`,
     partyDetailIntro: "Smoothed average of the currently selected pollsters.",
@@ -1099,7 +1073,7 @@ const copy = {
     noThresholdParties: "Every displayed party is at or above 5%.",
     arithmeticMajorities: "Mathematical majorities",
     seatsOutOf: (seats) => `${seats} of 630 seats`,
-    projectionMethod: "The 630 seats are allocated with a simplified Sainte-Laguë method to parties polling at least 5%. Constituencies, basic mandates, state lists, national-minority parties and rounding may change an actual result. Coalitions are editorially ordered by proximity of their parties in parliament; combinations with the AfD appear later. This order is not a probability assessment.",
+    projectionMethod: "The 630 seats are allocated with a simplified Sainte-Laguë method to parties polling at least 5%. Constituencies, basic mandates, state lists, national-minority parties and rounding may change an actual result. A numerical majority is not a forecast of government formation.",
     close: "Close",
     settingsTitle: "Settings",
     app: "App",
@@ -1172,42 +1146,30 @@ copy["en-US"] = {
   ...copy["en-GB"],
   intro: "Current figures and the long-term picture – comparable, traceable, and without political commentary.",
   customize: "Customize chart",
-  percentagePoints90: (delta) => `${delta > 0 ? "+" : ""}${delta.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} percentage points in 90 days`,
   sourceTitle: "Source and license",
-  sourceText: "Individual polls since 2017 come from the open DAWUM database (ODbL 1.0). Pollframe defaults to seven Bundestag pollsters, plus GMS and Civey for states; additional series are selectable. Pollframe normalizes fields and calculates its own averages and trends. The 2017, 2021, and 2025 election results come from the Federal Returning Officer, Wiesbaden; percentages were shortened and presented in a new graphic form.",
+  sourceText: "Individual polls since 2017 come from the open DAWUM database (ODbL 1.0). Pollframe selects pollsters by parliament (Bundestag: seven; states: additionally GMS and Civey), normalizes fields, and calculates its own averages and trends. The 2017, 2021, and 2025 election results come from the Federal Returning Officer, Wiesbaden; percentages were shortened and presented in a new graphic form.",
 };
 
-copy.es = {
+Object.defineProperty(copy, "es", { get: () => ({
   ...copy["en-GB"],
-  settings: "Ajustes", dataInfo: "Información sobre datos y método",
-  overview: "Congreso de los Diputados · intención de voto",
-  title: "Encuestas de las elecciones generales en España",
-  intro: "Valores actuales y evolución a largo plazo, comparables, trazables y sin valoración política.",
-  current: "Última encuesta", currentNote: "Encuesta publicada más recientemente en la selección",
-  compared: "Cambio respecto a hace 7 días", chartTitle: "Evolución de la intención de voto",
-  chartSubtitle: "La última encuesta de cada instituto seleccionado en los 45 días anteriores tiene el mismo peso. Las líneas conectan las medias calculadas.",
-  chartSwipe: "↔ Desliza para explorar", customize: "Configurar gráfico", share: "Compartir e insertar",
-  exportPng: "Exportar PNG", exportPreparing: "Creando PNG…", exportReady: "PNG guardado", exportError: "No se pudo exportar",
-  display: "Vista", trend: "Tendencia suavizada", linear: "Medias conectadas", polls: "Puntos de la media", both: "Tendencia + puntos",
-  timeRange: "Periodo", oneMonthLong: "1 mes", threeMonths: "3 meses", sixMonths: "6 meses", yearToDate: "Año en curso", year: "1 año", twoYears: "2 años", sinceElection: "Desde las elecciones de 2023", fiveYearsLong: "5 años", fullArchive: "Archivo completo · desde 2023",
-  events: "Acontecimientos", eventCount: (count) => count === 0 ? "Ocultos" : count === 1 ? "1 categoría" : `${count} categorías`, eventsShown: "Acontecimientos visibles", eventsNote: "Pollframe solo muestra los acontecimientos seleccionados editorialmente para este periodo. Cada uno tiene una marca: las elecciones usan líneas continuas, los principales reciben etiquetas y los demás aparecen como puntos huecos. Esto no demuestra causalidad.", eventEntries: (count) => `${count} acontecimientos en el periodo`,
-  lineLegend: "Líneas", axisRange: (min, max) => `Escala ${min}–${max}%${min > 0 ? " · cero oculto" : ""}`, axisStart: (min) => `El eje empieza en ${min}%`,
-  pollsters: "Institutos", pollsterCount: (count, total) => count === total ? `Todos (${total})` : `${count} seleccionados`, parties: "Partidos",
-  sourcePrefix: "Datos de", dataUpdated: "Datos actualizados", raw: "Descargar datos (JSON)", csv: "Descargar CSV", pollTable: "Encuestas publicadas",
-  pollTableIntro: "Últimas encuestas de los institutos seleccionados. Son valores publicados, no la media de Pollframe.", pollTableCount: (shown, total) => `${shown} de ${total} encuestas`, pollDate: "Fecha", fieldwork: "Trabajo de campo", sample: "Muestra", method: "Método", openSource: "Abrir fuente original", showMorePolls: "Mostrar más encuestas", methodology: "Metodología", pollRecords: "encuestas publicadas", archiveCoverage: "Cobertura", dataStandard: "Datos reutilizables · método trazable",
-  tendencies: "Tendencia por partido", tendenciesIntro: "Comparación con la última encuesta disponible de hace 90 días.",
-  tendencyRising: "sube", tendencySlightRising: "sube ligeramente", tendencyStable: "estable", tendencySlightFalling: "baja ligeramente", tendencyFalling: "baja", tendencyUnavailable: "Sin base comparable",
-  openParty: (party) => `Abrir detalle de ${party}`, percentagePoints90: (delta) => `${delta > 0 ? "+" : ""}${delta.toLocaleString("es-ES", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} puntos en 90 días`, partyDetail: "Evolución del partido", partyDetailTitle: (party) => `${party} a lo largo del tiempo`, partyDetailIntro: "Media suavizada de los institutos seleccionados.",
-  oneMonth: "1 M", sixMonthsShort: "6 M", yearToDateShort: "YTD", twoYearsShort: "2 A", fiveYears: "5 A", maximum: "Máx.", currentValue: "Actual", changeInPeriod: "Cambio", relativeChange: "Relativo", periodHigh: "Máximo", periodLow: "Mínimo", percentagePoints: "puntos porcentuales", ppShort: " pp", versusPeriodStart: "desde el inicio", notEnoughData: "No hay una base comparable suficiente para este periodo.",
-  eventSelectionTitle: "Selección de acontecimientos", eventSelectionText: "Se incluyen elecciones e hitos institucionales claramente fechados. Su proximidad a una variación no prueba causa y efecto; cada marca enlaza a una fuente.",
-  language: "Idioma y región", languageHelp: "Define el idioma y los formatos de fecha y número.", appearance: "Apariencia", appearanceHelp: "Puede seguir automáticamente el tema del dispositivo.", system: "Sistema", light: "Claro", dark: "Oscuro", textSize: "Tamaño del texto", textSizeHelp: "Amplía la interfaz sin cambiar el contenido.", standard: "Estándar · 17 px", larger: "Grande · 19 px", motion: "Movimiento", motionHelp: "Reduce transiciones y animaciones.", reduced: "Reducido",
-  close: "Cerrar", settingsTitle: "Ajustes", app: "App", installApp: "Instalar Pollframe", installNow: "Instalar gratis", appInstalled: "Instalada en este dispositivo", appUnavailable: "La instalación aparecerá cuando el navegador sea compatible.", showInstallSteps: "Ver instrucciones", iosInstallTitle: "Instalar en iPhone o iPad", iosInstallStepOne: "Abre Pollframe en Safari y toca Compartir.", iosInstallStepTwo: "Selecciona «Añadir a pantalla de inicio» y después «Añadir».", appSettingsTitle: "Pollframe en este dispositivo", appSettingsHelp: "Instálala para abrir más rápido, navegar como app y conservar la última vista sin conexión.", offlineStatus: "Sin conexión · los datos guardados pueden estar desactualizados.", cachedDataStatus: "Se muestran datos guardados.", updateReady: "Hay una nueva versión de Pollframe.", updateNow: "Actualizar",
-  navOverview: "Resumen", navAdd: "Añadir", navPolling: "Encuestas", navMap: "Mapa", navCountries: "Países", navSettings: "Más",
-  methodTitle: "Datos y metodología de España", methodIntro: "La vista separa encuestas publicadas, medias calculadas y resultados oficiales.", meanTitle: "Cómo se calcula la media", meanText: "En cada fecha cuenta la última encuesta de cada instituto seleccionado dentro de los 45 días anteriores. Pollframe calcula la media aritmética simple: cada instituto pesa lo mismo, con independencia de la frecuencia de publicación.", selectionTitle: "Selección de institutos", selectionText: "La vista inicial incluye todos los institutos válidos del archivo. Pueden compararse por separado; su inclusión no equivale a una clasificación de calidad.", limitsTitle: "Qué no muestra el gráfico", limitsText: "Las encuestas son estimaciones con incertidumbre. El promedio no corrige efectos propios de cada instituto ni escaños por provincia. No es una previsión electoral.", sourceTitle: "Fuente y licencia", sourceText: "Pollframe normaliza las tablas de encuestas citadas en Wikipedia bajo CC BY-SA 4.0 y conserva el enlace a la publicación original de cada fila cuando está disponible. Los resultados electorales proceden del Ministerio del Interior.", electionSource: "Resultados electorales", lastPoll: "Última encuesta incluida", basedOn: (count) => `Media de ${count} institutos`, onePollster: "Un instituto seleccionado", loading: "Cargando datos…", error: "No se pudieron cargar los datos.", footerLine: "Resumen basado en datos · no es una previsión", privacy: "Privacidad", licences: "Licencias", editorialStandards: "Criterios editoriales", impressum: "Aviso legal", contact: "Contacto", reportBug: "Informar de un problema", info: "Información",
-};
+  ...spanishSection("_copy"),
+  seatsOutOf: (seats) => `${seats} de 630 escaños`,
+  eventCount: (count) => count === 0 ? "Ocultos" : count === 1 ? "1 categoría" : `${count} categorías`,
+  eventEntries: (count) => `${count} acontecimientos en el periodo`,
+  axisRange: (min, max) => `Escala ${min}–${max}%${min > 0 ? " · cero oculto" : ""}`,
+  axisStart: (min) => `El eje empieza en ${min}%`,
+  pollsterCount: (count, total) => count === total ? `Todos (${total})` : `${count} seleccionados`,
+  pollTableCount: (shown, total) => `${shown} de ${total} encuestas`,
+  openParty: (party) => `Abrir detalle de ${party}`,
+  partyDetailTitle: (party) => `${party} a lo largo del tiempo`,
+  basedOn: (count) => `Media de ${count} institutos`,
+}) });
 
 
-function stateLocaleOverrides() { return null; }
+function stateLocaleOverrides(locale, region) {
+  if (locale !== "es") return null;
+  return { overview: `${region.name} · intención de voto`, title: `Encuestas electorales en ${region.name}`, intro: `Encuestas actuales y evolución histórica en ${region.name}, con fuentes y cobertura documentadas.`, chartTitle: `Intención de voto en ${region.name}`, sinceElection: "Desde las últimas elecciones regionales", fullArchive: "Archivo regional completo · desde 2017" };
+}
 
 function useBodyScrollLock(active) {
   useEffect(() => {
@@ -1533,9 +1495,7 @@ function coalitionOrderScore(parties) {
     }
   }
 
-  const combinesAfdWithAnotherParty = parties.some((party) => party.id === "7")
-    && parties.some((party) => party.id !== "7");
-  return distance + (combinesAfdWithAnotherParty ? 100 : 0);
+  return distance;
 }
 
 function findMajorities(parties, majority = 316) {
@@ -1647,7 +1607,7 @@ function currentPollDetails(locale, current, statusLabel, recencyKind) {
     ? current.sample.toLocaleString(getNumberLocale(locale))
     : null;
   const method = current.method && !/^(standard\b|published national voting-intention poll\b)/i.test(current.method)
-    ? current.method
+    ? pollMethodLabel(current.method, locale)
     : null;
   const fieldworkRange = fieldworkStart && fieldworkEnd
     ? fieldworkStart === fieldworkEnd
@@ -1736,118 +1696,6 @@ function latestPollAtOrBefore(polls, pollsterIds, date, partyIds) {
   };
 }
 
-function makeAverageSeries(polls, pollsterIds, dates, partyIds) {
-  if (!dates.length || !pollsterIds.length) return [];
-  const selectedPollsters = new Set(pollsterIds);
-  const orderedDates = [...new Set(dates)].sort();
-  const relevantPolls = polls.filter((poll) => selectedPollsters.has(poll.pollster));
-  const latestByPollster = new Map();
-  const output = [];
-  let pollIndex = 0;
-
-  for (const date of orderedDates) {
-    const target = parseDate(date);
-    const cutoff = target - (45 * DAY);
-    while (pollIndex < relevantPolls.length && parseDate(relevantPolls[pollIndex].date) <= target) {
-      const poll = relevantPolls[pollIndex];
-      latestByPollster.set(poll.pollster, poll);
-      pollIndex += 1;
-    }
-    const currentPolls = [...latestByPollster.values()]
-      .filter((poll) => parseDate(poll.date) >= cutoff);
-    if (!currentPolls.length) continue;
-    const results = {};
-    for (const partyId of partyIds) {
-      let sum = 0;
-      let count = 0;
-      for (const poll of currentPolls) {
-        const value = poll.results[partyId];
-        if (!Number.isFinite(value)) continue;
-        sum += value;
-        count += 1;
-      }
-      if (count) results[partyId] = sum / count;
-    }
-    output.push({ date, results, pollsterCount: currentPolls.length });
-  }
-  return output;
-}
-
-function smoothTrendSeries(series, partyIds, windowDays) {
-  if (windowDays <= 14 || series.length < 3) return series;
-  const windowMs = windowDays * DAY;
-  return series.map((point, pointIndex) => {
-    const pointTime = parseDate(point.date);
-    const results = {};
-    for (const partyId of partyIds) {
-      let weightedTotal = 0;
-      let totalWeight = 0;
-      const addPoint = (index) => {
-        const distance = Math.abs(parseDate(series[index].date) - pointTime);
-        const value = series[index].results[partyId];
-        if (!Number.isFinite(value)) return;
-        const weight = 1 - (distance / (windowMs + 1));
-        weightedTotal += value * weight;
-        totalWeight += weight;
-      };
-      for (let index = pointIndex; index >= 0; index -= 1) {
-        if (pointTime - parseDate(series[index].date) > windowMs) break;
-        addPoint(index);
-      }
-      for (let index = pointIndex + 1; index < series.length; index += 1) {
-        if (parseDate(series[index].date) - pointTime > windowMs) break;
-        addPoint(index);
-      }
-      if (totalWeight) results[partyId] = weightedTotal / totalWeight;
-    }
-    return { ...point, results, pollsterCount: series[pointIndex].pollsterCount };
-  });
-}
-
-function makeTrend(polls, pollsterIds, startDate, endDate, partyDefinitions = PARTY_DEFINITIONS, smoothingDays = 14) {
-  const start = parseDate(startDate);
-  const end = parseDate(endDate);
-  const dates = [startDate];
-  let cursor = start + (14 * DAY);
-  while (cursor < end) {
-    dates.push(toIso(cursor));
-    cursor += 14 * DAY;
-  }
-  if (dates.at(-1) !== endDate) dates.push(endDate);
-
-  const partyIds = partyDefinitions.map((party) => party.id);
-  const raw = makeAverageSeries(
-    polls,
-    pollsterIds,
-    dates,
-    partyIds,
-  );
-  const smoothed = smoothTrendSeries(raw, partyIds, smoothingDays);
-  // The right edge is read as the current value. Ease the smoothed series into
-  // that exact value over the final few support points instead of creating a
-  // visible last-segment kink.
-  if (raw.length && smoothed.length) {
-    const blendCount = Math.min(5, smoothed.length);
-    for (const partyId of partyIds) {
-      const target = raw.at(-1).results[partyId];
-      const currentEnd = smoothed.at(-1).results[partyId];
-      if (!Number.isFinite(target) || !Number.isFinite(currentEnd)) continue;
-      const correction = target - currentEnd;
-      for (let offset = 0; offset < blendCount; offset += 1) {
-        const index = smoothed.length - blendCount + offset;
-        const value = smoothed[index].results[partyId];
-        if (!Number.isFinite(value)) continue;
-        const progress = blendCount === 1 ? 1 : offset / (blendCount - 1);
-        smoothed[index] = {
-          ...smoothed[index],
-          results: { ...smoothed[index].results, [partyId]: value + (correction * progress * progress) },
-        };
-      }
-    }
-    smoothed[smoothed.length - 1] = raw.at(-1);
-  }
-  return smoothed;
-}
 
 function interpolateSeriesPoint(points, targetTime, partyIds) {
   if (!points.length) return null;
@@ -1875,51 +1723,6 @@ function interpolateSeriesPoint(points, targetTime, partyIds) {
   };
 }
 
-function continuousSmoothPath(points) {
-  if (!points.length) return "";
-  if (points.length === 1) {
-    return `M ${points[0].x.toFixed(1)} ${points[0].y.toFixed(1)}`;
-  }
-  const slopes = points.slice(0, -1).map((point, index) => {
-    const next = points[index + 1];
-    return (next.y - point.y) / Math.max(0.001, next.x - point.x);
-  });
-  const tangents = points.map((_, index) => {
-    if (index === 0) return slopes[0];
-    if (index === points.length - 1) return slopes.at(-1);
-    return slopes[index - 1] * slopes[index] <= 0 ? 0 : (slopes[index - 1] + slopes[index]) / 2;
-  });
-  for (let index = 0; index < slopes.length; index += 1) {
-    if (Math.abs(slopes[index]) < 1e-6) {
-      tangents[index] = 0;
-      tangents[index + 1] = 0;
-      continue;
-    }
-    const left = tangents[index] / slopes[index];
-    const right = tangents[index + 1] / slopes[index];
-    const length = Math.hypot(left, right);
-    if (length > 3) {
-      const scale = 3 / length;
-      tangents[index] = scale * left * slopes[index];
-      tangents[index + 1] = scale * right * slopes[index];
-    }
-  }
-  let path = `M ${points[0].x.toFixed(1)} ${points[0].y.toFixed(1)}`;
-  for (let index = 1; index < points.length; index += 1) {
-    const previous = points[index - 1];
-    const point = points[index];
-    const third = (point.x - previous.x) / 3;
-    path += ` C ${(previous.x + third).toFixed(1)} ${(previous.y + (tangents[index - 1] * third)).toFixed(1)}, ${(point.x - third).toFixed(1)} ${(point.y - (tangents[index] * third)).toFixed(1)}, ${point.x.toFixed(1)} ${point.y.toFixed(1)}`;
-  }
-  return path;
-}
-
-function continuousLinearPath(points) {
-  if (!points.length) return "";
-  return points
-    .map((point, index) => `${index ? "L" : "M"} ${point.x.toFixed(1)} ${point.y.toFixed(1)}`)
-    .join(" ");
-}
 
 function segmentedPath(points, pathBuilder, maxGapDays = Infinity) {
   if (!points.length || !Number.isFinite(maxGapDays)) return pathBuilder(points);
@@ -2053,7 +1856,8 @@ function mainChartInfo(locale, regionType, mode, weightedUk = false) {
   const countryContext = regionType === "uk-federal" ? `${copy.ukLimit} ${ukSupplementInfo(locale)}` : regionType === "spain-federal" ? copy.spain : copy.germany;
   return {
     title: copy.title,
-    paragraphs: [copy.purpose, weightedUk && regionType === "uk-federal" ? copy.uk : copy.average, modeText, countryContext, copy.interpretation, copy.events],
+    paragraphs: [copy.purpose, weightedUk && regionType === "uk-federal" ? copy.uk : copy.average, modeText, countryContext, copy.interpretation, copy.events,
+      language === "de" ? "Die Zahlen am Linienende und ihre Veränderung beziehen sich auf die dargestellte Linie: letzter verfügbarer minus erster verfügbarer Wert im gewählten Zeitraum, in Prozentpunkten. Bei Datenlücken können diese Messdaten von den Achsengrenzen abweichen. Ein zusätzlich umrandeter Punkt zeigt die jüngste verfügbare Einzelumfrage der ausgewählten Institute im Zeitraum. Er ist nicht Teil der geglätteten Linie; Institut und Quelldatum stehen in der Legende. Ein bereits von der Quelle berechneter Durchschnitt wird nicht als Einzelumfrage markiert." : language === "es" ? "Las cifras finales y su cambio corresponden a la línea: último menos primer valor disponible en el periodo, en puntos porcentuales. Si faltan datos, las fechas pueden diferir de los límites del eje. Los puntos con contorno muestran la última encuesta individual seleccionada en el periodo; no forman parte de la línea suavizada. La leyenda identifica instituto y fecha. Una media calculada por la fuente no se marca como encuesta individual." : "End labels and changes describe the plotted line: last minus first available value within the chosen period, in percentage points. Missing data can make these observation dates differ from the axis limits. Additional outlined dots show the latest available selected individual poll in the period, separate from the smoothed line; the legend identifies its pollster and source date. Source-provided averages are not marked as individual polls."],
   };
 }
 
@@ -2072,7 +1876,7 @@ function snapshotInfo(locale, recencyKind = "published", regionType = "federal")
         en: "This is national voting intention for the Congreso de los Diputados, not a seat forecast or an election result. Pollframe normalises Wikipedia’s cited tables under CC BY-SA 4.0 and preserves links to original releases where available.",
       }
       : {
-        es: "Se muestra la pregunta del domingo para el Bundestag. No es una predicción electoral ni una proyección de escaños. Los datos proceden de DAWUM; la base reutilizada y la base derivada de Pollframe se publican bajo ODbL 1.0.",
+        es: "Se muestra la intención de voto para las elecciones al Bundestag. No es una predicción electoral ni una proyección de escaños. Los datos proceden de DAWUM; la base reutilizada y la base derivada de Pollframe se publican bajo ODbL 1.0.",
         de: "Gezeigt wird die Sonntagsfrage zur Bundestagswahl. Sie ist keine Wahlprognose und keine Sitzprojektion. Die Daten stammen von DAWUM; die wiederverwendete Datenbank und Pollframes abgeleitete Datenbank stehen unter ODbL 1.0.",
         en: "This is German federal voting intention for the Bundestag, not an election forecast or seat projection. Data comes from DAWUM; the reused database and Pollframe derivative database are made available under ODbL 1.0.",
       };
@@ -2234,7 +2038,7 @@ function PollChart({
   const [compactLayout, setCompactLayout] = useState(() => window.matchMedia("(max-width: 680px)").matches);
   const width = compactLayout ? 420 : 1320;
   const left = compactLayout ? 46 : 58;
-  const right = compactLayout ? 18 : 130;
+  const right = compactLayout ? 18 : 210;
   const [hover, setHover] = useState(null);
   const [hoverEvent, setHoverEvent] = useState(null);
   const [cursor, setCursor] = useState(null);
@@ -2332,6 +2136,7 @@ function PollChart({
     () => latestPollAtOrBefore(polls, selectedPollsters, endDate, partyIds),
     [polls, selectedPollsters, endDate, partyIds],
   );
+  const latestIndividual = endpointSnapshot.date >= startDate && !endpointSnapshot.synthetic ? endpointSnapshot : null;
 
   const activeParties = useMemo(
     () => partyDefinitions.filter((party) => selectedPartySet.has(party.id)),
@@ -2370,7 +2175,7 @@ function PollChart({
     ...trend.flatMap((point) => activeParties.map((party) => point.results[party.id])),
     ...(averageSeriesVisible ? averagePoints.flatMap((point) => activeParties.map((party) => point.results[party.id])) : []),
     ...(trendVisible ? visibleElections.flatMap((election) => activeParties.map((party) => election.results[party.id])) : []),
-    ...activeParties.map((party) => endpointSnapshot.results?.[party.id]),
+    ...activeParties.map((party) => latestIndividual?.results?.[party.id]),
   ].filter(Number.isFinite)), [trend, activeParties, averageSeriesVisible, averagePoints, trendVisible, visibleElections, endpointSnapshot]);
   const x = (date) => left + ((parseDate(date) - startTime) / Math.max(endTime - startTime, 1)) * innerW;
   const eventLayoutWidth = chartWidthPx;
@@ -2404,11 +2209,7 @@ function PollChart({
       if (markers.length >= maxEventLabels) break;
       const markerX = x(event.date);
       const label = eventText(event, locale, "short");
-      const labelLines = wrapEventLines(label, compactLayout ? 22 : chartWidthPx < 980 ? 27 : 30);
-      const longestLine = Math.max(...labelLines.map((line) => line.length));
-      const maxLabelWidth = compactLayout ? 215 : chartWidthPx < 980 ? 250 : 290;
-      const labelWidth = Math.min(maxLabelWidth, Math.max(compactLayout ? 118 : 134, (longestLine * (compactLayout ? 6.5 : 6.85)) + 30));
-      const labelHeight = 18 + (labelLines.length * 15);
+      const {labelLines,labelWidth,labelHeight} = eventLabelMetrics(label,{compact:compactLayout,width:chartWidthPx});
       const labelCenter = Math.min(
         width - right - (labelWidth / 2),
         Math.max(left + (labelWidth / 2), markerX),
@@ -2496,9 +2297,10 @@ function PollChart({
           }
         }
         if (!point) return null;
-        const latestPublishedValue = endpointSnapshot.results?.[party.id];
-        const value = Number.isFinite(latestPublishedValue) ? latestPublishedValue : point.results[party.id];
-        return { party, point, value, labelY: y(value) };
+        const first = labelSeries.find(p => p.date >= startDate && Number.isFinite(p.results[party.id]));
+        const value = point.results[party.id];
+        const delta = first ? value - first.results[party.id] : null;
+        return { party, point, first, value, delta, labelY: y(value) };
       })
       .filter(Boolean)
       .sort((a, b) => a.labelY - b.labelY);
@@ -2579,8 +2381,28 @@ function PollChart({
   const inspection = hover ?? cursor?.nearest ?? null;
   const activeEvent = hoverEvent;
 
+  const studioHistorySnapshot = new URLSearchParams(location.search).get("studioHistorySource") === "1" ? JSON.stringify({
+      kind:"history", date:latestDate, archiveStart:polls.map(p=>p.date).sort()[0], start:startDate, end:endDate, smoothingDays,
+      methodologyModes:Object.fromEntries(["trend","linear","polls","both"].map(m=>[m,mainChartInfo(locale,"federal",m).paragraphs])),
+      source:"DAWUM", sourceUrl:"https://dawum.de/API/", license:"ODbL 1.0",
+      rows:partyDefinitions.map(party=>({...party,value:endpointSnapshot.results?.[party.id] ?? null})),
+      trend, averages:averagePoints, categories:eventCategories,
+      calculationInputs: {
+        version: POLL_CALCULATOR_VERSION, start:startDate, end:pollEndDate, smoothingDays,
+        selectedPollsters, parties:partyDefinitions.map(({id})=>({id})), averageDates,
+        polls:polls.filter(p=>selectedPollsterSet.has(p.pollster)&&p.date<=endDate&&parseDate(p.date)>=startTime-45*DAY),
+      },
+      latestIndividual: latestIndividual ? {...latestIndividual, institute:pollsters[latestIndividual.pollster]} : null,
+      periodInstituteCount:new Set(polls.filter(p=>selectedPollsterSet.has(p.pollster)&&p.date>=startDate&&p.date<=endDate).map(p=>p.pollster)).size,
+      latestCalculation:pollCalculationReceipt(polls,selectedPollsters,labelSeries.at(-1)?.date || endDate,partyIds,pollsters),
+      eventCatalogue:events.map(event=>({...event,label:eventText(event,locale,"short"),election:isPrimaryElectionEvent(event)})),
+      events:visibleEvents.map(event=>({...event,label:eventText(event,locale,"short"),election:isPrimaryElectionEvent(event)})),
+      pollsters, selectedPollsters, selectedParties,
+    }) : undefined;
+  if (studioHistorySnapshot) return <span hidden data-studio-history={studioHistorySnapshot} />;
+
   return (
-    <div className="chart-region">
+    <div className="chart-region" >
       <div className="line-legend" aria-label={t.parties}>
         <strong>{t.lineLegend}:</strong>
         {activeParties.map((party) => (
@@ -2588,6 +2410,7 @@ function PollChart({
         ))}
         <span className="axis-range-note">{t.axisRange(yAxis.min, yAxis.max)}</span>
       </div>
+      {latestIndividual && <p className="latest-poll-legend" style={{fontSize:13,lineHeight:1.5,color:"var(--muted)",margin:"6px 0 12px"}}>{locale === "de" ? "Linie: Umfragedurchschnitt · umrandete Punkte: letzte Einzelumfrage" : locale === "es" ? "Línea: media · puntos con contorno: última encuesta individual" : "Line: polling average · outlined dots: latest individual poll"} · {pollsters[latestIndividual.pollster] || latestIndividual.pollster} · {formatDate(latestIndividual.date, locale, {year:true})}</p>}
       <div className="chart-stage">
         <span className="chart-scroll-hint">{t.chartSwipe}</span>
         <div className="chart-wrap" ref={chartWrapRef}>
@@ -2664,10 +2487,7 @@ function PollChart({
                   window.open(event.source, "_blank", "noopener,noreferrer");
                 }}
               >
-                <line className="event-hit-target" x1={event.markerX} x2={event.markerX} y1={margin.top} y2={height - margin.bottom} />
-                <line className="event-context-line" x1={event.markerX} x2={event.markerX} y1={labelY + (eventBoxHeight / 2)} y2={height - margin.bottom} />
-                <rect className="event-label-bg" x={event.labelCenter - (event.labelWidth / 2)} y={labelY} width={event.labelWidth} height={eventBoxHeight} rx="10" />
-                <text className="event-label-text" x={event.labelCenter} y={firstLineY} textAnchor="middle">{event.labelLines.map((line, index) => <tspan x={event.labelCenter} dy={index === 0 ? 0 : 15} key={`${event.id}-${index}`}>{line}</tspan>)}</text>
+                <EventMarkerGlyph event={event} labelY={labelY} height={eventBoxHeight} bottom={height-margin.bottom} hitTop={margin.top}/>
               </g>
             );
           })}
@@ -2706,7 +2526,7 @@ function PollChart({
               {trendVisible && visibleElections.map((election) => {
                 const value = election.results[party.id];
                 if (!Number.isFinite(value)) return null;
-                const sourceLabel = electionStatus === "provisional" ? (locale === "de" ? "Vorläufiges amtliches Wahlergebnis" : locale === "es" ? "Resultado oficial provisional" : "Provisional official election result") : locale === "es" ? "Resultado electoral oficial" : locale === "de" ? "Amtliches Wahlergebnis" : "Official election result";
+                const sourceLabel = electionStatus === 'provisional' ? (locale === 'de' ? 'Vorläufiges amtliches Wahlergebnis' : locale === 'es' ? 'Resultado oficial provisional' : 'Provisional official election result') : locale === "es" ? "Resultado electoral oficial" : locale === "de" ? "Amtliches Wahlergebnis" : "Official election result";
                 return (
                   <rect
                     key={`election-${party.id}-${election.date}`}
@@ -2730,12 +2550,15 @@ function PollChart({
               })}
             </g>
           ))}
-          {!compactLayout && (trendVisible || averageSeriesVisible) && endLabels.map(({ party, point, value, labelY }) => (
-            <g key={`end-label-${party.id}`} className="series-end-label" aria-hidden="true">
-              <circle className="series-end-point" cx={width - margin.right} cy={y(value)} r="4.2" fill={party.color} />
+          {latestIndividual && activeParties.filter(party => Number.isFinite(latestIndividual.results[party.id])).map(party => <circle key={`latest-poll-${party.id}`} className="latest-individual-poll" cx={x(latestIndividual.date)} cy={y(latestIndividual.results[party.id])} r={compactLayout ? 4 : 6} fill="var(--surface)" stroke={party.color} strokeWidth="2.5"><title>{party.name}: {latestIndividual.results[party.id]}% · {pollsters[latestIndividual.pollster]} · {latestIndividual.date}</title></circle>)}
+          {!compactLayout && (trendVisible || averageSeriesVisible) && endLabels.map(({ party, point, first, value, delta, labelY }) => (
+            <g key={`end-label-${party.id}`} className="series-end-label">
+              <title>{party.name} · {first?.date} – {point.date}</title>
+              <circle className="series-end-point" cx={x(point.date)} cy={y(value)} r="3.2" fill={party.color} />
               <line x1={width - margin.right + 5} x2={width - margin.right + 17} y1={labelY} y2={labelY} style={{ stroke: party.color }} />
               <text x={width - margin.right + 23} y={labelY + 4}>
                 {party.name} {value.toLocaleString(getNumberLocale(locale), { maximumFractionDigits: 1 })}%
+                {Number.isFinite(delta) && <tspan className="series-period-delta" style={{fill:delta>0.04?"var(--positive)":delta<-.04?"var(--negative)":"var(--muted)"}} dx="7">{delta > 0.04 ? "+" : ""}{delta.toLocaleString(getNumberLocale(locale),{maximumFractionDigits:1})} {locale === "de" ? "Pp." : "pp"}</tspan>}
               </text>
             </g>
           ))}
@@ -2819,18 +2642,18 @@ function pollInfoSource(locale, region, poll, metadata, exact = false) {
   const href = exact && poll?.date ? buildPollSourceUrl(region.slug, poll, metadata) : metadata?.sourceUrl;
   if (!href) return null;
   const sourceName = region.type === "uk-federal" ? (poll?.compilationUrl ? "Wikipedia / original release" : "UK Election Data Vault") : region.type === "spain-federal" ? "Wikipedia und Originalquellen" : "DAWUM";
-  const translatedName = locale === "es" && region.type === "spain-federal" ? "Wikipedia y fuentes originales" : sourceName;
+  const translatedName = locale === "es" && sourceName === "Wikipedia / original release" ? "Wikipedia / publicación original" : locale === "es" && region.type === "spain-federal" ? "Wikipedia y fuentes originales" : sourceName;
   const prefix = exact
-    ? (locale === "de" ? "Originalquelle dieser Messung" : locale === "es" ? "Fuente original de esta medición" : "Original source for this reading")
+    ? (locale === "de" ? "Nachweis dieser Messung" : locale === "es" ? "Referencia de esta medición" : "Record for this reading")
     : (locale === "de" ? "Datenquelle und Methodik" : locale === "es" ? "Fuente y metodología" : "Data source and methodology");
   return { href, label: `${prefix}: ${translatedName}` };
 }
 
-function ResultsCard({ t, locale, current, previous, date, partyDefinitions = PARTY_DEFINITIONS, statusLabel = null, region = REGION_META[0], metadata = null, selectedPollsters = [], embed = false, columns = false }) {
+function ResultsCard({ t, locale, current, previous, date, partyDefinitions = PARTY_DEFINITIONS, statusLabel = null, region = REGION_META[0], metadata = null, pollsters = {}, selectedPollsters = [], embed = false, columns = false }) {
   const [showAll, setShowAll] = useState(false);
   const exportRef = useRef(null);
   useEffect(() => {
-    if (!embed) return;
+    if (!embed || !columns || new URLSearchParams(window.location.search).has("studioSource")) return;
     let cancelled = false;
     let disconnect;
     import("./publishing-layout.js").then(({ observePublishingColumns }) => {
@@ -2852,16 +2675,23 @@ function ResultsCard({ t, locale, current, previous, date, partyDefinitions = PA
     .filter((party) => Number.isFinite(party.value))
     .sort((a, b) => b.value - a.value);
   const barMaximum = Math.max(30, Math.ceil((rows[0]?.value ?? 0) / 5) * 5);
-  const comparisonDate = previous.date ?? toIso(parseDate(date) - (7 * DAY));
-  const comparisonLabel = locale === "es"
-    ? `Cambio en puntos porcentuales frente a la encuesta del ${formatDate(comparisonDate, locale, { year: true })}.`
+  const comparisonDate = previous.date ?? null;
+  const comparisonInstitute = pollsters[previous.pollster] || null;
+  const institutesDiffer = Boolean(current.pollster && previous.pollster && current.pollster !== previous.pollster);
+  const baseline = comparisonDate ? `${comparisonInstitute ? `${comparisonInstitute} · ` : ""}${formatDate(comparisonDate, locale, { year: true })}` : null;
+  const comparisonLabel = baseline ? (locale === "es"
+    ? `Cambio en puntos porcentuales respecto a ${baseline}.${institutesDiffer ? " Se comparan institutos distintos; sus métodos pueden influir en la diferencia." : ""}`
     : locale === "de"
-      ? `Veränderung in Prozentpunkten gegenüber der Umfrage vom ${formatDate(comparisonDate, locale, { year: true })}.`
-      : `Change in percentage points from the poll dated ${formatDate(comparisonDate, locale, { year: true })}.`;
+      ? `Veränderung in Prozentpunkten gegenüber ${baseline}.${institutesDiffer ? " Vergleich unterschiedlicher Institute; Methodeneffekte können die Differenz beeinflussen." : ""}`
+      : `Change in percentage points compared with ${baseline}.${institutesDiffer ? " Different institutes are compared; methodology may influence the difference." : ""}`) : (locale === "de" ? "Keine frühere Vergleichsumfrage verfügbar." : locale === "es" ? "No hay una encuesta anterior disponible para comparar." : "No earlier comparison poll is available.");
   const collapsedCount = region.type === "spain-federal" ? 5 : rows.length;
+  const regionLabel = region.type === "federal" ? localizedCountryName("de", locale) : region.type === "uk-federal" ? localizedCountryName("uk", locale) : region.type === "spain-federal" ? localizedCountryName("es", locale) : region.name;
+
+  const studioCurrentSnapshot = embed && new URLSearchParams(window.location.search).has("studioSource") ? JSON.stringify({ date, region: regionLabel, regionSlug: region.slug, pollsters, selectedPollsters, latestCalculation:current.latestCalculation, pollster: statusLabel, rows, sourceUrl: metadata?.sourceUrl ?? DATA_SOURCE_URL, source: metadata?.source ?? "DAWUM", license: metadata?.license ?? "ODbL 1.0", fieldwork: current.fieldwork, sample: current.sample, synthetic: Boolean(current.synthetic), method:current.method, sourceLink:infoSource, dateKind:current.latestCalculation ? "average" : recencyKind, baselineDate:comparisonDate, baselineInstitute:comparisonInstitute, institutesDiffer, methodology:current.latestCalculation ? [(locale==="de"?"Je ausgewähltem Institut die neueste Umfrage der letzten 45 Tage; gleiches Gewicht je Institut. Fehlende Parteiwerte werden nicht ergänzt. Keine Einzelumfrage oder Wahlprognose.":locale==="es"?"Última encuesta de cada instituto seleccionado en 45 días; igual peso por instituto. No se completan valores ausentes. No es una encuesta individual ni una predicción.":"Latest poll per selected institute within 45 days, with equal institute weight. Missing party values are omitted. Not an individual poll or election forecast."),comparisonLabel] : [...info.paragraphs,pollDetails,comparisonLabel] }) : undefined;
+  if (studioCurrentSnapshot) return <span hidden data-studio-snapshot={studioCurrentSnapshot} />;
 
   return (
-    <section ref={exportRef} data-publication-date={date} data-source-date-kind={recencyKind} className={`results-card ${region.type === "spain-federal" ? "spain-results-card" : ""}`} aria-labelledby="snapshot-title">
+    <section ref={exportRef}  data-publication-date={date} data-source-date-kind={recencyKind} className={`results-card ${region.type === "spain-federal" ? "spain-results-card" : ""}`} aria-labelledby="snapshot-title">
       <small className="widget-data-age">{formatCurrentRecency(date, locale, recencyKind)}</small>
       <div className="card-heading">
         <div className="widget-info-heading">
@@ -2891,7 +2721,7 @@ function ResultsCard({ t, locale, current, previous, date, partyDefinitions = PA
   );
 }
 
-function TendencySection({ t, locale, current, baseline, onSelectParty = () => {}, partyDefinitions = PARTY_DEFINITIONS, region = REGION_META[0], metadata = null, selectedPollsters = [], embed = false }) {
+function TendencySection({ t, locale, current, baseline, onSelectParty = () => {}, partyDefinitions = PARTY_DEFINITIONS, region = REGION_META[0], metadata = null, selectedPollsters = [], pollsters = {}, embed = false }) {
   const exportRef = useRef(null);
   const numberLocale = getNumberLocale(locale);
   const rows = partyDefinitions
@@ -2924,8 +2754,11 @@ function TendencySection({ t, locale, current, baseline, onSelectParty = () => {
     .filter((party) => Number.isFinite(party.value))
     .sort((a, b) => b.value - a.value);
 
+  const studioTendencySnapshot = new URLSearchParams(location.search).has('studioExtraSource') ? JSON.stringify({kind:'tendencies',region:region.name,pollsters,selectedPollsters,date:current.date,baselineDate:baseline.date,rows:rows.map(row=>({...row,previousValue:baseline.results[row.id]})),source:'DAWUM',sourceUrl:'https://dawum.de/API/',license:'ODbL 1.0',methodology:tendencyInfo(locale,region.type,current,baseline),sourceLink:pollInfoSource(locale,region,current,metadata,!current.synthetic)}) : undefined;
+  if (studioTendencySnapshot) return <span hidden data-studio-tendencies={studioTendencySnapshot} />;
+
   return (
-    <section ref={exportRef} className="tendency-section" aria-labelledby="tendency-title">
+    <section ref={exportRef}  className="tendency-section" aria-labelledby="tendency-title">
       <div className="tendency-heading">
         <div className="widget-info-heading"><GraphInfoPopover locale={locale} title={t.tendencies} paragraphs={tendencyInfo(locale, region.type, current, baseline)} source={pollInfoSource(locale, region, current, metadata, !current.synthetic)} dataDate={current.date} className="graph-info-compact" /><div><h3 id="tendency-title">{t.tendencies}</h3>
         <p>{t.tendenciesIntro}</p>
@@ -2938,7 +2771,7 @@ function TendencySection({ t, locale, current, baseline, onSelectParty = () => {
             <button type="button" className="tendency-card-main" onClick={() => onSelectParty(party)} aria-label={t.openParty(party.name)}>
               <div className="tendency-party"><span style={{ background: party.color }} /><strong><PartyInfoButton party={party} as="span" /></strong><b>{party.value.toLocaleString(numberLocale, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%</b></div>
               <div className={`tendency-status ${party.direction}`}>{party.status}</div>
-              <p>{Number.isFinite(party.delta) ? t.percentagePoints90(party.delta) : t.tendencyUnavailable}</p>
+              <p>{Number.isFinite(party.delta) && baseline.date ? `${party.delta > 0 ? "+" : ""}${party.delta.toLocaleString(numberLocale, {minimumFractionDigits:1,maximumFractionDigits:1})} ${locale === "de" ? "Pp. seit" : locale === "es" ? "puntos desde" : "pp since"} ${formatDate(baseline.date,locale,{year:true})}` : t.tendencyUnavailable}</p>
               <span className="tendency-open" aria-hidden="true">↗</span>
             </button>
             {!embed && <WatchlistStar country={region.type === "uk-federal" ? "uk" : region.type === "spain-federal" ? "es" : "de"} regionSlug={region.slug} regionName={region.name} partyIds={[party.id]} label={`${party.name} · ${region.name}`} className="tendency-watch-star" />}
@@ -3039,11 +2872,11 @@ function ConstituencyResultCard({ selected, locale, onChange = null, embed = fal
   const shareUrl = `${publicShareOrigin(window.location.origin)}/?view=uk-constituencies&seat=${encodeURIComponent(selected.slug)}&lang=${encodeURIComponent(locale)}`;
   const credit = "UK Parliament · Open Parliament Licence v3.0 · Pollframe";
   return <section ref={exportRef} className={`constituency-detail constituency-result-card ${embed ? "is-embed" : ""}`} aria-labelledby="constituency-result-title">
-    <div className="constituency-title"><div><p className="section-label">{selected.country}{selected.region !== selected.country ? ` · ${selected.region}` : ""}</p><h2 id="constituency-result-title">{selected.name}</h2><small>{selected.code} · {selected.electorate.toLocaleString(getNumberLocale(locale))} {isGerman ? "Wahlberechtigte 2024" : "electors in 2024"}</small></div>{!embed && <div className="constituency-title-actions" data-export-ignore="true"><WidgetShareTools widget="constituency" elementRef={exportRef} filename={`pollframe-${selected.slug}-2024`} title={title} subtitle={selected.country} locale={locale} t={copy[locale]} region={region} extraEmbedParams={{ view: "uk-constituencies", seat: selected.slug }} shareHref={shareUrl} credit={credit} height={880} />{onChange && <button className="secondary-button" type="button" onClick={onChange}>{isGerman ? "Andere suchen" : "Find another"}</button>}</div>}</div>
-    <div className="constituency-columns official-only"><article><p className="section-label uk-historical-label">{isGerman ? "Amtliches Wahlergebnis · 4. Juli 2024" : "Official election result · 4 July 2024"}</p><h3><i style={{ background: winner?.color }} />{winner ? <PartyInfoButton party={winner} /> : "Other"}</h3><strong>{selected.winner.candidate}</strong><span>{isGerman ? "Vorsprung vor Platz zwei" : "Lead over second place"}: {selected.winner.majority.toLocaleString(getNumberLocale(locale))} {isGerman ? "Stimmen" : "votes"}</span><a href={selected.sourceUrl} target="_blank" rel="noreferrer">{isGerman ? "Quelle beim UK Parliament" : "Source at UK Parliament"}<Icon name="external" size={14} /></a></article></div>
-    <div className="constituency-chart-heading"><strong>{isGerman ? "Amtliche Stimmenanteile der Wahl 2024" : "Official vote shares at the 2024 election"}</strong><small>{selected.validVotes.toLocaleString(getNumberLocale(locale))} {isGerman ? "gültige Stimmen" : "valid votes"}</small></div>
-    <div className="constituency-result-list" aria-label={isGerman ? "Amtliche Stimmenanteile 2024" : "Official 2024 vote shares"}>{rows.map((row) => <div key={row.id}><PartyInfoButton party={row.party} includeDot /><div><i style={{ width: `${row.share}%`, background: row.party.color }} /></div><strong>{row.share.toLocaleString(getNumberLocale(locale), { maximumFractionDigits: 1 })}%</strong></div>)}</div>
-    <p className="projection-method"><Icon name="info" size={15} />{isGerman ? "Diese Ansicht enthält keine Hochrechnung und keine Schätzung für heute. Gezeigt werden ausschließlich die vom UK Parliament veröffentlichten Ergebnisse der Unterhauswahl 2024." : "This view contains no projection or estimate for today. It shows only the 2024 general-election results published by the UK Parliament."}</p>
+    <div className="constituency-title"><div><p className="section-label">{selected.country}{selected.region !== selected.country ? ` · ${selected.region}` : ""}</p><h2 id="constituency-result-title">{selected.name}</h2><small>{selected.code} · {selected.electorate.toLocaleString(getNumberLocale(locale))} {isGerman ? "Wahlberechtigte 2024" : spanishText(locale, "electors in 2024")}</small></div>{!embed && <div className="constituency-title-actions" data-export-ignore="true"><WidgetShareTools widget="constituency" elementRef={exportRef} filename={`pollframe-${selected.slug}-2024`} title={title} subtitle={selected.country} locale={locale} t={copy[locale]} region={region} extraEmbedParams={{ view: "uk-constituencies", seat: selected.slug }} shareHref={shareUrl} credit={credit} height={880} />{onChange && <button className="secondary-button" type="button" onClick={onChange}>{isGerman ? "Andere suchen" : spanishText(locale, "Find another")}</button>}</div>}</div>
+    <div className="constituency-columns official-only"><article><p className="section-label uk-historical-label">{isGerman ? "Amtliches Wahlergebnis · 4. Juli 2024" : spanishText(locale, "Official election result · 4 July 2024")}</p><h3><i style={{ background: winner?.color }} />{winner ? <PartyInfoButton party={winner} /> : "Other"}</h3><strong>{selected.winner.candidate}</strong><span>{isGerman ? "Vorsprung vor Platz zwei" : spanishText(locale, "Lead over second place")}: {selected.winner.majority.toLocaleString(getNumberLocale(locale))} {isGerman ? "Stimmen" : spanishText(locale, "votes")}</span><a href={selected.sourceUrl} target="_blank" rel="noreferrer">{isGerman ? "Quelle beim UK Parliament" : spanishText(locale, "Source at UK Parliament")}<Icon name="external" size={14} /></a></article></div>
+    <div className="constituency-chart-heading"><strong>{isGerman ? "Amtliche Stimmenanteile der Wahl 2024" : spanishText(locale, "Official vote shares at the 2024 election")}</strong><small>{selected.validVotes.toLocaleString(getNumberLocale(locale))} {isGerman ? "gültige Stimmen" : spanishText(locale, "valid votes")}</small></div>
+    <div className="constituency-result-list" aria-label={isGerman ? "Amtliche Stimmenanteile 2024" : spanishText(locale, "Official 2024 vote shares")}>{rows.map((row) => <div key={row.id}><PartyInfoButton party={row.party} includeDot /><div><i style={{ width: `${row.share}%`, background: row.party.color }} /></div><strong>{row.share.toLocaleString(getNumberLocale(locale), { maximumFractionDigits: 1 })}%</strong></div>)}</div>
+    <p className="projection-method"><Icon name="info" size={15} />{isGerman ? "Diese Ansicht enthält keine Hochrechnung und keine Schätzung für heute. Gezeigt werden ausschließlich die vom UK Parliament veröffentlichten Ergebnisse der Unterhauswahl 2024." : spanishText(locale, "This view contains no projection or estimate for today. It shows only the 2024 general-election results published by the UK Parliament.")}</p>
   </section>;
 }
 
@@ -3179,7 +3012,7 @@ function UKConstituencyPage({ locale, constituencyData }) {
     if (!postcode && !outcode && firstLocal?.score <= 3 && !localLeadIsClear) {
       setRemoteMatches([]);
       setSearchOpen(true);
-      setSearchStatus(isGerman ? "Mehrere Wahlkreise passen. Wähle den richtigen aus der Liste." : "Several constituencies match. Choose the right one from the list.");
+      setSearchStatus(isGerman ? "Mehrere Wahlkreise passen. Wähle den richtigen aus der Liste." : spanishText(locale, "Several constituencies match. Choose the right one from the list."));
       return;
     }
     const compactLocation = normaliseSearch(safeQuery).replace(/\b(?:road|rd|street|st|avenue|ave|lane|ln|drive|dr|close|court|house|flat)\b/g, " ").replace(/\b\d+[a-z]?\b/g, " ").replace(/\s+/g, " ").trim();
@@ -3190,7 +3023,7 @@ function UKConstituencyPage({ locale, constituencyData }) {
     setIsSearching(true);
     setRemoteMatches([]);
     setSearchOpen(false);
-    setSearchStatus(isGerman ? "Wahlkreis wird gesucht …" : "Finding your constituency…");
+    setSearchStatus(isGerman ? "Wahlkreis wird gesucht …" : spanishText(locale, "Finding your constituency…"));
     try {
       let found = [];
       let broaderArea = "";
@@ -3206,11 +3039,11 @@ function UKConstituencyPage({ locale, constituencyData }) {
         } catch (error) {
           if (controller.signal.aborted) throw error;
           broaderArea = postcode.slice(0, -3);
-          found = await resolveOutcode(broaderArea, `${isGerman ? "Größeres Postcode-Gebiet" : "Broader postcode area"} ${broaderArea}`, controller.signal);
+          found = await resolveOutcode(broaderArea, `${isGerman ? "Größeres Postcode-Gebiet" : spanishText(locale, "Broader postcode area")} ${broaderArea}`, controller.signal);
         }
       } else if (outcode) {
         if (outcode.startsWith("BT")) throw new Error("northern-ireland");
-        found = await resolveOutcode(outcode, `${isGerman ? "Postleitzahlgebiet" : "Postcode area"} ${outcode}`, controller.signal);
+        found = await resolveOutcode(outcode, `${isGerman ? "Postleitzahlgebiet" : spanishText(locale, "Postcode area")} ${outcode}`, controller.signal);
       } else {
         const tokens = compactLocation.split(" ").filter((token) => token.length > 1);
         const placeQueries = [...new Set([
@@ -3230,19 +3063,19 @@ function UKConstituencyPage({ locale, constituencyData }) {
       }
       const unique = [...new Map(found.map((item) => [item.seat.slug, item])).values()].slice(0, 8);
       if (!unique.length) throw new Error("not found");
-      if (unique.length === 1) selectSeat(unique[0].seat.slug, `${isGerman ? "Gefunden" : "Found"}: ${unique[0].seat.name}${broaderArea ? ` · ${isGerman ? "über das Gebiet" : "via area"} ${broaderArea}` : ""}`);
+      if (unique.length === 1) selectSeat(unique[0].seat.slug, `${isGerman ? "Gefunden" : spanishText(locale, "Found")}: ${unique[0].seat.name}${broaderArea ? ` · ${isGerman ? "über das Gebiet" : spanishText(locale, "via area")} ${broaderArea}` : ""}`);
       else {
         setRemoteMatches(unique);
         setSearchOpen(true);
         setSearchStatus(broaderArea
           ? (isGerman ? `Der genaue Postcode wurde nicht gefunden. Das größere Gebiet ${broaderArea} berührt mehrere Wahlkreise – wähle den passenden aus.` : `The exact postcode was not found. The broader ${broaderArea} area overlaps several constituencies—choose the right one.`)
-          : (isGerman ? "Dieses Gebiet berührt mehrere Wahlkreise. Wähle den passenden aus." : "This area overlaps more than one constituency. Choose the right one below."));
+          : (isGerman ? "Dieses Gebiet berührt mehrere Wahlkreise. Wähle den passenden aus." : spanishText(locale, "This area overlaps more than one constituency. Choose the right one below.")));
       }
     } catch {
       const isNorthernIreland = postcode.startsWith("BT") || outcode.startsWith("BT");
       setSearchStatus(isNorthernIreland
-        ? (isGerman ? "Für nordirische BT-Postleitzahlen ist keine passende kommerzielle Geodatenlizenz eingebunden. Suche stattdessen nach dem Wahlkreisnamen." : "Northern Irish BT postcode lookup needs separate licensed data. Search by constituency name instead.")
-        : (isGerman ? "Kein eindeutiger Treffer. Versuche den vollständigen Postcode, den Ort oder den Wahlkreisnamen." : "No clear match. Try the full postcode, town or constituency name."));
+        ? (isGerman ? "Für nordirische BT-Postleitzahlen ist keine passende kommerzielle Geodatenlizenz eingebunden. Suche stattdessen nach dem Wahlkreisnamen." : spanishText(locale, "Northern Irish BT postcode lookup needs separate licensed data. Search by constituency name instead."))
+        : (isGerman ? "Kein eindeutiger Treffer. Versuche den vollständigen Postcode, den Ort oder den Wahlkreisnamen." : spanishText(locale, "No clear match. Try the full postcode, town or constituency name.")));
       setSearchOpen(Boolean(localMatches.length));
     } finally {
       window.clearTimeout(timeout);
@@ -3252,8 +3085,8 @@ function UKConstituencyPage({ locale, constituencyData }) {
   };
   useEffect(() => {
     updatePageMetadata({
-      title: selected ? `${selected.name} · Wahlergebnis 2024 · Pollframe` : (isGerman ? "Britische Wahlkreisergebnisse 2024 · Pollframe" : "UK constituency results 2024 · Pollframe"),
-      description: isGerman ? "Wahlkreissuche und amtliche Ergebnisse der Unterhauswahl 2024 für alle 650 britischen Wahlkreise." : "Constituency search and official 2024 general-election results for all 650 UK constituencies.",
+      title: selected ? `${selected.name} · Wahlergebnis 2024 · Pollframe` : (isGerman ? "Britische Wahlkreisergebnisse 2024 · Pollframe" : spanishText(locale, "UK constituency results 2024 · Pollframe")),
+      description: isGerman ? "Wahlkreissuche und amtliche Ergebnisse der Unterhauswahl 2024 für alle 650 britischen Wahlkreise." : spanishText(locale, "Constituency search and official 2024 general-election results for all 650 UK constituencies."),
       canonicalPath: selected ? `/?view=uk-constituencies&seat=${encodeURIComponent(selected.slug)}` : "/?view=uk-constituencies",
       locale,
       indexable: true,
@@ -3261,23 +3094,23 @@ function UKConstituencyPage({ locale, constituencyData }) {
   }, [selected, locale, isGerman]);
   return (
     <main id="top" className="constituency-page">
-      <nav className="region-breadcrumb"><BackButton fallback={publicCountryPath("uk")} label={isGerman ? "Zurück" : "Back"} /><span>/</span><a href={publicCountryPath("uk")}>{isGerman ? "UK-Übersicht" : "UK overview"}</a><span>/</span><strong>{isGerman ? "Wahlkreise" : "Constituencies"}</strong></nav>
-      <section className="constituency-hero"><div><p className="section-label">650 {isGerman ? "Unterhauswahlkreise" : "Commons constituencies"}</p><h1>{isGerman ? "Finde deinen Wahlkreis" : "Find your constituency"}</h1><p>{isGerman ? "Gib einen Postcode, einen Ort oder den Wahlkreisnamen ein. Pollframe zeigt anschließend ausschließlich das amtliche Ergebnis der Unterhauswahl 2024." : "Enter a postcode, town or constituency name. Pollframe then shows only the official result of the 2024 general election."}</p></div></section>
-      <section className="constituency-finder" aria-label={isGerman ? "Wahlkreissuche" : "Constituency search"}>
+      <nav className="region-breadcrumb"><BackButton fallback={publicCountryPath("uk")} label={isGerman ? "Zurück" : spanishText(locale, "Back")} /><span>/</span><a href={publicCountryPath("uk")}>{isGerman ? "UK-Übersicht" : spanishText(locale, "UK overview")}</a><span>/</span><strong>{isGerman ? "Wahlkreise" : spanishText(locale, "Constituencies")}</strong></nav>
+      <section className="constituency-hero"><div><p className="section-label">650 {isGerman ? "Unterhauswahlkreise" : spanishText(locale, "Commons constituencies")}</p><h1>{isGerman ? "Finde deinen Wahlkreis" : spanishText(locale, "Find your constituency")}</h1><p>{isGerman ? "Gib einen Postcode, einen Ort oder den Wahlkreisnamen ein. Pollframe zeigt anschließend ausschließlich das amtliche Ergebnis der Unterhauswahl 2024." : spanishText(locale, "Enter a postcode, town or constituency name. Pollframe then shows only the official result of the 2024 general election.")}</p></div></section>
+      <section className="constituency-finder" aria-label={isGerman ? "Wahlkreissuche" : spanishText(locale, "Constituency search")}>
         <form className="finder-field constituency-search-form" onSubmit={findConstituency}>
-          <label htmlFor="seat-search">{isGerman ? "Postcode, Ort oder Wahlkreis" : "Postcode, town or constituency"}</label>
-          <div className="constituency-search-box"><Icon name="search" size={19} /><input ref={searchInputRef} id="seat-search" type="search" value={search} maxLength={80} onFocus={() => { setSearchOpen(Boolean(search.trim() && matches.length)); revealMobileSearch(); }} onChange={(event) => { setSearch(safeConstituencyQuery(event.target.value)); setRemoteMatches([]); setSearchStatus(""); setSearchOpen(true); }} placeholder={isGerman ? "z. B. SK17 6BE, Buxton oder High Peak" : "e.g. SK17 6BE, Buxton or High Peak"} autoComplete="postal-code" autoCapitalize="words" spellCheck="false" enterKeyHint="search" /><button className="primary-button" type="submit" disabled={isSearching}>{isSearching ? (isGerman ? "Suche …" : "Searching…") : (isGerman ? "Suchen" : "Search")}</button></div>
-          {searchOpen && matches.length > 0 && <div ref={suggestionListRef} className="finder-results" role="listbox" aria-label={isGerman ? "Suchvorschläge" : "Search suggestions"}>{matches.map(({ seat, context }) => <button key={seat.code} type="button" role="option" aria-selected={seat.slug === selectedSlug} onClick={() => selectSeat(seat.slug)}><span><strong>{seat.name}</strong><small>{context}</small></span><span>→</span></button>)}</div>}
-          <div className="finder-feedback">{searchStatus ? <small role="status">{searchStatus}</small> : <small>{isGerman ? "Auch vollständige Adressen mit enthaltenem Postcode und Postcode-Gebiete wie SK17 funktionieren." : "Full addresses containing a postcode and postcode areas such as SK17 work too."}</small>}<small>{isGerman ? "Erst beim Suchen wird nur der benötigte Postcode oder Ortsbegriff an Postcodes.io übertragen. Pollframe speichert ihn nicht." : "Only after you search is the required postcode or place term sent to Postcodes.io. Pollframe does not store it."}</small></div>
+          <label htmlFor="seat-search">{isGerman ? "Postcode, Ort oder Wahlkreis" : spanishText(locale, "Postcode, town or constituency")}</label>
+          <div className="constituency-search-box"><Icon name="search" size={19} /><input ref={searchInputRef} id="seat-search" type="search" value={search} maxLength={80} onFocus={() => { setSearchOpen(Boolean(search.trim() && matches.length)); revealMobileSearch(); }} onChange={(event) => { setSearch(safeConstituencyQuery(event.target.value)); setRemoteMatches([]); setSearchStatus(""); setSearchOpen(true); }} placeholder={isGerman ? "z. B. SK17 6BE, Buxton oder High Peak" : spanishText(locale, "e.g. SK17 6BE, Buxton or High Peak")} autoComplete="postal-code" autoCapitalize="words" spellCheck="false" enterKeyHint="search" /><button className="primary-button" type="submit" disabled={isSearching}>{isSearching ? (isGerman ? "Suche …" : spanishText(locale, "Searching…")) : (isGerman ? "Suchen" : spanishText(locale, "Search"))}</button></div>
+          {searchOpen && matches.length > 0 && <div ref={suggestionListRef} className="finder-results" role="listbox" aria-label={isGerman ? "Suchvorschläge" : spanishText(locale, "Search suggestions")}>{matches.map(({ seat, context }) => <button key={seat.code} type="button" role="option" aria-selected={seat.slug === selectedSlug} onClick={() => selectSeat(seat.slug)}><span><strong>{seat.name}</strong><small>{context}</small></span><span>→</span></button>)}</div>}
+          <div className="finder-feedback">{searchStatus ? <small role="status">{searchStatus}</small> : <small>{isGerman ? "Auch vollständige Adressen mit enthaltenem Postcode und Postcode-Gebiete wie SK17 funktionieren." : spanishText(locale, "Full addresses containing a postcode and postcode areas such as SK17 work too.")}</small>}<small>{isGerman ? "Erst beim Suchen wird nur der benötigte Postcode oder Ortsbegriff an Postcodes.io übertragen. Pollframe speichert ihn nicht." : spanishText(locale, "Only after you search is the required postcode or place term sent to Postcodes.io. Pollframe does not store it.")}</small></div>
         </form>
-        {selected && <div className="selected-constituency" aria-live="polite"><span><Icon name="check" size={16} /><small>{isGerman ? "Ausgewählter Wahlkreis" : "Selected constituency"}</small><strong>{selected.name}</strong></span><button type="button" onClick={() => { setSearch(""); setSearchStatus(""); setRemoteMatches([]); setSearchOpen(false); window.requestAnimationFrame(() => searchInputRef.current?.focus()); }}>{isGerman ? "Ändern" : "Change"}</button></div>}
+        {selected && <div className="selected-constituency" aria-live="polite"><span><Icon name="check" size={16} /><small>{isGerman ? "Ausgewählter Wahlkreis" : spanishText(locale, "Selected constituency")}</small><strong>{selected.name}</strong></span><button type="button" onClick={() => { setSearch(""); setSearchStatus(""); setRemoteMatches([]); setSearchOpen(false); window.requestAnimationFrame(() => searchInputRef.current?.focus()); }}>{isGerman ? "Ändern" : spanishText(locale, "Change")}</button></div>}
       </section>
 
-      {selected ? <ConstituencyResultCard selected={selected} locale={locale} onChange={() => { setSearch(""); setSearchStatus(""); setRemoteMatches([]); setSearchOpen(false); window.requestAnimationFrame(() => searchInputRef.current?.focus()); }} /> : <section className="battleground-list"><div><p className="section-label">{isGerman ? "Knappste Ergebnisse 2024" : "Closest results in 2024"}</p><h2>{isGerman ? "Wahlkreise zum Erkunden" : "Constituencies to explore"}</h2></div><div>{closeResults.map(({ constituency, margin }) => <button type="button" key={constituency.code} onClick={() => selectSeat(constituency.slug)}><span><strong>{constituency.name}</strong><small>{constituency.country}</small></span><b>{margin.toLocaleString(getNumberLocale(locale), { maximumFractionDigits: 1 })} pp</b></button>)}</div></section>}
+      {selected ? <ConstituencyResultCard selected={selected} locale={locale} onChange={() => { setSearch(""); setSearchStatus(""); setRemoteMatches([]); setSearchOpen(false); window.requestAnimationFrame(() => searchInputRef.current?.focus()); }} /> : <section className="battleground-list"><div><p className="section-label">{isGerman ? "Knappste Ergebnisse 2024" : spanishText(locale, "Closest results in 2024")}</p><h2>{isGerman ? "Wahlkreise zum Erkunden" : spanishText(locale, "Constituencies to explore")}</h2></div><div>{closeResults.map(({ constituency, margin }) => <button type="button" key={constituency.code} onClick={() => selectSeat(constituency.slug)}><span><strong>{constituency.name}</strong><small>{constituency.country}</small></span><b>{margin.toLocaleString(getNumberLocale(locale), { maximumFractionDigits: 1 })} pp</b></button>)}</div></section>}
       <p className="constituency-source">
-        {isGerman ? "Quelle: UK Parliament. " : "Source: UK Parliament. "}
+        {isGerman ? "Quelle: UK Parliament. " : spanishText(locale, "Source: UK Parliament. ")}
         Contains Parliamentary information licensed under the <a href="https://www.parliament.uk/site-information/copyright/open-parliament-licence/" target="_blank" rel="noreferrer">Open Parliament Licence v3.0</a>.
-        {isGerman ? " Postleitzahlsuche: Postcodes.io und OS OpenData (Großbritannien)." : " Postcode lookup: Postcodes.io and OS OpenData (Great Britain)."}
+        {isGerman ? " Postleitzahlsuche: Postcodes.io und OS OpenData (Großbritannien)." : spanishText(locale, " Postcode lookup: Postcodes.io and OS OpenData (Great Britain).")}
       </p>
     </main>
   );
@@ -3308,7 +3141,7 @@ function UKVotesVsSeats({ locale, pollData }) {
   const existingOther = rows.find((party) => party.id === "209");
   const groupedOther = {
     id: "minor-parties",
-    name: isGerman ? "Sonstige" : "Other",
+    name: isGerman ? "Sonstige" : spanishText(locale, "Other"),
     color: existingOther?.color ?? "#7c858f",
     votes: minorRows.reduce((sum, party) => sum + (party.votes ?? 0), existingOther?.votes ?? 0),
     seats: minorRows.reduce((sum, party) => sum + party.seats, existingOther?.seats ?? 0),
@@ -3319,8 +3152,8 @@ function UKVotesVsSeats({ locale, pollData }) {
   return (
     <section id="votes-seats" className="projection-section uk-votes-seats" aria-labelledby="uk-votes-seats-title">
       <div className="projection-heading">
-        <div><p className="section-label">{isGerman ? "Amtliches Ergebnis · Unterhauswahl 2024" : "Official result · 2024 general election"}</p><h3 id="uk-votes-seats-title">{isGerman ? "Ein Wahlergebnis, zwei sehr verschiedene Bilder" : "One result, two very different pictures"}</h3><p>{isGerman ? "Die Werte stammen aus der Wahl 2024 – nicht aus aktuellen Umfragen. Wechsle zwischen nationalem Stimmenanteil und Anteil der 650 Unterhaussitze." : "These figures are from the 2024 election—not current polling. Switch between national vote share and each party's share of the 650 Commons seats."}</p></div>
-        <div className="segmented uk-result-toggle"><button className={mode === "votes" ? "selected" : ""} onClick={() => setMode("votes")}>{isGerman ? "Stimmen" : "Votes"}</button><button className={mode === "seats" ? "selected" : ""} onClick={() => setMode("seats")}>{isGerman ? "Sitze" : "Seats"}</button></div>
+        <div><p className="section-label">{isGerman ? "Amtliches Ergebnis · Unterhauswahl 2024" : spanishText(locale, "Official result · 2024 general election")}</p><h3 id="uk-votes-seats-title">{isGerman ? "Ein Wahlergebnis, zwei sehr verschiedene Bilder" : spanishText(locale, "One result, two very different pictures")}</h3><p>{isGerman ? "Die Werte stammen aus der Wahl 2024 – nicht aus aktuellen Umfragen. Wechsle zwischen nationalem Stimmenanteil und Anteil der 650 Unterhaussitze." : spanishText(locale, "These figures are from the 2024 election—not current polling. Switch between national vote share and each party's share of the 650 Commons seats.")}</p></div>
+        <div className="segmented uk-result-toggle"><button className={mode === "votes" ? "selected" : ""} onClick={() => setMode("votes")}>{isGerman ? "Stimmen" : spanishText(locale, "Votes")}</button><button className={mode === "seats" ? "selected" : ""} onClick={() => setMode("seats")}>{isGerman ? "Sitze" : spanishText(locale, "Seats")}</button></div>
       </div>
       <div id="uk-result-list" className="uk-result-list">{displayedRows.map((party) => {
         const value = mode === "votes" ? party.votes ?? 0 : party.seats;
@@ -3329,8 +3162,8 @@ function UKVotesVsSeats({ locale, pollData }) {
           : `${value} · ${((value / totalSeats) * 100).toLocaleString(getNumberLocale(locale), { maximumFractionDigits: 1 })}%`;
         return <div className="uk-result-row" key={party.id}><PartyInfoButton party={party} includeDot /><div><i style={{ width: `${(value / max) * 100}%`, background: party.color }} /></div><strong>{display}</strong></div>;
       })}</div>
-      {compact && minorRows.length > 0 && <button className="uk-minor-toggle" type="button" aria-expanded={showMinorParties} aria-controls="uk-result-list" onClick={(event) => { event.preventDefault(); event.stopPropagation(); setShowMinorParties(!showMinorParties); }}>{showMinorParties ? (isGerman ? "Kleinere Parteien zusammenfassen" : "Group smaller parties") : (isGerman ? `${minorRows.length} kleinere Parteien anzeigen` : `Show ${minorRows.length} smaller parties`)}<Icon name="chevron" size={15} /></button>}
-      <p className="projection-method"><Icon name="info" size={15} />{isGerman ? "UK-Gesamtergebnis einschließlich Nordirland. ‚Andere‘ bündelt kleinere Parteien, Unabhängige und nordirische Parteien, die in der GB-Umfragereihe nicht einzeln geführt werden." : "UK-wide result including Northern Ireland. “Other” groups smaller parties, independents and Northern Irish parties not broken out in the GB polling series."}</p>
+      {compact && minorRows.length > 0 && <button className="uk-minor-toggle" type="button" aria-expanded={showMinorParties} aria-controls="uk-result-list" onClick={(event) => { event.preventDefault(); event.stopPropagation(); setShowMinorParties(!showMinorParties); }}>{showMinorParties ? (isGerman ? "Kleinere Parteien zusammenfassen" : spanishText(locale, "Group smaller parties")) : (isGerman ? `${minorRows.length} kleinere Parteien anzeigen` : `Show ${minorRows.length} smaller parties`)}<Icon name="chevron" size={15} /></button>}
+      <p className="projection-method"><Icon name="info" size={15} />{isGerman ? "UK-Gesamtergebnis einschließlich Nordirland. ‚Andere‘ bündelt kleinere Parteien, Unabhängige und nordirische Parteien, die in der GB-Umfragereihe nicht einzeln geführt werden." : spanishText(locale, "UK-wide result including Northern Ireland. “Other” groups smaller parties, independents and Northern Irish parties not broken out in the GB polling series.")}</p>
     </section>
   );
 }
@@ -3343,6 +3176,7 @@ function ParliamentProjection({
   region = REGION_META[0],
   partyDefinitions = PARTY_DEFINITIONS,
   selectedPollsters = [],
+  pollsters = {},
   embed = false,
 }) {
   const [showAllCoalitions, setShowAllCoalitions] = useState(false);
@@ -3385,23 +3219,26 @@ function ParliamentProjection({
   const thresholdException = thresholdExemptPartyIds.length
     ? (isGerman
       ? " Der SSW wird als Partei der dänischen Minderheit ohne Fünf-Prozent-Hürde berücksichtigt."
-      : " The SSW is included without a five-percent threshold as the party of the Danish minority.")
+      : spanishText(locale, " The SSW is included without a five-percent threshold as the party of the Danish minority."))
     : "";
   const bremenCaveat = region.slug === "bremen"
     ? (isGerman
       ? " Die in Bremen getrennt für Bremen und Bremerhaven geltende Sperrklausel kann aus landesweiten Umfragen nicht nachgebildet werden."
-      : " Bremen's separate thresholds for Bremen and Bremerhaven cannot be reconstructed from statewide polling.")
+      : spanishText(locale, " Bremen's separate thresholds for Bremen and Bremerhaven cannot be reconstructed from statewide polling."))
     : "";
   const projectionMethod = isFederal
     ? t.projectionMethod
     : (isGerman
-      ? `${totalSeats} Regelsitze werden als einheitliches Vergleichsmodell mit Sainte-Laguë auf Parteien ab 5 % verteilt. Das tatsächliche Landeswahlrecht, Wahlkreise, Direkt-, Überhang- und Ausgleichsmandate sowie Rundungseffekte können das Ergebnis und die Parlamentsgröße verändern.${thresholdException}${bremenCaveat} Die Balken folgen der parlamentarischen Links-rechts-Sitzordnung; das ist keine inhaltliche Bewertung. Koalitionen sind nach Sitznähe geordnet, Kombinationen mit der AfD stehen nachrangig. Die Reihenfolge ist keine Wahrscheinlichkeitsangabe.`
-      : `${totalSeats} standard seats are allocated as a consistent comparison model using Sainte-Laguë for parties at or above 5%. The actual state electoral law, constituencies, direct, overhang and compensatory mandates, and rounding can change the result and parliament size.${thresholdException}${bremenCaveat} Bars follow parliamentary left-to-right seating and do not express an editorial judgement. Coalitions are ordered by seating proximity, with combinations including the AfD shown later. The order is not a probability assessment.`);
+      ? `${totalSeats} Regelsitze werden als einheitliches Vergleichsmodell mit Sainte-Laguë auf Parteien ab 5 % verteilt. Das tatsächliche Landeswahlrecht, Wahlkreise, Direkt-, Überhang- und Ausgleichsmandate sowie Rundungseffekte können das Ergebnis und die Parlamentsgröße verändern.${thresholdException}${bremenCaveat} Eine rechnerische Mehrheit ist keine Vorhersage einer Regierungsbildung.`
+      : `${totalSeats} standard seats are allocated as a consistent comparison model using Sainte-Laguë for parties at or above 5%. The actual state electoral law, constituencies, direct, overhang and compensatory mandates, and rounding can change the result and parliament size.${thresholdException}${bremenCaveat} A numerical majority is not a forecast of government formation.`);
 
   if (!parties.length) return null;
 
+  const studioSeatSnapshot = new URLSearchParams(location.search).has('studioExtraSource') ? JSON.stringify({kind:'seats',date,region:region.name,pollsters,selectedPollsters,rows:parties.map(p=>({...p,voteShare:p.value,value:p.seats})),totalSeats,majority,representedVote,coalitions:coalitions.map(c=>({...c,parties:c.parties.map(p=>p.id)})),source:'DAWUM',sourceUrl:'https://dawum.de/API/',license:'ODbL 1.0',methodology:[t.projectionIntro,projectionMethod],sourceLink:pollInfoSource(locale,region,current,null,!current.synthetic)}) : undefined;
+  if (studioSeatSnapshot) return <span hidden data-studio-seats={studioSeatSnapshot} />;
+
   return (
-    <section ref={exportRef} data-publication-date={date} data-source-date-kind={currentPollRecencyKind(region, current)} className="projection-section has-data-age" aria-labelledby="projection-title">
+    <section ref={exportRef}  data-publication-date={date} data-source-date-kind={currentPollRecencyKind(region, current)} className="projection-section has-data-age" aria-labelledby="projection-title">
       <small className="widget-data-age">{formatDataAge(date, locale)}</small>
       <div className="projection-heading">
         <div className="widget-info-heading">
@@ -3481,7 +3318,7 @@ function ParliamentProjection({
               </div>
             );
           })}
-          {coalitions.length > 5 && <button className="coalition-more" type="button" onClick={() => setShowAllCoalitions((value) => !value)}>{showAllCoalitions ? (isGerman ? "Weniger anzeigen" : "Show fewer") : (isGerman ? `${coalitions.length - 5} weitere` : `${coalitions.length - 5} more`)}<Icon name="chevron" size={15} /></button>}
+          {coalitions.length > 5 && <button className="coalition-more" type="button" onClick={() => setShowAllCoalitions((value) => !value)}>{showAllCoalitions ? (isGerman ? "Weniger anzeigen" : spanishText(locale, "Show fewer")) : (isGerman ? `${coalitions.length - 5} weitere` : `${coalitions.length - 5} more`)}<Icon name="chevron" size={15} /></button>}
         </div>
       </div>
 
@@ -3607,7 +3444,7 @@ function PartyDetailModal({
   shareUrl.searchParams.set("party", party.slug);
   shareUrl.searchParams.set("partyPeriod", period);
   const panel = (
-      <section ref={(node) => { dialogRef.current = node; exportRef.current = node; }} className={`party-modal party-history-export ${embed ? "party-history-embed-card" : ""}`} role={embed ? "region" : "dialog"} aria-modal={embed ? undefined : "true"} aria-labelledby="party-detail-title" tabIndex={embed ? undefined : -1}>
+      <section ref={(node) => { dialogRef.current = node; exportRef.current = node; }} data-studio-context={JSON.stringify({ region: region.slug, party: party.slug, range: period, pollsters: selectedPollsters.join(",") })} className={`party-modal party-history-export ${embed ? "party-history-embed-card" : ""}`} role={embed ? "region" : "dialog"} aria-modal={embed ? undefined : "true"} aria-labelledby="party-detail-title" tabIndex={embed ? undefined : -1}>
         <div className="party-modal-header">
           <div className="party-modal-title-row widget-info-heading">
             <GraphInfoPopover locale={locale} title={graphInfo.title} paragraphs={graphInfo.paragraphs} source={pollInfoSource(locale, region, null, metadata)} className="graph-info-compact" />
@@ -3876,15 +3713,15 @@ function DataAttribution({
   const isGerman = locale === "de";
   const l = (de, en, es) => locale === "es" ? es : isGerman ? de : en;
   const sourceUrl = metadata?.sourceUrl ?? DATA_SOURCE_URL;
-  const source = metadata?.source ?? "dawum.de";
+  const source = spanishText(locale, metadata?.source ?? "dawum.de");
   const licenseUrl = metadata?.licenseUrl ?? DATA_LICENSE_URL;
-  const license = metadata?.license ?? "ODbL 1.0";
+  const license = spanishText(locale, metadata?.license ?? "ODbL 1.0");
   return (
     <span className="data-attribution">
       {l("Daten von", "Data from", "Datos de")}{" "}
       <a href={sourceUrl} target="_blank" rel="noreferrer">{source}</a>{" "}
       (<a href={licenseUrl} target="_blank" rel="noreferrer">{license}</a>)
-      {metadata?.supplementarySource && <> · <a href={metadata.supplementarySource.url} target="_blank" rel="noreferrer">Wikipedia contributors</a> (<a href={metadata.supplementarySource.licenseUrl} target="_blank" rel="noreferrer">CC BY-SA 4.0</a>)</>}
+      {metadata?.supplementarySource && <> · <a href={metadata.supplementarySource.url} target="_blank" rel="noreferrer">{spanishText(locale, "Wikipedia contributors")}</a> (<a href={metadata.supplementarySource.licenseUrl} target="_blank" rel="noreferrer">CC BY-SA 4.0</a>)</>}
       {" · "}{l("Eigene Darstellung/Berechnung", "Own presentation/calculation", "Representación/cálculo propios")}{" · "}<a href="https://pollframe.com/sources" target="_blank" rel="noreferrer">{l("Quellen und Nutzungsbedingungen", "Sources and reuse terms", "Fuentes y condiciones de reutilización")}</a>
       {metadata?.databaseUpdated && <> · {l("Stand", "updated", "actualizado")} {formatDate(metadata.databaseUpdated.slice(0, 10), locale, { year: true })} ({formatDataAge(metadata.databaseUpdated.slice(0, 10), locale)})</>}
       {includeElection && (
@@ -3896,13 +3733,13 @@ function DataAttribution({
         </>
       )}
       {includeMap && (
-        <> · {isGerman ? "Kartengeometrie" : "Map geometry"}:{" "}
+        <> · {isGerman ? "Kartengeometrie" : spanishText(locale, "Map geometry")}:{" "}
           <a href={MAP_SOURCE_URL} target="_blank" rel="noreferrer">@svg-maps/germany</a>
-          {" "}/{isGerman ? " Bearbeitung von " : " adaptation by "}
+          {" "}/{isGerman ? " Bearbeitung von " : spanishText(locale, " adaptation by ")}
           <a href={MAP_SOURCE_URL} target="_blank" rel="noreferrer">Victor Cazanave</a>
-          {" "}{isGerman ? "nach" : "from"}{" "}
+          {" "}{isGerman ? "nach" : spanishText(locale, "from")}{" "}
           <a href={MAP_ORIGINAL_URL} target="_blank" rel="noreferrer">MapSVG</a>
-          {" "}(<a href={MAP_LICENSE_URL} target="_blank" rel="noreferrer">CC BY 4.0</a>; {isGerman ? "von Pollframe eingefärbt und beschriftet" : "coloured and labelled by Pollframe"})
+          {" "}(<a href={MAP_LICENSE_URL} target="_blank" rel="noreferrer">CC BY 4.0</a>; {isGerman ? "von Pollframe eingefärbt und beschriftet" : spanishText(locale, "coloured and labelled by Pollframe")})
         </>
       )}
     </span>
@@ -3980,8 +3817,7 @@ function downloadPollCsv({ pollData, selectedPollsters, regionSlug }) {
   const partyEntries = Object.entries(pollData.parties);
   const header = [
     "publication_date", "fieldwork_start", "fieldwork_end", "pollster", "sample",
-    "method", ...partyEntries.map(([, label]) => label), "source_url", "license",
-    "license_url", "compilation_source", "compilation_url", "changes",
+    "method", ...partyEntries.map(([, label]) => label), "source_url", "license", "license_url", "compilation_source", "compilation_url", "changes",
   ];
   const rows = pollData.polls
     .filter((poll) => selectedPollsters.includes(poll.pollster))
@@ -4032,22 +3868,16 @@ async function copyToClipboard(value) {
   }
 }
 
-function escapeHtmlAttribute(value) {
-  return String(value)
-    .replaceAll("&", "&amp;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;");
-}
-
-function iframeMarkup({ src, title, height }) {
-  return `<iframe src="${escapeHtmlAttribute(src)}" title="${escapeHtmlAttribute(title)}" width="100%" height="${Number(height)}" loading="lazy" style="border:0;display:block;width:100%;max-width:100%" referrerpolicy="no-referrer" sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"></iframe>`;
-}
-
 function reportBugHref(sourceUrl = window.location.href) {
   const url = new URL("/", window.location.origin);
   url.searchParams.set("page", "bug-report");
-  url.searchParams.set("from", sourceUrl);
+  // Recovery links are credentials: never carry their tokens into a report.
+  const source = new URL(sourceUrl, window.location.origin);
+  for (const key of [...source.searchParams.keys()]) {
+    if (/token|password|secret|authorization|^account$|^code$/i.test(key)) source.searchParams.delete(key);
+  }
+  source.hash = "";
+  url.searchParams.set("from", source.toString());
   return url.toString();
 }
 
@@ -4244,6 +4074,7 @@ function widgetPngProfile(widget) {
 }
 
 function WidgetShareModal({
+  studio = null,
   open,
   onClose,
   widget,
@@ -4264,9 +4095,11 @@ function WidgetShareModal({
   // A fixed, content-tested height keeps publisher embeds free of nested scrollbars.
   // The tendency cards need a little more room at the narrowest supported width.
   const embedHeight = requestedHeight ?? (widget === "modelled-seats" ? 1272 : widget === "tendencies" ? 1216 : widget === "party-history" ? 760 : widget === "constituency" ? 880 : 760);
-  const [embedTheme, setEmbedTheme] = useState("light");
+  const [localTheme, setLocalTheme] = useState("light");
+  const embedTheme = studio?.theme ?? localTheme;
+  const setEmbedTheme = value => studio ? studio.setTheme(value) : setLocalTheme(value);
   const [embedLayout, setEmbedLayout] = useState("bars");
-  const [previewWidth, setPreviewWidth] = useState("article");
+  const [previewWidth, setPreviewWidth] = useState("article"), [measuredSize, setMeasuredSize] = useState(null);
   const [copied, setCopied] = useState("");
   const [copyError, setCopyError] = useState(false);
   const dialogRef = useModalFocus(open, onClose);
@@ -4280,7 +4113,7 @@ function WidgetShareModal({
   });
   if (extraEmbedParams.view === "uk-constituencies") params.delete("region");
   if (selectedPollsters.length) params.set("pollsters", selectedPollsters.join(","));
-  const embedUrl = `${publicShareOrigin(window.location.origin)}/embed.html?${params}`;
+  const embedUrl = studio?.url ?? `${publicShareOrigin(window.location.origin)}/embed.html?${params}`;
   const targetId = widget === "current-average" ? "snapshot-title" : widget === "tendencies" ? "tendency-title" : widget === "party-history" ? "party-detail-title" : widget === "constituency" ? "constituency-result-title" : "projection-title";
   const shareParams = new URLSearchParams({ region: region.slug, lang: locale, share: "1" });
   if (selectedPollsters.length) shareParams.set("pollsters", selectedPollsters.join(","));
@@ -4289,15 +4122,16 @@ function WidgetShareModal({
   const credit = creditOverride ?? (region.type === "uk-federal"
     ? "UK Election Data Vault · Wikipedia contributors (CC BY-SA 4.0) · Pollframe"
     : region.type === "spain-federal"
-      ? "Wikipedia contributors · CC BY-SA 4.0 · Pollframe"
+      ? "Electograph · Pollframe"
       : "DAWUM · ODbL 1.0 · Pollframe");
-  const code = iframeMarkup({ src: embedUrl, title, height: embedHeight });
+  const code = studio?.code ?? iframeMarkup({measuredSize,previewWidth, src: embedUrl, title, height: embedHeight });
   const sourceNote = `${title} — ${subtitle}.\n${publicationCredit(credit, locale)}\n${shareUrl}`;
   const copy = async (value, kind) => {
     setCopyError(false);
     try {
       await copyToClipboard(value);
       setCopied(kind);
+      if (kind === "code") studio?.onPublished?.();
       if (kind === "link") trackAggregateEvent("share_link_copied");
       if (kind === "code") trackAggregateEvent("embed_code_copied");
       if (kind === "credit") trackAggregateEvent("source_note_copied");
@@ -4310,11 +4144,12 @@ function WidgetShareModal({
       <section ref={dialogRef} className="embed-modal widget-share-modal" role="dialog" aria-modal="true" aria-labelledby="widget-share-title" tabIndex={-1}>
         <div className="panel-header"><div><span className="section-label">{subtitle}</span><h2 id="widget-share-title">{t.share}</h2></div><button className="icon-button" type="button" onClick={onClose} aria-label={t.close}><Icon name="close" /></button></div>
         <p className="modal-intro">{t.embedText}</p>
-        <div className="embed-options embed-options-single"><div><span>{t.embedTheme}</span><div className="segmented">{[["light",t.embedLight],["dark",t.embedDark],["system",t.embedAuto]].map(([value,label])=><button key={value} className={embedTheme===value?"selected":""} type="button" aria-pressed={embedTheme===value} onClick={()=>setEmbedTheme(value)}>{label}</button>)}</div></div>{widget === "current-average" && <div><span>{locale === "de" ? "Darstellung" : locale === "es" ? "Diseño" : "Layout"}</span><div className="segmented">{[["bars", locale === "de" ? "Balken" : locale === "es" ? "Barras" : "Bars"],["columns",locale === "de" ? "Säulen" : locale === "es" ? "Columnas" : "Columns"]].map(([value,label])=><button key={value} type="button" className={embedLayout===value?"selected":""} aria-pressed={embedLayout===value} onClick={()=>setEmbedLayout(value)}>{label}</button>)}</div></div>}</div>
+        {!studio && <div className="embed-options embed-options-single"><div><span>{t.embedTheme}</span><div className="segmented">{(studio ? [["light",t.embedLight],["dark",t.embedDark]] : [["light",t.embedLight],["dark",t.embedDark],["system",t.embedAuto]]).map(([value,label])=><button key={value} className={embedTheme===value?"selected":""} type="button" aria-pressed={embedTheme===value} onClick={()=>setEmbedTheme(value)}>{label}</button>)}</div></div>{widget === "current-average" && <div><span>{locale === "de" ? "Darstellung" : locale === "es" ? "Diseño" : "Layout"}</span><div className="segmented">{[["bars", locale === "de" ? "Balken" : locale === "es" ? "Barras" : "Bars"],["columns",locale === "de" ? "Säulen" : locale === "es" ? "Columnas" : "Columns"]].map(([value,label])=><button key={value} type="button" className={embedLayout===value?"selected":""} aria-pressed={embedLayout===value} onClick={()=>setEmbedLayout(value)}>{label}</button>)}</div></div>}</div>}
         <div className="embed-preview-toolbar" aria-label={t.embedPreview}>{[["wide",labels.wide],["article",labels.article],["phone",labels.phone]].map(([value,label])=><button key={value} type="button" className={previewWidth===value?"selected":""} aria-pressed={previewWidth===value} onClick={()=>setPreviewWidth(value)}>{label}</button>)}</div>
-        <StaticEmbedPreview src={embedUrl} title={`${title} · ${t.embedPreview}`} height={embedHeight} previewWidth={previewWidth} targetHeight={360} className="widget-embed-preview" />
+        <StaticEmbedPreview onSize={setMeasuredSize} src={embedUrl} title={`${title} · ${t.embedPreview}`} height={embedHeight} previewWidth={previewWidth} targetHeight={360} className="widget-embed-preview" />
+        {!studio && <StudioLink sourceUrl={embedUrl} element={elementRef?.current} profile={profileOverride ?? widgetPngProfile(widget)} locale={locale} />}
         <label className="code-label">{t.embedPreview}<code>{code}</code></label>
-        <div className="embed-actions journalist-embed-actions"><button className="secondary-button" type="button" onClick={()=>copy(shareUrl,"link")}><Icon name="share" size={16}/>{copied==="link"?t.linkCopied:t.copyLink}</button><button className="primary-button" type="button" onClick={()=>copy(code,"code")}><Icon name="code" size={16}/>{copied==="code"?t.copied:t.copyCode}</button><PngExportButton elementRef={elementRef} filename={filename} title={title} subtitle={subtitle} locale={locale} label={t.exportPng} credit={credit} profile={profileOverride ?? widgetPngProfile(widget)}/><button className="secondary-button" type="button" onClick={()=>copy(sourceNote,"credit")}><Icon name="check" size={16}/>{copied==="credit"?labels.creditCopied:labels.copyCredit}</button><a className="secondary-button" href={reportBugHref(shareUrl)}><Icon name="info" size={16}/>{labels.reportBug}</a></div>
+        <div className="embed-actions journalist-embed-actions"><button className="secondary-button" type="button" onClick={()=>copy(shareUrl,"link")}><Icon name="share" size={16}/>{copied==="link"?t.linkCopied:t.copyLink}</button><button className="primary-button" type="button" onClick={()=>copy(code,"code")}><Icon name="code" size={16}/>{copied==="code"?t.copied:t.copyCode}</button>{studio ? <button className="secondary-button" onClick={studio.openPng}>{t.exportPng}</button> : <PngExportButton elementRef={elementRef} filename={filename} title={title} subtitle={subtitle} locale={locale} label={t.exportPng} credit={credit} profile={profileOverride ?? widgetPngProfile(widget)}/>}<button className="secondary-button" type="button" onClick={()=>copy(sourceNote,"credit")}><Icon name="check" size={16}/>{copied==="credit"?labels.creditCopied:labels.copyCredit}</button><a className="secondary-button" href={reportBugHref(shareUrl)}><Icon name="info" size={16}/>{labels.reportBug}</a></div>
         {copyError && <p className="embed-copy-error" role="status">{labels.copyFailed}</p>}
       </section>
     </div></ModalPortal>
@@ -4328,6 +4163,19 @@ function WidgetShareTools({ widget, elementRef, filename, title, subtitle, local
 }
 
 function WidgetEmbedView({ widget, t, locale, pollData, latestDate, current, previous, baseline, region, partyDefinitions, selectedPollsters = [] }) {
+  const studioAverage = widget === 'current-average' && new URLSearchParams(location.search).has('studioSource') && new URLSearchParams(location.search).get('studioAverage') === '1';
+  if(studioAverage){
+    const at=current.date || latestDate;
+    const ids=partyDefinitions.map(p=>p.id);
+    const calculate=date=>{
+      const receipt=pollCalculationReceipt(pollData.polls,selectedPollsters,date,ids,pollData.pollsters);
+      return {date,synthetic:true,pollsterCount:receipt.institutes,latestCalculation:receipt,
+        results:Object.fromEntries(Object.entries(receipt.parties).filter(([,v])=>Number.isFinite(v.value)).map(([id,v])=>[id,v.value]))};
+    };
+    current=calculate(at);previous=calculate(toIso(parseDate(at)-7*DAY));
+  }
+  const headline = new URLSearchParams(window.location.search).get("headline")?.replace(/[\u0000-\u001f]/g, " ").slice(0, 100);
+  if (headline) t = { ...t, current: headline, electionTomorrow: headline, partyDetailTitle: () => headline };
   if (widget === "party-history") {
     const params = new URLSearchParams(window.location.search);
     const party = partyDefinitions.find((entry) => entry.slug === params.get("party"));
@@ -4337,7 +4185,7 @@ function WidgetEmbedView({ widget, t, locale, pollData, latestDate, current, pre
     const termStart = electionDates.filter((date) => date <= latestDate).at(-1) ?? pollData.polls[0]?.date ?? ARCHIVE_START;
     return <PartyDetailModal party={party} onClose={() => {}} t={t} locale={locale} polls={pollData.polls} selectedPollsters={selectedPollsters} latestDate={latestDate} partyDefinitions={partyDefinitions} termStart={termStart} archiveStart={pollData.polls[0]?.date ?? ARCHIVE_START} region={region} metadata={pollData.metadata} embed initialPeriod={period} />;
   }
-  const statusLabel = region.type === "uk-federal" && current.synthetic
+  const statusLabel = studioAverage ? (locale==='de'?`Institutsdurchschnitt · ${current.pollsterCount} Institute`:locale==='es'?`Media · ${current.pollsterCount} institutos`:`Polling average · ${current.pollsterCount} institutes`) : region.type === "uk-federal" && current.synthetic
     ? (locale === "de" ? "Gewichteter 14-Tage-Trend" : locale === "es" ? "Tendencia ponderada de 14 días" : "Weighted 14-day trend")
     : pollData.pollsters?.[current.pollster] ?? null;
   const heading = widget === "current-average" ? t.current : widget === "tendencies" ? t.tendencies : (locale === "de" ? "Modellierte Sitzverteilung" : locale === "es" ? "Reparto modelizado de escaños" : "Modelled seat allocation");
@@ -4347,7 +4195,7 @@ function WidgetEmbedView({ widget, t, locale, pollData, latestDate, current, pre
   const headerDate = widget === "current-average"
     ? formatCurrentRecency(currentDate, locale, currentPollRecencyKind(region, current))
     : formatDate(currentDate, locale, { year: true });
-  return <main className={`widget-embed-page widget-embed-${widget}`}><header className="embed-header"><div><span className="embed-brand"><BrandMark/>POLLFRAME</span><h1>{region.name} · {heading}</h1></div><time dateTime={currentDate}>{headerDate}</time></header>{widget === "current-average" ? <ResultsCard t={t} locale={locale} current={current} previous={previous} date={currentDate} partyDefinitions={partyDefinitions} statusLabel={statusLabel} region={region} metadata={pollData.metadata} embed columns={new URLSearchParams(window.location.search).get("layout") === "columns"}/> : widget === "tendencies" ? <TendencySection t={t} locale={locale} current={current} baseline={baseline} partyDefinitions={partyDefinitions} region={region} metadata={pollData.metadata} embed/> : <ParliamentProjection t={t} locale={locale} current={current} date={currentDate} region={region} partyDefinitions={partyDefinitions} embed/>}<footer className="embed-footer"><DataAttribution locale={locale} metadata={pollData.metadata}/><a href={`/?${interactiveParams}`} target="_blank" rel="noreferrer">{locale === "de" ? "Interaktiv öffnen" : locale === "es" ? "Abrir interactivo" : "Open interactive"} <Icon name="external" size={13}/></a></footer></main>;
+  return <main className={`widget-embed-page widget-embed-${widget}`}><header className="embed-header"><div><span className="embed-brand"><BrandMark/>POLLFRAME</span><h1>{region.type === "federal" ? localizedCountryName("de", locale) : region.type === "uk-federal" ? localizedCountryName("uk", locale) : region.type === "spain-federal" ? localizedCountryName("es", locale) : region.name} · {heading}</h1></div><time dateTime={currentDate}>{headerDate}</time></header>{widget === "current-average" ? <ResultsCard t={t} locale={locale} current={current} previous={previous} date={currentDate} partyDefinitions={partyDefinitions} statusLabel={statusLabel} region={region} metadata={pollData.metadata} pollsters={pollData.pollsters} selectedPollsters={selectedPollsters} embed columns={new URLSearchParams(window.location.search).get("layout") === "columns"}/> : widget === "tendencies" ? <TendencySection t={t} locale={locale} current={current} baseline={baseline} partyDefinitions={partyDefinitions} region={region} metadata={pollData.metadata} pollsters={pollData.pollsters} selectedPollsters={selectedPollsters} embed/> : <ParliamentProjection t={t} locale={locale} current={current} date={currentDate} region={region} partyDefinitions={partyDefinitions} pollsters={pollData.pollsters} selectedPollsters={selectedPollsters} embed/>}<footer className="embed-footer"><DataAttribution locale={locale} metadata={pollData.metadata}/><a href={`/?${interactiveParams}`} target="_blank" rel="noreferrer">{locale === "de" ? "Interaktiv öffnen" : locale === "es" ? "Abrir interactivo" : "Open interactive"} <Icon name="external" size={13}/></a></footer></main>;
 }
 
 function PollTable({ t, locale, pollData, selectedPollsters, selectedParties, partyDefinitions, regionSlug }) {
@@ -4404,7 +4252,7 @@ function PollTable({ t, locale, pollData, selectedPollsters, selectedParties, pa
                 <td><strong>{pollData.pollsters[poll.pollster]}</strong></td>
                 <td>{fieldworkLabel(poll)}</td>
                 <td>{poll.sample?.toLocaleString(numberLocale) ?? "–"}</td>
-                <td>{poll.method || "–"}</td>
+                <td>{pollMethodLabel(poll.method, locale) || "–"}</td>
                 {parties.map((party) => <td key={party.id}>{valueLabel(poll.results[party.id])}</td>)}
                 <td><a href={buildPollSourceUrl(regionSlug, poll, pollData.metadata)} target="_blank" rel="noreferrer">{t.openSource}<Icon name="external" size={13} /></a></td>
               </tr>
@@ -4418,7 +4266,7 @@ function PollTable({ t, locale, pollData, selectedPollsters, selectedParties, pa
               <dl>
                 <div><dt>{t.fieldwork}</dt><dd>{fieldworkLabel(poll)}</dd></div>
                 <div><dt>{t.sample}</dt><dd>{poll.sample?.toLocaleString(numberLocale) ?? "–"}</dd></div>
-                <div><dt>{t.method}</dt><dd>{poll.method || "–"}</dd></div>
+                <div><dt>{t.method}</dt><dd>{pollMethodLabel(poll.method, locale) || "–"}</dd></div>
               </dl>
               <div className="poll-card-values">{parties.map((party) => <span key={party.id}><i style={{ background: party.color }} /><PartyInfoButton party={party} /><strong>{valueLabel(poll.results[party.id])}</strong></span>)}</div>
             </article>
@@ -4446,7 +4294,7 @@ function EmbedModal({
   customEndDate,
 }) {
   const [embedTheme, setEmbedTheme] = useState("light");
-  const [previewWidth, setPreviewWidth] = useState("article");
+  const [previewWidth, setPreviewWidth] = useState("article"), [measuredSize, setMeasuredSize] = useState(null);
   const [copied, setCopied] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
   const [creditCopied, setCreditCopied] = useState(false);
@@ -4467,7 +4315,7 @@ function EmbedModal({
     customStartDate,
     customEndDate,
   });
-  const code = iframeMarkup({ src: embedUrl, title: t.embedByline, height: embedHeight });
+  const code = iframeMarkup({measuredSize,previewWidth, src: embedUrl, title: t.embedByline, height: embedHeight });
   const shareUrl = buildShareUrl({
     locale,
     range,
@@ -4509,7 +4357,7 @@ function EmbedModal({
           </div>
         </div>
         <div className="embed-preview-toolbar" aria-label={t.embedPreview}>{[["wide",labels.wide],["article",labels.article],["phone",labels.phone]].map(([value,label])=><button key={value} type="button" className={previewWidth===value?"selected":""} aria-pressed={previewWidth===value} onClick={()=>setPreviewWidth(value)}>{label}</button>)}</div>
-        <StaticEmbedPreview src={embedUrl} title={t.embedByline} height={embedHeight} previewWidth={previewWidth} targetHeight={360} />
+        <StaticEmbedPreview onSize={setMeasuredSize} src={embedUrl} title={t.embedByline} height={embedHeight} previewWidth={previewWidth} targetHeight={360} />
         <label className="code-label">
           {t.embedPreview}
           <code>{code}</code>
@@ -4523,6 +4371,7 @@ function EmbedModal({
         </div>
         {copyError && <p className="embed-copy-error" role="status">{labels.copyFailed}</p>}
         <small className="embed-privacy"><Icon name="check" size={14} />{t.embedPrivacy}</small>
+        <StudioLink sourceUrl={embedUrl} locale={locale} />
       </section>
     </div></ModalPortal>
   );
@@ -4542,13 +4391,14 @@ function EmbedView({
   events = POLITICAL_EVENTS,
   eventCategories = EVENT_CATEGORIES,
   electionResults = ELECTION_RESULTS,
-  electionStatus = null,
   termStart = CURRENT_TERM_START,
   archiveStart = ARCHIVE_START,
   regionSlug = "bundestag",
   customStartDate,
   customEndDate,
 }) {
+  const headline = new URLSearchParams(window.location.search).get("headline")?.replace(/[\u0000-\u001f]/g, " ").slice(0, 100);
+  if (headline) t = { ...t, chartTitle: headline };
   const interactiveUrl = buildShareUrl({
     locale,
     range,
@@ -4736,9 +4586,9 @@ function HeaderCountryMenu({ locale, country }) {
       style={{ "--country-popover-top": `${anchor.top}px`, "--country-popover-right": `${anchor.right}px` }}
     >
       <strong>{label}</strong>
-      <a className={country === "de" ? "selected" : ""} href="/" onPointerEnter={() => prefetchCountryRoute("de")} onFocus={() => prefetchCountryRoute("de")} onClick={(event) => navigateCountry(event, "de", "/")}><span>🇩🇪</span><span><b>{localizedCountryName("de", locale)}</b><small>{isSpanish ? "Bundestag · estados federados" : isGerman ? "Bundestag · Länder" : "Bundestag · states"}</small></span>{country === "de" && <Icon name="check" size={15} />}</a>
-      <a className={country === "uk" ? "selected" : ""} href={publicCountryPath("uk")} onPointerEnter={() => prefetchCountryRoute("uk")} onFocus={() => prefetchCountryRoute("uk")} onClick={(event) => navigateCountry(event, "uk", publicCountryPath("uk"))}><span>🇬🇧</span><span><b>{localizedCountryName("uk", locale)}</b><small>{isSpanish ? "Westminster · circunscripciones" : isGerman ? "Westminster · Wahlkreise" : "Westminster · constituencies"}</small></span>{country === "uk" && <Icon name="check" size={15} />}</a>
-      <a className={country === "es" ? "selected" : ""} href={publicCountryPath("es")} onPointerEnter={() => prefetchCountryRoute("es")} onFocus={() => prefetchCountryRoute("es")} onClick={(event) => navigateCountry(event, "es", publicCountryPath("es"))}><span>🇪🇸</span><span><b>{localizedCountryName("es", locale)}</b><small>{isSpanish ? "Congreso · autonomías" : isGerman ? "Kongress · Autonomien" : "Congress · autonomies"}</small></span>{country === "es" && <Icon name="check" size={15} />}</a>
+      <a className={country === "de" ? "selected" : ""} href="/" onPointerEnter={() => prefetchCountryRoute("de")} onFocus={() => prefetchCountryRoute("de")} onClick={(event) => navigateCountry(event, "de", "/")}><span>🇩🇪</span><span><b>{localizedCountryName("de", locale)}</b><small>{isSpanish ? "Bundestag · estados federados" : isGerman ? "Bundestag · Länder" : spanishText(locale, "Bundestag · states")}</small></span>{country === "de" && <Icon name="check" size={15} />}</a>
+      <a className={country === "uk" ? "selected" : ""} href={publicCountryPath("uk")} onPointerEnter={() => prefetchCountryRoute("uk")} onFocus={() => prefetchCountryRoute("uk")} onClick={(event) => navigateCountry(event, "uk", publicCountryPath("uk"))}><span>🇬🇧</span><span><b>{localizedCountryName("uk", locale)}</b><small>{isSpanish ? "Westminster · circunscripciones" : isGerman ? "Westminster · Wahlkreise" : spanishText(locale, "Westminster · constituencies")}</small></span>{country === "uk" && <Icon name="check" size={15} />}</a>
+      <a className={country === "es" ? "selected" : ""} href={publicCountryPath("es")} onPointerEnter={() => prefetchCountryRoute("es")} onFocus={() => prefetchCountryRoute("es")} onClick={(event) => navigateCountry(event, "es", publicCountryPath("es"))}><span>🇪🇸</span><span><b>{localizedCountryName("es", locale)}</b><small>{isSpanish ? "Congreso · autonomías" : isGerman ? "Kongress · Autonomien" : spanishText(locale, "Congress · autonomies")}</small></span>{country === "es" && <Icon name="check" size={15} />}</a>
       <a className="country-all-link" href={publicViewPath("countries")} onPointerEnter={() => prefetchCountryRoute("all")} onFocus={() => prefetchCountryRoute("all")} onClick={(event) => navigateCountry(event, "all", publicViewPath("countries"))}>{locale === "es" ? "Ver todos los países" : isGerman ? "Alle Länder anzeigen" : "View all countries"}<span>→</span></a>
     </div>,
     document.body,
@@ -4764,6 +4614,7 @@ function HeaderCountryMenu({ locale, country }) {
 }
 
 function SiteHeader({ t, locale = "de", onSettings, onInfo, pwa, homeHref = "/", homeLabel = "Pollframe Deutschland-Übersicht", countryCode, showReport = true }) {
+  const inStudio = routeQueryForLocation().get("view") === "studio";
   const headerCountry = countryCode ?? (homeHref.includes("country=uk") ? "uk" : homeHref.includes("country=es") ? "es" : "de");
   const reportLabel = t.reportBug ?? (locale === "de" ? "Problem melden" : locale === "es" ? "Informar" : "Report issue");
   const installApp = async () => {
@@ -4776,10 +4627,13 @@ function SiteHeader({ t, locale = "de", onSettings, onInfo, pwa, homeHref = "/",
         <a className="brand" href={homeHref} aria-label={homeLabel}>
           <BrandMark />
           <span>POLLFRAME</span>
-          <em>BETA</em>
         </a>
+        <nav className="product-navigation" aria-label={locale === "de" ? "Pollframe-Bereiche" : locale === "es" ? "Secciones de Pollframe" : "Pollframe sections"}>
+          <a href={inStudio ? `/?lang=${locale}` : homeHref} aria-current={!inStudio ? "page" : undefined}>{locale === "de" ? "Umfragen" : locale === "es" ? "Encuestas" : "Polls"}</a>
+          <a href={`/?view=studio&lang=${locale}&back=${encodeURIComponent(inStudio ? routeQueryForLocation().get("back") || "/" : `${location.pathname}${location.search}${location.hash}`)}`} aria-current={inStudio ? "page" : undefined}>Studio</a>
+        </nav>
         <div className="header-actions">
-          <HeaderCountryMenu locale={locale} country={headerCountry} />
+          {!inStudio && <HeaderCountryMenu locale={locale} country={headerCountry} />}
           {pwa && !pwa.installed && (
             <button className="header-button app-header-button" onClick={installApp} aria-label={t.installApp}>
               <Icon name="download" /><span>{t.app}</span>
@@ -4816,7 +4670,7 @@ function SiteHeader({ t, locale = "de", onSettings, onInfo, pwa, homeHref = "/",
   );
 }
 
-function MobileAppNavigation({ t, onSettings, homeHref }) {
+function MobileAppNavigation({ t, homeHref }) {
   const query = new URLSearchParams(window.location.search);
   const currentRegion = query.get("region");
   const isUK = homeHref.includes("country=uk") || currentRegion === "uk-westminster";
@@ -4825,12 +4679,14 @@ function MobileAppNavigation({ t, onSettings, homeHref }) {
   const overviewHref = isUK ? "/?country=uk" : isSpain ? "/?country=es" : "/";
   const exploreHref = isUK ? "/?country=uk&view=uk-map" : isSpain ? "/?country=es#spain-map" : "/?view=states";
   const watchlistHref = `/?view=watchlist&country=${country}`;
-  const active = query.get("view") === "watchlist" ? "watchlist" : (isUK && query.get("view") === "uk-map") || (isSpain && window.location.hash === "#spain-map") || (!isUK && !isSpain && query.get("view") === "states") ? "explore" : "overview";
+  const studioHref = "/?view=studio";
+  const active = query.get("view") === "studio" ? "studio" : query.get("view") === "watchlist" ? "watchlist" : (isUK && query.get("view") === "uk-map") || (isSpain && window.location.hash === "#spain-map") || (!isUK && !isSpain && query.get("view") === "states") ? "explore" : "overview";
   return (
     <nav className="mobile-app-nav" aria-label={t.app}>
       <a href={watchlistHref} onClick={appLinkHandler(watchlistHref)} aria-current={active === "watchlist" ? "page" : undefined}><Icon name="star" /><span>Watchlist</span></a>
       <a href={overviewHref} onClick={appLinkHandler(overviewHref)} aria-current={active === "overview" ? "page" : undefined}><Icon name="home" /><span>{t.navOverview}</span></a>
-      <a href={exploreHref} onClick={appLinkHandler(exploreHref)} aria-current={active === "explore" ? "page" : undefined}><Icon name="map" /><span>{isUK ? (t.navMap ?? "Map") : t.navMap}</span></a>
+      <a href={exploreHref} onClick={appLinkHandler(exploreHref)} aria-current={active === "explore" ? "page" : undefined}><Icon name="map" /><span>{t.navMap ?? "Map"}</span></a>
+      <a href={studioHref} onClick={appLinkHandler(studioHref)} aria-current={active === "studio" ? "page" : undefined}><Icon name="chart" /><span>Studio</span></a>
     </nav>
   );
 }
@@ -4857,7 +4713,7 @@ function SiteFooter({ t, onInfo, onSettings, sourceUrl, pwa, homeHref = "/", hom
           <a className="footer-action report-bug-link" href={reportBugHref()}>{t.reportBug ?? "Report issue"}</a>
         </nav>
       </footer>
-      {pwa?.installed && <MobileAppNavigation t={t} onSettings={onSettings} homeHref={homeHref} />}
+      {pwa?.installed && <MobileAppNavigation t={t} homeHref={homeHref} />}
     </>
   );
 }
@@ -4873,13 +4729,13 @@ function mapPartyName(party, rawId, locale) {
     if (rawId === "102") return "CSU";
     if (rawId === "101") return "CDU";
   }
-  if (locale !== "de" && party.id === "4") return "Greens";
-  if (locale !== "de" && party.id === "5") return "Left";
+  if (locale.startsWith("en") && party.id === "4") return "Greens";
+  if (locale.startsWith("en") && party.id === "5") return "Left";
   return party.short;
 }
 
 function mapPartyFullName(party, locale) {
-  if (locale === "de") return party.name;
+  if (locale === "de" || locale === "es") return party.name;
   if (party.id === "4") return "Greens";
   if (party.id === "5") return "Left";
   if (party.id === "8") return "Free Voters";
@@ -5018,15 +4874,15 @@ function StateDirectory({ states, locale }) {
   return (
     <section className="state-directory" aria-labelledby="state-list-title">
       <div>
-        <p className="section-label">{isGerman ? "Alle Ansichten" : "All views"}</p>
-        <h2 id="state-list-title">{isGerman ? "Bundesländer von A bis Z" : "States from A to Z"}</h2>
+        <p className="section-label">{isGerman ? "Alle Ansichten" : spanishText(locale, "All views")}</p>
+        <h2 id="state-list-title">{isGerman ? "Bundesländer von A bis Z" : spanishText(locale, "States from A to Z")}</h2>
       </div>
       <div className="state-grid">
         {states.map((region) => (
           <a key={region.slug} href={publicRegionPath(region.slug)}>
             <span className={`coverage-dot ${region.coverage}`} />
-            <strong>{region.name}</strong>
-            <small>{region.pollCount} {isGerman ? "Umfragen" : "polls"} · {formatDate(region.latestDate, locale, { year: true })} · {formatDataAge(region.latestDate, locale)}</small>
+            <strong>{region.type === "federal" ? localizedCountryName("de", locale) : region.name}</strong>
+            <small>{region.pollCount} {isGerman ? "Umfragen" : spanishText(locale, "polls")} · {formatDate(region.latestDate, locale, { year: true })} · {formatDataAge(region.latestDate, locale)}</small>
             <span aria-hidden="true">→</span>
           </a>
         ))}
@@ -5035,7 +4891,7 @@ function StateDirectory({ states, locale }) {
         <Icon name="info" size={16} />
         {isGerman
           ? "Datenreihen: gut ab 45, brauchbar ab 25, begrenzt unter 25 veröffentlichten Umfragen der ausgewählten Institute seit 2017. Eine lange Reihe bedeutet nicht automatisch viele aktuelle Umfragen."
-          : "Data series: good from 45, usable from 25, limited below 25 published polls by the selected institutes since 2017. A long series does not necessarily mean many current polls."}
+          : spanishText(locale, "Data series: good from 45, usable from 25, limited below 25 published polls by the selected institutes since 2017. A long series does not necessarily mean many current polls.")}
       </p>
     </section>
   );
@@ -5120,8 +4976,11 @@ function GermanyPollingMap({
     { value: "growth", label: l("Stärkster Zuwachs", "largestGain") },
   ];
 
+  const studioMapSnapshot = new URLSearchParams(location.search).has('studioExtraSource')?JSON.stringify({kind:'map',date:states.map(r=>r.latestDate).sort().at(-1),title,mode,rows:mapLocations.map(({location,region,metric})=>({id:region.mapId,region:region.slug,name:region.name,date:region.latestDate,path:location.path,...metric,color:metric.parties[0]?.color})),viewBox:mapGeometry.viewBox,source:'DAWUM',sourceUrl:'https://dawum.de/API/',license:'ODbL 1.0'}):undefined;
+  if (studioMapSnapshot) return <span hidden data-studio-map={studioMapSnapshot} />;
+
   return (
-    <div ref={exportRef} className={`poll-map-module ${embed ? "embedded" : ""}`}>
+    <div ref={exportRef} data-studio-context={JSON.stringify({region:"bundestag",mapMode:mode,mapParty:partyId})}  className={`poll-map-module ${embed ? "embedded" : ""}`}>
       <div className="poll-map-actions" data-export-ignore="true">
         <button
           className={`secondary-button ${customizeOpen ? "active" : ""}`}
@@ -5238,7 +5097,7 @@ function GermanyPollingMap({
                 <a
                   key={location.id}
                   href={publicRegionPath(region.slug)}
-                  aria-label={`${region.name}: ${metric.title}; ${isGerman ? "Stand" : "latest"} ${formatDate(region.latestDate, locale, { year: true })}`}
+                  aria-label={`${region.name}: ${metric.title}; ${isGerman ? "Stand" : spanishText(locale, "latest")} ${formatDate(region.latestDate, locale, { year: true })}`}
                   onPointerEnter={(event) => { if (event.pointerType !== "touch") setFocusedSlug(region.slug); }}
                   onFocus={() => setFocusedSlug(region.slug)}
                   onPointerUp={touchReleaseLinkHandler(publicRegionPath(region.slug))}
@@ -5333,7 +5192,7 @@ function buildMapEmbedUrl({ locale, theme, mode, partyId }) {
 
 function MapEmbedModal({ open, onClose, t, locale, mode, partyId }) {
   const [embedTheme, setEmbedTheme] = useState("light");
-  const [previewWidth, setPreviewWidth] = useState("article");
+  const [previewWidth, setPreviewWidth] = useState("article"), [measuredSize, setMeasuredSize] = useState(null);
   const [copied, setCopied] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
   const [creditCopied, setCreditCopied] = useState(false);
@@ -5345,7 +5204,7 @@ function MapEmbedModal({ open, onClose, t, locale, mode, partyId }) {
   const labels = journalistLabels(locale);
   const embedHeight = 1240;
   const embedUrl = buildMapEmbedUrl({ locale, theme: embedTheme, mode, partyId });
-  const code = iframeMarkup({ src: embedUrl, title: isGerman ? "Pollframe Deutschlandkarte" : "Pollframe map of Germany", height: embedHeight });
+  const code = iframeMarkup({measuredSize,previewWidth, src: embedUrl, title: isGerman ? "Pollframe Deutschlandkarte" : spanishText(locale, "Pollframe map of Germany"), height: embedHeight });
   const shareUrl = buildMapShareUrl({ locale, mode, partyId });
   const copy = async (value, done, metric) => {
     setCopyError(false);
@@ -5354,18 +5213,18 @@ function MapEmbedModal({ open, onClose, t, locale, mode, partyId }) {
   };
   const copyCode = () => copy(code, setCopied, "embed_code_copied");
   const copyLink = () => copy(shareUrl, setLinkCopied, "share_link_copied");
-  const copyCredit = () => copy(`${isGerman ? "Pollframe Deutschlandkarte" : "Pollframe map of Germany"}. ${publicationCredit("DAWUM · MapSVG", locale)} ${shareUrl}`, setCreditCopied, "source_note_copied");
+  const copyCredit = () => copy(`${isGerman ? "Pollframe Deutschlandkarte" : spanishText(locale, "Pollframe map of Germany")}. ${publicationCredit("DAWUM · MapSVG", locale)} ${shareUrl}`, setCreditCopied, "source_note_copied");
   if (!open) return null;
   return (
     <ModalPortal><div className="overlay modal-overlay" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
       <section ref={dialogRef} className="embed-modal" role="dialog" aria-modal="true" aria-labelledby="map-embed-title" tabIndex={-1}>
         <div className="panel-header">
-          <h2 id="map-embed-title">{isGerman ? "Deutschlandkarte einbetten" : "Embed map of Germany"}</h2>
+          <h2 id="map-embed-title">{isGerman ? "Deutschlandkarte einbetten" : spanishText(locale, "Embed map of Germany")}</h2>
           <button className="icon-button" onClick={onClose} aria-label={t.close}><Icon name="close" /></button>
         </div>
         <p className="modal-intro">{isGerman
           ? "Die eingebettete Karte bleibt interaktiv: Leser können zwischen stärkster Partei, Parteivergleich und Zuwachs wechseln."
-          : "The embedded map stays interactive: readers can switch between leading party, party comparison and gains."}</p>
+          : spanishText(locale, "The embedded map stays interactive: readers can switch between leading party, party comparison and gains.")}</p>
         <div className="embed-options embed-options-single">
           <div>
             <span>{t.embedTheme}</span>
@@ -5377,7 +5236,7 @@ function MapEmbedModal({ open, onClose, t, locale, mode, partyId }) {
           </div>
         </div>
         <div className="embed-preview-toolbar" aria-label={t.embedPreview}>{[["wide",labels.wide],["article",labels.article],["phone",labels.phone]].map(([value,label])=><button key={value} type="button" className={previewWidth===value?"selected":""} aria-pressed={previewWidth===value} onClick={()=>setPreviewWidth(value)}>{label}</button>)}</div>
-        <StaticEmbedPreview src={embedUrl} title={isGerman ? "Vorschau der Deutschlandkarte" : "Map preview"} height={embedHeight} previewWidth={previewWidth} targetHeight={360} className="map-preview" />
+        <StaticEmbedPreview onSize={setMeasuredSize} src={embedUrl} title={isGerman ? "Vorschau der Deutschlandkarte" : spanishText(locale, "Map preview")} height={embedHeight} previewWidth={previewWidth} targetHeight={360} className="map-preview" />
         <label className="code-label">
           {t.embedPreview}
           <code>{code}</code>
@@ -5404,9 +5263,9 @@ function MapEmbedView({ t, locale, data, mapGeometry, mode, setMode, partyId, se
       <header className="embed-header">
         <div>
           <span className="embed-brand"><BrandMark />POLLFRAME</span>
-          <h1>{isGerman ? "Deutschland im Überblick" : "Germany at a glance"}</h1>
+          <h1>{isGerman ? "Deutschland im Überblick" : spanishText(locale, "Germany at a glance")}</h1>
         </div>
-        <span>{isGerman ? "Je Land neuester verfügbarer Stand" : "Latest available figure for each state"}</span>
+        <span>{isGerman ? "Je Land neuester verfügbarer Stand" : spanishText(locale, "Latest available figure for each state")}</span>
       </header>
       <GermanyPollingMap
         data={data}
@@ -5422,7 +5281,7 @@ function MapEmbedView({ t, locale, data, mapGeometry, mode, setMode, partyId, se
       />
       <footer className="embed-footer">
         <DataAttribution locale={locale} metadata={data.metadata} includeMap />
-        <a href={interactiveUrl} target="_blank" rel="noreferrer">{isGerman ? "Interaktiv öffnen" : "Open interactive"} <Icon name="external" size={13} /></a>
+        <a href={interactiveUrl} target="_blank" rel="noreferrer">{isGerman ? "Interaktiv öffnen" : spanishText(locale, "Open interactive")} <Icon name="external" size={13} /></a>
       </footer>
     </main>
   );
@@ -5448,12 +5307,13 @@ const overviewLanguage = {
 
 function overviewText(locale) {
   if (locale === "de") return null;
+  if (locale === "es") return { ...spanishSection("_overview"), olderData: (days) => `Datos antiguos · ${days} días`, growthNote: (count) => `${count} encuestas en una tendencia lineal de 180 días; sin color si los datos son insuficientes.` };
   return overviewLanguage[locale] ?? overviewLanguage["en-GB"];
 }
 
-function OverviewInfoWidget({ href, eyebrow, title, text, stats, accent }) {
+function OverviewInfoWidget({ href, eyebrow, title, text, stats, accent, children }) {
   return (
-    <a className={`federal-entry overview-classic-widget ${accent === "opinion" ? "map-entry" : ""}`} href={href}>
+    <a className={`federal-entry overview-classic-widget ${accent === "opinion" ? "map-entry" : ""}`} href={href} style={children?{flexWrap:"wrap"}:undefined}>
       <div>
         <span>{eyebrow}</span>
         <h2>{title}</h2>
@@ -5461,6 +5321,7 @@ function OverviewInfoWidget({ href, eyebrow, title, text, stats, accent }) {
       </div>
       <dl>{stats.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>
       <span className="entry-arrow" aria-hidden="true">→</span>
+      {children}
     </a>
   );
 }
@@ -5540,13 +5401,89 @@ function CountryIndexPage({ locale, summary }) {
       <section className="germany-country-hero country-index-hero">
         <div><div className="eyebrow"><span />{l("Verfügbare Länder", "Available countries", "Países disponibles")}</div><h1>{l("Land auswählen", "Select a country", "Seleccionar país")}</h1><p>{l("Wähle die politische Ebene, die du öffnen möchtest. Jedes Land verwendet seine eigene Datenlage und Methodik.", "Choose the political system you want to explore. Each country uses its own available data and methodology.", "Elige el sistema político que quieres explorar. Cada país utiliza sus propios datos y su propia metodología.")}</p></div>
       </section>
-      <section className="overview-entry-stack country-index-grid" aria-label={isGerman ? "Länderauswahl" : "Country selection"}>
+      <section className="overview-entry-stack country-index-grid" aria-label={isGerman ? "Länderauswahl" : spanishText(locale, "Country selection")}>
         <OverviewInfoWidget accent="parliament" href="/" eyebrow={l("Bundestag und Länder", "Federal and state elections", "Bundestag y estados federados")} title={`🇩🇪 ${localizedCountryName("de", locale)}`} text={l("Bundestagsumfragen und die 16 Länder in einer gemeinsamen Übersicht.", "Federal polling and all 16 states in one overview.", "Encuestas federales y los 16 estados en una sola vista.")} stats={[[l("Umfragen", "Polls", "Encuestas"), germanFederal?.pollCount?.toLocaleString(getNumberLocale(locale)) ?? "–"], [l("Seit", "Since", "Desde"), germanFederal?.firstDate?.slice(0, 4) ?? "2017"], [l("Ebenen", "Levels", "Niveles"), "17"]]} />
         <OverviewInfoWidget accent="opinion" href={publicCountryPath("uk")} eyebrow={l("Westminster und Regionen", "Westminster and regions", "Westminster y regiones")} title={`🇬🇧 ${localizedCountryName("uk", locale)}`} text={l("Unterhausumfragen seit 1943 und regionale Ergebnisse der Wahl 2024.", "Westminster polling since 1943 and regional results from the 2024 election.", "Encuestas de Westminster desde 1943 y resultados regionales de 2024.")} stats={[[l("Umfragen", "Polls", "Encuestas"), uk?.pollCount?.toLocaleString(getNumberLocale(locale)) ?? "–"], [l("Seit", "Since", "Desde"), uk?.firstDate?.slice(0, 4) ?? "1943"], [l("Aktualisiert", "Updated", "Actualizado"), uk?.latestDate ? <>{formatDate(uk.latestDate, locale)}<small className="data-age-label">{formatDataAge(uk.latestDate, locale)}</small></> : "–"]]} />
-        <OverviewInfoWidget accent="parliament" href={publicCountryPath("es")} eyebrow={locale === "es" ? "Congreso y autonomías" : isGerman ? "Kongress und Autonomien" : "Congress and autonomies"} title={`🇪🇸 ${localizedCountryName("es", locale)}`} text={locale === "es" ? "Intención de voto, evolución desde 1996, preocupaciones públicas y territorios." : isGerman ? "Wahlabsicht seit 1996, öffentliche Sorgen und Regionen." : "Voting intention since 1996, public concerns and territories."} stats={[[locale === "es" ? "Encuestas" : isGerman ? "Umfragen" : "Polls", spain?.pollCount?.toLocaleString(getNumberLocale(locale)) ?? "–"], [locale === "es" ? "Desde" : isGerman ? "Seit" : "Since", spain?.firstDate?.slice(0, 4) ?? "1996"], [locale === "es" ? "Actualizado" : isGerman ? "Aktualisiert" : "Updated", spain?.latestDate ? <>{formatDate(spain.latestDate, locale)}<small className="data-age-label">{formatDataAge(spain.latestDate, locale)}</small></> : "–"]]} />
+        <OverviewInfoWidget accent="parliament" href={publicCountryPath("es")} eyebrow={locale === "es" ? "Congreso y autonomías" : isGerman ? "Kongress und Autonomien" : "Congress and autonomies"} title={`🇪🇸 ${localizedCountryName("es", locale)}`} text={locale === "es" ? "Intención de voto, evolución desde 1996, preocupaciones públicas y territorios." : isGerman ? "Wahlabsicht seit 1996, öffentliche Sorgen und Regionen." : "Voting intention since 1996, public concerns and territories."} stats={[[locale === "es" ? "Encuestas" : isGerman ? "Umfragen" : spanishText(locale, "Polls"), spain?.pollCount?.toLocaleString(getNumberLocale(locale)) ?? "–"], [locale === "es" ? "Desde" : isGerman ? "Seit" : spanishText(locale, "Since"), spain?.firstDate?.slice(0, 4) ?? "1996"], [locale === "es" ? "Actualizado" : isGerman ? "Aktualisiert" : spanishText(locale, "Updated"), spain?.latestDate ? <>{formatDate(spain.latestDate, locale)}<small className="data-age-label">{formatDataAge(spain.latestDate, locale)}</small></> : "–"]]} />
       </section>
     </main>
   );
+}
+
+function FederalHistoryPreview({ data, locale }) {
+  const container = useRef(null);
+  const [width, setWidth] = useState(960);
+  const [enabled, setEnabled] = useState(() => matchMedia("(min-width: 768px)").matches);
+  useEffect(() => {
+    const media = matchMedia("(min-width: 768px)");
+    const change = () => setEnabled(media.matches);
+    media.addEventListener("change", change);
+    return () => media.removeEventListener("change", change);
+  }, []);
+  useEffect(() => {
+    if (!container.current) return;
+    const observer = new ResizeObserver(([entry]) => {
+      setWidth(Math.max(320, Math.round(entry.contentRect.width)));
+    });
+    observer.observe(container.current);
+    return () => observer.disconnect();
+  }, [enabled, data]);
+  const series = useMemo(() => {
+    if (!enabled || !data?.polls?.length) return [];
+    const end = data.polls.at(-1).date;
+    return makeTrend(data.polls, Object.keys(data.pollsters), ARCHIVE_START, end, PARTY_DEFINITIONS, 14);
+  }, [data, enabled]);
+  if (!series.length) return null;
+  const parties = PARTY_DEFINITIONS.filter(p => ["1","2","3","4","5","7","23"].includes(String(p.id)));
+  const start = parseDate(ARCHIVE_START), end = parseDate(series.at(-1).date);
+  const left = 44, right = width - 95, bottom = 310;
+  const x = date => left + (parseDate(date)-start)/Math.max(1,end-start)*(right-left);
+  const events = POLITICAL_EVENTS.filter(event => includeHistoricalEvent(event) && parseDate(event.date) >= start && parseDate(event.date) <= end);
+  const lanes = [[], []], markers = [];
+  const budget = width < 800 ? 6 : 8;
+  // Use the public chart's importance ranking, measured labels and two rows.
+  // The complete card remains one link: markers must not create nested links.
+  for (const event of rankHistoricalEvents(events, {limit: budget, startTime: start, endTime: end})) {
+    if (markers.length >= budget) break;
+    const metrics = eventLabelMetrics(eventText(event, locale, "short"), {compact: true, width});
+    const markerX = x(event.date);
+    const labelCenter = Math.min(right-metrics.labelWidth/2, Math.max(left+metrics.labelWidth/2, markerX));
+    const interval = [labelCenter-metrics.labelWidth/2-3, labelCenter+metrics.labelWidth/2+3];
+    const lane = lanes.findIndex(items => items.every(([a,b]) => interval[1] < a || interval[0] > b));
+    if (lane < 0) continue;
+    lanes[lane].push(interval);
+    markers.push({...event, ...metrics, markerX, labelCenter, lane});
+  }
+  const boxHeight = Math.max(38, ...markers.map(event => event.labelHeight));
+  const top = 18 + lanes.filter(lane => lane.length).length*(boxHeight+4);
+  const max = Math.ceil(Math.max(...series.flatMap(p => parties.map(party => p.results[party.id]).filter(Number.isFinite)))/5)*5;
+  const y = value => bottom-value/Math.max(5,max)*(bottom-top);
+  const labels=parties.map(party=>({id:party.id,y:y(series.findLast(p=>Number.isFinite(p.results[party.id]))?.results[party.id] || 0)})).sort((a,b)=>a.y-b.y);
+  labels.forEach((label,i)=>{if(i)label.y=Math.max(label.y,labels[i-1].y+17);});
+  for (let i=labels.length-1; i>=0; i--) labels[i].y = Math.min(labels[i].y, i===labels.length-1 ? bottom-4 : labels[i+1].y-17);
+  const lastYear = new Date(end).getUTCFullYear();
+  const years = Array.from({length: lastYear-2017+1}, (_,i) => 2017+i).filter(year => year===2017 || year===lastYear || (year%2===1 && x(`${lastYear}-01-01`)-x(`${year}-01-01`)>65));
+  return <div ref={container} className="overview-history-preview" style={{gridColumn:"1/-1",flexBasis:"100%",width:"100%",minWidth:0}}>
+    <svg style={{display:"block",width:"100%",height:"auto"}} viewBox={`0 0 ${width} 366`} role="img" data-start={ARCHIVE_START} data-end={series.at(-1).date} aria-label={locale === "de" ? "Bundestagsumfragen seit 2017 mit Ereignissen und Bundestagswahlen" : locale === "es" ? "Encuestas del Bundestag desde 2017 con acontecimientos y elecciones federales" : "Bundestag polling since 2017 with events and federal elections"}>
+      <desc>{locale === "de" ? "Institutsdurchschnitt im Zeitverlauf. Ereignisse dienen zur zeitlichen Einordnung, nicht als Erklärung für Veränderungen. Anklicken für Umfragen, Quellen und Methodik." : locale === "es" ? "Evolución de la media de institutos. Los acontecimientos ofrecen contexto temporal, no explican las variaciones. Abre la gráfica para consultar encuestas, fuentes y metodología." : "Polling average over time. Events provide chronological context, not explanations for changes. Open the chart for polls, sources and methodology."}</desc>
+      {[0,max/2,max].map(value => <g key={value}><path d={`M${left} ${y(value)}H${right}`} stroke="var(--line)" strokeDasharray="3 5"/><text x="34" y={y(value)+4} textAnchor="end" fill="var(--muted)" fontSize="13">{value}%</text></g>)}
+      {events.filter(isPrimaryElectionEvent).map(event => <g key={event.id} className="overview-election-marker">
+        <line x1={x(event.date)} x2={x(event.date)} y1={top} y2={bottom+5} stroke="var(--muted)" strokeWidth="1.5" opacity=".55"/>
+        <text x={x(event.date)} y={354} textAnchor="middle" fill="var(--muted)" fontSize="11">{electionMarkerText(event,locale)}</text>
+        <title>{formatDate(event.date,locale,{year:true})} · {eventText(event,locale)}</title>
+      </g>)}
+      {markers.map(event => <g key={event.id} className={`event-marker event-${event.category}`} data-lane={event.lane}>
+        <EventMarkerGlyph event={event} labelY={8+event.lane*(boxHeight+4)} height={boxHeight} bottom={bottom} hitTop={top}/>
+        <title>{formatDate(event.date,locale,{year:true})} · {eventText(event,locale)}</title>
+      </g>)}
+      {parties.map(party => {
+        const points=series.filter(p=>Number.isFinite(p.results[party.id]));
+        if(!points.length)return null;
+        return <g key={party.id} data-party={party.id}><path d={continuousSmoothPath(points.map(p=>({x:x(p.date),y:y(p.results[party.id])})))} fill="none" stroke={party.color} strokeWidth="2.5" strokeLinecap="round"/><text x={right+13} y={labels.find(label=>label.id===party.id).y+4} fontSize="14" fill="var(--ink)">{party.name}</text></g>;
+      })}
+      {years.map(year=><text key={year} x={x(`${year}-01-01`)} y="331" textAnchor={year===2017?"start":"middle"} fontSize="13" fill="var(--muted)">{year}</text>)}
+    </svg>
+  </div>;
 }
 
 function GermanyCountryOverview({ locale, summary, mapOnly = false }) {
@@ -5568,7 +5505,7 @@ function GermanyCountryOverview({ locale, summary, mapOnly = false }) {
   const federal = regions.find((region) => region.type === "federal");
   if (mapOnly) return (
     <main id="top" className="germany-country-overview state-map-app-page">
-      <nav className="region-breadcrumb country-breadcrumb" aria-label="Navigation"><BackButton fallback="/" label={isGerman ? "Zurück" : "Back"} /><span>/</span><strong>{l("Länderkarte", "stateMap")}</strong></nav>
+      <nav className="region-breadcrumb country-breadcrumb" aria-label="Navigation"><BackButton fallback="/" label={isGerman ? "Zurück" : spanishText(locale, "Back")} /><span>/</span><strong>{l("Länderkarte", "stateMap")}</strong></nav>
       {states.length > 0 && <StateCoverageMap states={states} locale={locale} mapGeometry={mapGeometry} />}
     </main>
   );
@@ -5579,10 +5516,9 @@ function GermanyCountryOverview({ locale, summary, mapOnly = false }) {
         <div><div className="eyebrow"><span />{l("Bundestag und Länder", "federalAndStates")}</div><h1>🇩🇪 {l("Deutschland im Überblick", "germanyOverview")}</h1><p>{l("Aktuelle Sonntagsfrage und Bundestagswahl-Umfragen oben, die 16 Länder in der großen Karte darunter. Jede Karte führt zu einer vollständigen Informationsseite.", "overviewIntro")}</p></div>
         <div className="overview-profile-badge"><span>{l("Länderübersicht", "countryOverview")}</span><strong>{l("Deutschland", "germany")}</strong><small>{l("Laufende Umfragen · historische Reihen", "currentHistory")}</small></div>
       </section>
-
       <section className="overview-entry-stack" aria-label={l("Wahlen und Karten in Deutschland", "electionsAndMaps")}>
-        <OverviewInfoWidget accent="parliament" href={publicRegionPath("bundestag")} eyebrow={l("Nationale Ebene", "nationalLevel")} title={l("Aktuelle Sonntagsfrage zur Bundestagswahl", "federalElection")} text={l("Neueste Umfrage, langfristiger Trend, Institute, Ereignisse und Sitzmodell.", "federalWidget")} stats={[[l("Umfragen", "pollsLabel"), federal?.pollCount?.toLocaleString(getNumberLocale(locale)) ?? "–"], [l("Seit", "sinceLabel"), federal?.firstDate ? new Date(parseDate(federal.firstDate)).getUTCFullYear() : "–"], [l("Zuletzt", "latestLabel"), federal ? <>{formatDate(federal.latestDate, locale, { year: true })}<small className="data-age-label">{formatDataAge(federal.latestDate, locale)}</small></> : "–"]]} />
-        <OverviewInfoWidget accent="opinion" href={publicViewPath("map")} eyebrow={l("Vergleich der Länder", "stateComparison")} title={l("Deutschland im Überblick", "germanyOverview")} text={l("Parteistärken und Bewegungen auf einer anpassbaren Karte über alle 16 Länder vergleichen.", "stateWidget")} stats={[[l("Länder", "statesLabel"), "16"], [l("Ansichten", "viewsLabel"), "3"], [l("Teilen", "sharingLabel"), "Embed"]]} />
+        <OverviewInfoWidget accent="parliament" href={publicRegionPath("bundestag")} eyebrow={l("Nationale Ebene", "nationalLevel")} title={l("Aktuelle Sonntagsfrage zur Bundestagswahl", "federalElection")} text={l("Neueste Umfrage, langfristiger Trend, Institute, Ereignisse und Sitzmodell.", "federalWidget")} stats={[[l("Umfragen", "pollsLabel"), federal?.pollCount?.toLocaleString(getNumberLocale(locale)) ?? "–"], [l("Seit", "sinceLabel"), federal?.firstDate ? new Date(parseDate(federal.firstDate)).getUTCFullYear() : "–"], [l("Zuletzt", "latestLabel"), federal ? <>{formatDate(federal.latestDate, locale, { year: true })}<small className="data-age-label">{formatDataAge(federal.latestDate, locale)}</small></> : "–"]]}><FederalHistoryPreview data={summary?.federalPolling} locale={locale}/></OverviewInfoWidget>
+        <OverviewInfoWidget accent="opinion" href={publicViewPath("map")} eyebrow={l("Vergleich der Länder", "stateComparison")} title={l("Deutschland im Überblick", "germanyOverview")} text={l("Parteistärken und Bewegungen auf einer anpassbaren Karte über alle 16 Länder vergleichen.", "stateWidget")} stats={[[l("Länder", "statesLabel"), "16"], [l("Ansichten", "viewsLabel"), "3"], [l("Teilen", "sharingLabel"), locale === "es" ? "Insertar" : "Embed"]]} />
         <Suspense fallback={null}><ElectionResult locale={locale} /></Suspense>
       </section>
       {states.length > 0 && <StateCoverageMap states={states} locale={locale} mapGeometry={mapGeometry} />}
@@ -5833,16 +5769,16 @@ function UKCountryOverview({ locale, summary }) {
   }, []);
   return (
     <main id="top" className={`germany-country-overview uk-country-overview ${mapOnly ? "uk-map-only" : ""}`}>
-      <nav className="region-breadcrumb country-breadcrumb" aria-label="Navigation">{mapOnly && <><BackButton fallback="/?country=uk" label={isGerman ? "Zurück" : "Back"} /><span>/</span></>}<strong>United Kingdom</strong></nav>
+      <nav className="region-breadcrumb country-breadcrumb" aria-label="Navigation">{mapOnly && <><BackButton fallback="/?country=uk" label={isGerman ? "Zurück" : spanishText(locale, "Back")} /><span>/</span></>}<strong>{localizedCountryName("uk", locale)}</strong></nav>
       {!mapOnly && <><section className="germany-country-hero uk-country-hero">
-        <div><div className="eyebrow"><span />{isGerman ? "Westminster und vier Landesteile" : "Westminster and four nations"}</div><h1>🇬🇧 {isGerman ? "Vereinigtes Königreich im Überblick" : "United Kingdom at a glance"}</h1><p>{isGerman ? "Aktuelle Unterhaus-Umfragen und das Archiv seit 1943, der besondere Effekt des Mehrheitswahlrechts und regionale Wahlergebnisse – klar getrennt nach Großbritannien und dem gesamten UK." : "Latest Westminster polls and the archive since 1943, the distinctive effect of first past the post and regional election results—clearly separating Great Britain from the whole UK."}</p></div>
+        <div><div className="eyebrow"><span />{isGerman ? "Westminster und vier Landesteile" : spanishText(locale, "Westminster and four nations")}</div><h1>🇬🇧 {isGerman ? "Vereinigtes Königreich im Überblick" : spanishText(locale, "United Kingdom at a glance")}</h1><p>{isGerman ? "Aktuelle Unterhaus-Umfragen und das Archiv seit 1943, der besondere Effekt des Mehrheitswahlrechts und regionale Wahlergebnisse – klar getrennt nach Großbritannien und dem gesamten UK." : spanishText(locale, "Latest Westminster polls and the archive since 1943, the distinctive effect of first past the post and regional election results—clearly separating Great Britain from the whole UK.")}</p></div>
       </section>
-      <section className="overview-entry-stack" aria-label={isGerman ? "Britische Wahlseiten" : "UK election pages"}>
-        <OverviewInfoWidget accent="parliament" href={publicRegionPath("uk-westminster")} eyebrow="Westminster" title={isGerman ? "Aktuelle Unterhaus-Umfragen" : "Latest Westminster polling"} text={isGerman ? "Mehr als 80 Jahre Umfragegeschichte, Institute, Ereignisse und aktueller gewichteter Trend." : "More than 80 years of polling history, pollsters, events and the latest weighted trend."} stats={[[isGerman ? "Umfragen" : "Polls", summary.westminster.pollCount.toLocaleString(getNumberLocale(locale))], [isGerman ? "Seit" : "Since", "1943"], [isGerman ? "Aktualisiert" : "Updated", <>{formatDate(summary.westminster.latestDate, locale, { year: true })}<small className="data-age-label">{formatDataAge(summary.westminster.latestDate, locale)}</small></>]]} />
-        <OverviewInfoWidget accent="opinion" href={publicViewPath("uk-constituencies")} eyebrow={`650 ${isGerman ? "Wahlkreise" : "constituencies"}`} title={isGerman ? "Wahlkreisfinder" : "Constituency finder"} text={isGerman ? "Postcode-Suche und amtliche Ergebnisse aller Wahlkreise bei der Unterhauswahl 2024." : "Postcode search and official results for every constituency at the 2024 general election."} stats={[[isGerman ? "Wahlkreise" : "Seats", "650"], [isGerman ? "Wahl" : "Election", "2024"], [isGerman ? "Quelle" : "Source", "UK Parliament"]]} />
+      <section className="overview-entry-stack" aria-label={isGerman ? "Britische Wahlseiten" : spanishText(locale, "UK election pages")}>
+        <OverviewInfoWidget accent="parliament" href={publicRegionPath("uk-westminster")} eyebrow="Westminster" title={isGerman ? "Aktuelle Unterhaus-Umfragen" : spanishText(locale, "Latest Westminster polling")} text={isGerman ? "Mehr als 80 Jahre Umfragegeschichte, Institute, Ereignisse und aktueller gewichteter Trend." : spanishText(locale, "More than 80 years of polling history, pollsters, events and the latest weighted trend.")} stats={[[isGerman ? "Umfragen" : spanishText(locale, "Polls"), summary.westminster.pollCount.toLocaleString(getNumberLocale(locale))], [isGerman ? "Seit" : spanishText(locale, "Since"), "1943"], [isGerman ? "Aktualisiert" : spanishText(locale, "Updated"), <>{formatDate(summary.westminster.latestDate, locale, { year: true })}<small className="data-age-label">{formatDataAge(summary.westminster.latestDate, locale)}</small></>]]} />
+        <OverviewInfoWidget accent="opinion" href={publicViewPath("uk-constituencies")} eyebrow={`650 ${isGerman ? "Wahlkreise" : spanishText(locale, "constituencies")}`} title={isGerman ? "Wahlkreisfinder" : spanishText(locale, "Constituency finder")} text={isGerman ? "Postcode-Suche und amtliche Ergebnisse aller Wahlkreise bei der Unterhauswahl 2024." : spanishText(locale, "Postcode search and official results for every constituency at the 2024 general election.")} stats={[[isGerman ? "Wahlkreise" : spanishText(locale, "Seats"), "650"], [isGerman ? "Wahl" : spanishText(locale, "Election"), "2024"], [isGerman ? "Quelle" : spanishText(locale, "Source"), "UK Parliament"]]} />
       </section></>}
       <UKElectionMap summary={summary} locale={locale} />
-      {!mapOnly && <p className="germany-country-note">{isGerman ? "Wichtig: Westminster-Umfragen beziehen sich üblicherweise auf Großbritannien ohne Nordirland. Die Karte zeigt dagegen das amtliche Ergebnis im gesamten Vereinigten Königreich." : "Important: Westminster polls normally cover Great Britain without Northern Ireland. The map, by contrast, presents the official result across the full United Kingdom."}</p>}
+      {!mapOnly && <p className="germany-country-note">{isGerman ? "Wichtig: Westminster-Umfragen beziehen sich üblicherweise auf Großbritannien ohne Nordirland. Die Karte zeigt dagegen das amtliche Ergebnis im gesamten Vereinigten Königreich." : spanishText(locale, "Important: Westminster polls normally cover Great Britain without Northern Ireland. The map, by contrast, presents the official result across the full United Kingdom.")}</p>}
     </main>
   );
 }
@@ -6149,10 +6085,10 @@ function WatchApprovalWidget({ country, locale }) {
           {[poll.positive, poll.negative, net].map((value, index) => {
             const present = Number.isFinite(value);
             const tone = !present ? "" : index === 0 || (index === 2 && value >= 0) ? "up" : "down";
-            return <td key={index} className={tone}>{present ? <>
+            return <td key={index} className={tone} data-label={labels[index]}><span>{present ? <>
               {index === 2 && value > 0 ? "+" : ""}{value.toLocaleString(getNumberLocale(locale), { maximumFractionDigits: 1 })}
               <small>{index === 2 ? ` ${locale === "de" ? "Pp." : "pp"}` : "%"}</small>
-            </> : "–"}</td>;
+            </> : "–"}</span></td>;
           })}
         </tr>;
       })}</tbody>
@@ -6239,7 +6175,7 @@ function WatchlistPage({ locale, initialCountry = "de", refreshVersion = 0 }) {
   useEffect(() => {
     if (!galleryOpen) return;
     const button = document.querySelector(".watch-gallery-v3 .watch-gallery-add");
-    button?.setAttribute("aria-label", isGerman ? "Zur Watchlist hinzufügen" : "Add to Watchlist");
+    button?.setAttribute("aria-label", isGerman ? "Zur Watchlist hinzufügen" : spanishText(locale, "Add to Watchlist"));
     const source = document.querySelector(".watch-gallery-v3 .watch-gallery-source");
     source?.closest(".watch-gallery-stage")?.setAttribute("data-widget-type", type);
   }, [galleryOpen, isGerman, type, chosenLayout]);
@@ -6402,10 +6338,10 @@ function WatchlistPage({ locale, initialCountry = "de", refreshVersion = 0 }) {
     { id: "wide", label: wl("Kompakt", "Compact", "Compacto"), shape: "2 × 1" },
     { id: "large", label: wl("Alle Werte", "All values", "Todos los valores"), shape: "2 × 2" },
   ] : type === "coalition" || COMPACT_WATCH_TYPES.has(type) ? [
-    { id: "wide", label: isGerman ? "Breit" : "Wide", shape: "2 × 1" },
+    { id: "wide", label: isGerman ? "Breit" : spanishText(locale, "Wide"), shape: "2 × 1" },
   ] : [
-    { id: "wide", label: isGerman ? "Breit" : "Wide", shape: "2 × 1" },
-    { id: "large", label: isGerman ? "Groß" : "Large", shape: "2 × 2" },
+    { id: "wide", label: isGerman ? "Breit" : spanishText(locale, "Wide"), shape: "2 × 1" },
+    { id: "large", label: isGerman ? "Groß" : spanishText(locale, "Large"), shape: "2 × 2" },
   ];
   useEffect(() => { if (!layoutOptions.some((option) => option.id === chosenLayout)) setChosenLayout(layoutOptions[0].id); }, [type]);
   useEffect(() => { if (type === "map" && regionSlug !== nationalRegionSlug) setRegionSlug(nationalRegionSlug); }, [type, regionSlug, nationalRegionSlug]);
@@ -6424,7 +6360,7 @@ function WatchlistPage({ locale, initialCountry = "de", refreshVersion = 0 }) {
       : type === "spain-spread" ? "España · Institutos"
       : type === "spain-region" ? `España · ${mapAssets.regions?.regions?.find((entry) => entry.slug === regionalArea)?.names?.[locale] ?? mapAssets.regions?.regions?.find((entry) => entry.slug === regionalArea)?.names?.en ?? regionalArea}`
       : type === "snapshot" ? `${selectedRegion.name} · ${wl("Letzte Umfrage", "Latest poll", "Última encuesta")}`
-      : type === "map" ? `${initialCountry === "uk" ? "UK" : initialCountry === "es" ? "España" : "Deutschland"} · ${initialCountry === "es" ? (locale === "es" ? "Comunidades autónomas" : "Autonomous communities") : mapMode === "party" ? mapParty?.name ?? mapParty?.short : mapMode === "growth" ? (isGerman ? "Stärkster Zuwachs" : "Largest gain") : (isGerman ? "Stärkste Partei" : "Leading party")}`
+      : type === "map" ? `${initialCountry === "uk" ? "UK" : initialCountry === "es" ? "España" : "Deutschland"} · ${initialCountry === "es" ? (locale === "es" ? "Comunidades autónomas" : "Autonomous communities") : mapMode === "party" ? mapParty?.name ?? mapParty?.short : mapMode === "growth" ? (isGerman ? "Stärkster Zuwachs" : spanishText(locale, "Largest gain")) : (isGerman ? "Stärkste Partei" : spanishText(locale, "Leading party"))}`
         : `${selected.map((party) => party.name).join(" + ")} · ${selectedRegion.name}`;
     const candidate = { id: globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`, country: initialCountry, regionSlug, type, partyIds: needsParties ? (type === "party" ? partyIds.slice(0, 1) : partyIds) : [], mapMode: type === "map" ? mapMode : undefined, mapPartyId: type === "map" && mapMode === "party" ? mapPartyId : undefined, areaSlug: type === "spain-region" ? regionalArea : undefined, label, layout: chosenLayout, createdAt: new Date().toISOString(), lastSnapshot: ["map", "issues", "personal-issues", "economy", "spain-change", "spain-gap", "spain-spread", "spain-region", "approval"].includes(type) ? null : watchlistSnapshot({ type, partyIds, regionSlug }, selectedRegion, selectedData) };
     const next = [...readSupportedWatchlist(initialCountry).filter((entry) => watchlistIdentity(entry) !== watchlistIdentity(candidate)), candidate].slice(-30);
@@ -6448,24 +6384,24 @@ function WatchlistPage({ locale, initialCountry = "de", refreshVersion = 0 }) {
       { id: "spain-spread", icon: "sliders", label: wl("Streuung", "Pollster spread", "Dispersión") },
       { id: "spain-region", icon: "map", label: wl("Regionalstand", "Regional update", "Situación regional") },
     ] : []),
-    ...(initialCountry === "de" ? [{ id: "coalition", icon: "check", label: isGerman ? "Mehrheit" : "Majority" }] : []),
+    ...(initialCountry === "de" ? [{ id: "coalition", icon: "check", label: isGerman ? "Mehrheit" : spanishText(locale, "Majority") }] : []),
     { id: "map", icon: "map", label: wl("Karte", "Map", "Mapa") },
   ];
-  const mapModes = initialCountry === "uk" ? [{ id: "winner", label: isGerman ? "Stärkste Partei 2024" : "2024 winner" }, { id: "party", label: isGerman ? "Partei 2024" : "Party in 2024" }]
+  const mapModes = initialCountry === "uk" ? [{ id: "winner", label: isGerman ? "Stärkste Partei 2024" : spanishText(locale, "2024 winner") }, { id: "party", label: isGerman ? "Partei 2024" : spanishText(locale, "Party in 2024") }]
     : initialCountry === "es" ? [{ id: "regions", label: locale === "es" ? "Comunidades autónomas" : "Autonomous communities" }]
-      : [{ id: "leader", label: isGerman ? "Stärkste Partei" : "Leading party" }, { id: "party", label: isGerman ? "Partei vergleichen" : "Compare party" }, { id: "growth", label: isGerman ? "Stärkster Zuwachs" : "Largest gain" }];
+      : [{ id: "leader", label: isGerman ? "Stärkste Partei" : spanishText(locale, "Leading party") }, { id: "party", label: isGerman ? "Partei vergleichen" : spanishText(locale, "Compare party") }, { id: "growth", label: isGerman ? "Stärkster Zuwachs" : spanishText(locale, "Largest gain") }];
 
   return <main id="top" className={`watchlist-page watchlist-v3 ${editMode ? "is-editing" : ""}`}>
-    <nav className="region-breadcrumb"><BackButton fallback={initialCountry === "uk" ? "/?country=uk" : initialCountry === "es" ? "/?country=es" : "/"} label={locale === "es" ? "Atrás" : isGerman ? "Zurück" : "Back"} /><span>/</span><strong>{initialCountry === "uk" ? "UK" : initialCountry === "es" ? "España" : "Deutschland"}</strong></nav>
+    <nav className="region-breadcrumb"><BackButton fallback={initialCountry === "uk" ? "/?country=uk" : initialCountry === "es" ? "/?country=es" : "/"} label={locale === "es" ? "Atrás" : isGerman ? "Zurück" : spanishText(locale, "Back")} /><span>/</span><strong>{initialCountry === "uk" ? "UK" : initialCountry === "es" ? "España" : "Deutschland"}</strong></nav>
     <section className="watchlist-hero"><div><p className="section-label">{initialCountry === "uk" ? "United Kingdom" : initialCountry === "es" ? "España" : "Deutschland"}</p><h1>{wl("Watchlist", "Watchlist", "Seguimiento")}</h1></div><div className="watchlist-hero-actions">{cards.length > 0 && <button className={`watch-edit-toggle ${editMode ? "active" : ""}`} type="button" onClick={() => setEditMode((value) => !value)}><Icon name={editMode ? "check" : "sliders"} size={18} />{editMode ? wl("Fertig", "Done", "Listo") : wl("Bearbeiten", "Edit", "Editar")}</button>}<button className="watchlist-add-button" type="button" onClick={() => setGalleryOpen(true)} aria-label={wl("Watchlist-Eintrag hinzufügen", "Add Watchlist item", "Añadir elemento")}><Icon name="plus" size={22} /></button></div></section>
-    {allSignals.length > 0 && <section className="watchlist-alerts"><p className="section-label">{isGerman ? "Neu seit dem letzten Öffnen" : "New since last opened"}</p>{allSignals.map((signal) => <div key={signal.id}><Icon name={signal.kind === "majority" ? "check" : "bell"} size={17} /><span>{signal.text}</span></div>)}</section>}
+    {allSignals.length > 0 && <section className="watchlist-alerts"><p className="section-label">{isGerman ? "Neu seit dem letzten Öffnen" : spanishText(locale, "New since last opened")}</p>{allSignals.map((signal) => <div key={signal.id}><Icon name={signal.kind === "majority" ? "check" : "bell"} size={17} /><span>{signal.text}</span></div>)}</section>}
     <p className="sr-only" aria-live="polite" aria-atomic="true">{dragAnnouncement}</p>
     <section className="watchlist-grid" aria-label="Watchlist">{cards.length ? cards.map(({ item, region, definitions, snapshot, previous }, cardIndex) => {
       const layout = defaultWatchLayout(item, cardIndex);
       const names = definitions.filter((party) => item.partyIds?.includes(party.id));
       const delta = item.type === "party" && previous && snapshot ? snapshot.value - previous.value : item.type === "coalition" && previous && snapshot ? snapshot.seats - previous.seats : null;
       const target = watchWidgetTarget(item, region, definitions, initialCountry);
-      const label = item.type === "map" ? (initialCountry === "es" ? (locale === "es" ? "Comunidades autónomas" : "Autonomous communities") : item.mapMode === "party" ? (initialCountry === "uk" ? UK_PARTY_DEFINITIONS.find((party) => party.id === item.mapPartyId)?.name : MAP_PARTY_GROUPS.find((party) => party.id === item.mapPartyId)?.short) : item.mapMode === "growth" ? (isGerman ? "Stärkster Zuwachs" : "Largest gain") : (isGerman ? "Stärkste Partei" : "Leading party")) : null;
+      const label = item.type === "map" ? (initialCountry === "es" ? (locale === "es" ? "Comunidades autónomas" : "Autonomous communities") : item.mapMode === "party" ? (initialCountry === "uk" ? UK_PARTY_DEFINITIONS.find((party) => party.id === item.mapPartyId)?.name : MAP_PARTY_GROUPS.find((party) => party.id === item.mapPartyId)?.short) : item.mapMode === "growth" ? (isGerman ? "Stärkster Zuwachs" : spanishText(locale, "Largest gain")) : (isGerman ? "Stärkste Partei" : spanishText(locale, "Leading party"))) : null;
       const watchMapParty = item.type === "map" && item.mapMode === "party"
         ? (initialCountry === "uk"
             ? UK_PARTY_DEFINITIONS.find((party) => party.id === item.mapPartyId)
@@ -6479,14 +6415,14 @@ function WatchlistPage({ locale, initialCountry = "de", refreshVersion = 0 }) {
         {item.type === "snapshot" && <><div className="watch-snapshot-title"><h3>{watchLatestPollLabel(locale)}</h3></div><div className="watch-snapshot-list">{snapshot?.leaders?.slice(0, layout === "large" ? 5 : 4).map((leader) => { const party = definitions.find((entry) => entry.id === leader.id); const previousLeader = previous?.leaders?.find((entry) => entry.id === leader.id); const leaderDelta = Number.isFinite(previousLeader?.value) ? leader.value - previousLeader.value : null; return <span key={leader.id}><i style={{ background: party?.color }} /><b><PartyInfoButton party={party} as="span" /></b><strong>{leader.value.toLocaleString(getNumberLocale(locale), { maximumFractionDigits: 1 })}%</strong>{Number.isFinite(leaderDelta) && Math.abs(leaderDelta) >= .1 && <em className={leaderDelta > 0 ? "up" : "down"} title={wl("Seit dem letzten Öffnen", "Since last opened", "Desde la última apertura")}>{leaderDelta > 0 ? "+" : ""}{leaderDelta.toLocaleString(getNumberLocale(locale), { maximumFractionDigits: 1 })}</em>}</span>; })}</div></>}
         {item.type === "party" && <><div className="watch-card-parties"><i style={{ background: names[0]?.color }} /><h3><PartyInfoButton party={names[0]} as="span" /></h3></div><div className="watch-card-value"><div className="watch-current-value"><small>{watchLatestPollLabel(locale)}</small><strong>{snapshot?.value?.toLocaleString(getNumberLocale(locale), { maximumFractionDigits: 1 })}%</strong></div>{Number.isFinite(delta) && Math.abs(delta) >= .1 && <div className={`watch-change-value ${delta > 0 ? "up" : "down"}`} title={wl("Seit dem letzten Öffnen", "Since last opened", "Desde la última apertura")} aria-label={`${delta > 0 ? "+" : ""}${delta.toLocaleString(getNumberLocale(locale), { maximumFractionDigits: 1 })} ${wl("Prozentpunkte seit dem letzten Öffnen", "percentage points since last opened", "puntos porcentuales desde la última apertura")}`}><small>{wl("Seit letztem Mal", "Since last time", "Desde la última vez")}</small><strong>{delta > 0 ? "+" : ""}{delta.toLocaleString(getNumberLocale(locale), { maximumFractionDigits: 1 })} pp</strong></div>}</div><WatchSparkline values={snapshot?.history} color={names[0]?.color} /></>}
         {item.type === "coalition" && <><div className="watch-card-parties">{names.map((party) => <i key={party.id} style={{ background: party.color }} />)}<h3 className="coalition-party-links">{names.map((party, index) => <React.Fragment key={party.id}>{index > 0 && <span aria-hidden="true"> + </span>}<PartyInfoButton party={party} as="span" /></React.Fragment>)}</h3></div><div className="watch-majority"><div className="watch-current-value"><small>{watchLatestPollLabel(locale)}</small><strong>{snapshot?.seats ?? "–"}</strong></div>{Number.isFinite(delta) && delta !== 0 && <div className={`watch-change-value ${delta > 0 ? "up" : "down"}`} title={wl("Seit dem letzten Öffnen", "Since last opened", "Desde la última apertura")}><small>{wl("Seit letztem Mal", "Since last time", "Desde la última vez")}</small><strong>{delta > 0 ? "+" : ""}{delta}</strong></div>}<span className="watch-seat-total">{isGerman ? `von ${snapshot?.totalSeats ?? region.baseSeats} Sitzen` : `of ${snapshot?.totalSeats ?? region.baseSeats} seats`}</span></div><div className={`watch-majority-status ${snapshot?.majority ? "yes" : "no"}`}>{snapshot && (() => { const line = Math.floor(snapshot.totalSeats / 2) + 1; const margin = snapshot.seats - line; if (!snapshot.majority) return wl(`${Math.abs(margin)} Sitze fehlen`, `${Math.abs(margin)} seats short`, `Faltan ${Math.abs(margin)} escaños`); if (margin === 0) return wl("Mehrheit genau erreicht", "Majority exactly reached", "Mayoría exacta"); return wl(`${margin} Sitze über der Mehrheit`, `${margin} seats above majority`, `${margin} escaños sobre la mayoría`); })()}</div></>}
-        {item.type === "map" && <><div className="watch-map-title"><h3>{watchMapParty ? <PartyInfoButton party={watchMapParty} country={initialCountry} as="span">{label}</PartyInfoButton> : label}</h3><small>{initialCountry === "uk" ? (isGerman ? "Unterhauswahl 2024" : "2024 general election") : initialCountry === "es" ? (locale === "es" ? "Acceso territorial" : "Territorial access") : (isGerman ? "Aktuelle Landeswerte" : "Latest state values")}</small></div>{initialCountry === "de" ? <WatchGermanyMap data={mapAssets.data} geometry={mapAssets.geometry} mode={item.mapMode} partyId={item.mapPartyId} locale={locale} /> : initialCountry === "es" ? <SpainMiniMap geojson={mapAssets.geometry} /> : <WatchUKMap summary={mapAssets.summary} MapComponent={mapAssets.component} mode={item.mapMode} partyId={item.mapPartyId} />}</>}
+        {item.type === "map" && <><div className="watch-map-title"><h3>{watchMapParty ? <PartyInfoButton party={watchMapParty} country={initialCountry} as="span">{label}</PartyInfoButton> : label}</h3><small>{initialCountry === "uk" ? (isGerman ? "Unterhauswahl 2024" : spanishText(locale, "2024 general election")) : initialCountry === "es" ? (locale === "es" ? "Acceso territorial" : "Territorial access") : (isGerman ? "Aktuelle Landeswerte" : "Latest state values")}</small></div>{initialCountry === "de" ? <WatchGermanyMap data={mapAssets.data} geometry={mapAssets.geometry} mode={item.mapMode} partyId={item.mapPartyId} locale={locale} /> : initialCountry === "es" ? <SpainMiniMap geojson={mapAssets.geometry} /> : <WatchUKMap summary={mapAssets.summary} MapComponent={mapAssets.component} mode={item.mapMode} partyId={item.mapPartyId} />}</>}
         {item.type === "issues" && <WatchIssuesWidget summary={mapAssets.summary} locale={locale} />}
         {item.type === "personal-issues" && <WatchIssuesWidget summary={mapAssets.summary} locale={locale} personal />}
         {item.type === "economy" && <WatchEconomyWidget summary={mapAssets.summary} locale={locale} />}
         {["spain-change", "spain-gap", "spain-spread"].includes(item.type) && <WatchSpainInsightWidget type={item.type} data={datasets[item.regionSlug]} locale={locale} />}
         {item.type === "spain-region" && <WatchSpainRegionWidget regions={mapAssets.regions} areaSlug={item.areaSlug} locale={locale} />}
         {item.type === "approval" && (approvalCountry ? <WatchApprovalWidget country={approvalCountry} locale={locale} /> : <div className="watch-map-loading" />)}
-        {editMode && <div className="watch-card-size-picker" aria-label={isGerman ? "Widgetgröße" : "Widget size"}>{(item.type === "party" ? ["square", "wide", "large"] : item.type === "coalition" || COMPACT_WATCH_TYPES.has(item.type) ? ["wide"] : ["wide", "large"]).map((size) => <button key={size} className={layout === size ? "selected" : ""} type="button" onClick={() => updateItem(item.id, { layout: size })}><span className={`watch-size-icon size-${size}`} />{size === "square" ? (isGerman ? "Klein" : "Small") : size === "wide" ? (isGerman ? "Breit" : "Wide") : (isGerman ? "Groß" : "Large")}</button>)}</div>}
+        {editMode && <div className="watch-card-size-picker" aria-label={isGerman ? "Widgetgröße" : spanishText(locale, "Widget size")}>{(item.type === "party" ? ["square", "wide", "large"] : item.type === "coalition" || COMPACT_WATCH_TYPES.has(item.type) ? ["wide"] : ["wide", "large"]).map((size) => <button key={size} className={layout === size ? "selected" : ""} type="button" onClick={() => updateItem(item.id, { layout: size })}><span className={`watch-size-icon size-${size}`} />{size === "square" ? (isGerman ? "Klein" : spanishText(locale, "Small")) : size === "wide" ? (isGerman ? "Breit" : spanishText(locale, "Wide")) : (isGerman ? "Groß" : spanishText(locale, "Large"))}</button>)}</div>}
       </article>;
     }) : <button className="watchlist-empty" type="button" onClick={() => setGalleryOpen(true)}><Icon name="plus" size={28} /><h2>{wl("Deine Watchlist ist leer", "Your Watchlist is empty", "Tu seguimiento está vacío")}</h2><span>{wl("Widget hinzufügen", "Add a widget", "Añadir un widget")}</span></button>}</section>
 
@@ -6547,7 +6483,7 @@ function OverviewPage({ t, locale, summary, embedMode = false, mapPage = false }
   }, [embedMode, mapPage]);
 
   if (embedMode) {
-    if (!mapData || !mapGeometry) return <div className="embed-loading">{isGerman ? "Kartendaten werden geladen …" : "Loading map data…"}</div>;
+    if (!mapData || !mapGeometry) return <div className="embed-loading">{isGerman ? "Kartendaten werden geladen …" : spanishText(locale, "Loading map data…")}</div>;
     return (
       <MapEmbedView
         t={t}
@@ -6567,27 +6503,27 @@ function OverviewPage({ t, locale, summary, embedMode = false, mapPage = false }
   if (mapPage) {
     return (
       <main id="top" className="overview-page map-detail-page">
-        <nav className="region-breadcrumb" aria-label={isGerman ? "Navigation" : "Navigation"}>
-          <a href="/">{isGerman ? "Übersicht" : "Overview"}</a>
+        <nav className="region-breadcrumb" aria-label={isGerman ? "Navigation" : spanishText(locale, "Navigation")}>
+          <a href="/">{isGerman ? "Übersicht" : spanishText(locale, "Overview")}</a>
           <span>/</span>
-          <strong>{isGerman ? "Deutschlandkarte" : "Map of Germany"}</strong>
+          <strong>{isGerman ? "Deutschlandkarte" : spanishText(locale, "Map of Germany")}</strong>
         </nav>
         <section className="overview-hero map-page-hero">
-          <div className="eyebrow"><span />{isGerman ? "Interaktive Länderkarte" : "Interactive state map"}</div>
-          <h1>{isGerman ? "Deutschland im Überblick" : "Germany at a glance"}</h1>
+          <div className="eyebrow"><span />{isGerman ? "Interaktive Länderkarte" : spanishText(locale, "Interactive state map")}</div>
+          <h1>{isGerman ? "Deutschland im Überblick" : spanishText(locale, "Germany at a glance")}</h1>
           <p>{isGerman
             ? "Stärkste Parteien, Parteivergleich und aktuelle Bewegungen in allen 16 Ländern – mit direktem Zugang zu jeder vollständigen Umfragereihe."
-            : "Leading parties, party comparisons and current movement across all 16 states, with direct access to every complete polling series."}</p>
+            : spanishText(locale, "Leading parties, party comparisons and current movement across all 16 states, with direct access to every complete polling series.")}</p>
         </section>
 
         <section className="map-section polling-overview" aria-labelledby="state-map-title">
           <div className="map-section-header">
             <div>
-              <p className="section-label">{isGerman ? "Länderkarte" : "State map"}</p>
-              <h2 id="state-map-title">{isGerman ? "Neuester verfügbarer Stand in den Ländern" : "Latest available state-level picture"}</h2>
+              <p className="section-label">{isGerman ? "Länderkarte" : spanishText(locale, "State map")}</p>
+              <h2 id="state-map-title">{isGerman ? "Neuester verfügbarer Stand in den Ländern" : spanishText(locale, "Latest available state-level picture")}</h2>
               <p>{isGerman
                 ? "Die Standardansicht zeigt die stärkste Partei im jeweils neuesten verfügbaren Landesdurchschnitt. Die Stände unterscheiden sich je Land; für kleine Stadtstaaten werden Beschriftungen mit einer Linie nach außen geführt."
-                : "The default view shows the leading party in each state’s latest available average. Dates differ by state; labels for small city states use external callouts."}</p>
+                : spanishText(locale, "The default view shows the leading party in each state’s latest available average. Dates differ by state; labels for small city states use external callouts.")}</p>
             </div>
           </div>
           <GermanyPollingMap
@@ -6606,7 +6542,7 @@ function OverviewPage({ t, locale, summary, embedMode = false, mapPage = false }
             <Icon name="info" size={16} />
             {isGerman
               ? "Jedes Land hat einen eigenen Datenstand: je Institut zählt die jüngste veröffentlichte Umfrage innerhalb von 45 Tagen vor der letzten Landesumfrage, anschließend gleich gewichtet. Bei Auswahl nennt die Infokarte Stand und Alter; ab 90 Tagen erscheint ein zusätzlicher Hinweis. „Zuwachs“ ist die aus einer linearen Trendlinie über die vorherigen 180 Tage berechnete Veränderung. Wegen unterschiedlicher Datenstände und Umfragedichte ist sie zwischen Ländern nur eingeschränkt vergleichbar und keine Prognose."
-              : "Each state has its own date: each pollster’s latest published poll within 45 days before that state’s final poll is equally weighted. On selection, the information card shows the date and age, with an extra notice from 90 days. “Gain” is the change calculated from a linear trend across the preceding 180 days. Different dates and polling density limit comparisons between states; it is not a forecast."}
+              : spanishText(locale, "Each state has its own date: each pollster’s latest published poll within 45 days before that state’s final poll is equally weighted. On selection, the information card shows the date and age, with an extra notice from 90 days. “Gain” is the change calculated from a linear trend across the preceding 180 days. Different dates and polling density limit comparisons between states; it is not a forecast.")}
           </p>
         </section>
 
@@ -6626,41 +6562,41 @@ function OverviewPage({ t, locale, summary, embedMode = false, mapPage = false }
   return (
     <main id="top" className="overview-page">
       <section className="overview-hero">
-        <div className="eyebrow"><span />{isGerman ? "Wahlumfragen in Deutschland" : "Election polling in Germany"}</div>
-        <h1>{isGerman ? "Bund und Länder im Überblick" : "Federal and state polling"}</h1>
+        <div className="eyebrow"><span />{isGerman ? "Wahlumfragen in Deutschland" : spanishText(locale, "Election polling in Germany")}</div>
+        <h1>{isGerman ? "Bund und Länder im Überblick" : spanishText(locale, "Federal and state polling")}</h1>
         <p>{isGerman
           ? "Aktuelle Umfragen, langfristige Trends und einheitlich erklärte Datenqualität – vom Bundestag bis zu allen 16 Ländern."
-          : "Current polls, long-term trends and consistently explained data quality—from the Bundestag to all 16 states."}</p>
+          : spanishText(locale, "Current polls, long-term trends and consistently explained data quality—from the Bundestag to all 16 states.")}</p>
       </section>
 
       <div className="overview-entry-stack">
         <a className="federal-entry" href={publicRegionPath("bundestag")}>
           <div>
-            <span>{isGerman ? "Gesamtdeutschland" : "Germany"}</span>
-            <h2>{isGerman ? "Umfragen zur Bundestagswahl" : "Federal election polling"}</h2>
-            <p>{isGerman ? "Der vollständige Bundes-Trend mit Institutsvergleich, Ereignissen und Einbettung." : "The full national trend with pollster comparison, events and embedding."}</p>
+            <span>{isGerman ? "Gesamtdeutschland" : spanishText(locale, "Germany")}</span>
+            <h2>{isGerman ? "Umfragen zur Bundestagswahl" : spanishText(locale, "Federal election polling")}</h2>
+            <p>{isGerman ? "Der vollständige Bundes-Trend mit Institutsvergleich, Ereignissen und Einbettung." : spanishText(locale, "The full national trend with pollster comparison, events and embedding.")}</p>
           </div>
           {regions[0] && (
             <dl>
-              <div><dt>{isGerman ? "Umfragen" : "Polls"}</dt><dd>{regions[0].pollCount.toLocaleString(getNumberLocale(locale))}</dd></div>
-              <div><dt>{isGerman ? "Seit" : "Since"}</dt><dd>{new Date(parseDate(regions[0].firstDate)).getUTCFullYear()}</dd></div>
-              <div><dt>{isGerman ? "Zuletzt" : "Latest"}</dt><dd>{formatDate(regions[0].latestDate, locale, { year: true })}<small className="data-age-label">{formatDataAge(regions[0].latestDate, locale)}</small></dd></div>
+              <div><dt>{isGerman ? "Umfragen" : spanishText(locale, "Polls")}</dt><dd>{regions[0].pollCount.toLocaleString(getNumberLocale(locale))}</dd></div>
+              <div><dt>{isGerman ? "Seit" : spanishText(locale, "Since")}</dt><dd>{new Date(parseDate(regions[0].firstDate)).getUTCFullYear()}</dd></div>
+              <div><dt>{isGerman ? "Zuletzt" : spanishText(locale, "Latest")}</dt><dd>{formatDate(regions[0].latestDate, locale, { year: true })}<small className="data-age-label">{formatDataAge(regions[0].latestDate, locale)}</small></dd></div>
             </dl>
           )}
           <span className="entry-arrow" aria-hidden="true">→</span>
         </a>
         <a className="federal-entry map-entry" href={publicViewPath("map")}>
           <div>
-            <span>{isGerman ? "Interaktive Länderkarte" : "Interactive state map"}</span>
-            <h2>{isGerman ? "Deutschland im Überblick" : "Germany at a glance"}</h2>
+            <span>{isGerman ? "Interaktive Länderkarte" : spanishText(locale, "Interactive state map")}</span>
+            <h2>{isGerman ? "Deutschland im Überblick" : spanishText(locale, "Germany at a glance")}</h2>
             <p>{isGerman
               ? "Stärkste Parteien, Parteivergleich und aktuelle Bewegungen in allen 16 Ländern."
-              : "Leading parties, party comparisons and current movement across all 16 states."}</p>
+              : spanishText(locale, "Leading parties, party comparisons and current movement across all 16 states.")}</p>
           </div>
           <dl>
-            <div><dt>{isGerman ? "Länder" : "States"}</dt><dd>16</dd></div>
-            <div><dt>{isGerman ? "Ansichten" : "Views"}</dt><dd>3</dd></div>
-            <div><dt>{isGerman ? "Teilen" : "Sharing"}</dt><dd>Embed</dd></div>
+            <div><dt>{isGerman ? "Länder" : spanishText(locale, "States")}</dt><dd>16</dd></div>
+            <div><dt>{isGerman ? "Ansichten" : spanishText(locale, "Views")}</dt><dd>3</dd></div>
+            <div><dt>{isGerman ? "Teilen" : spanishText(locale, "Sharing")}</dt><dd>Embed</dd></div>
           </dl>
           <span className="entry-arrow" aria-hidden="true">→</span>
         </a>
@@ -6674,28 +6610,29 @@ function OverviewPage({ t, locale, summary, embedMode = false, mapPage = false }
 
 function LegalPage({ locale }) {
   const isGerman = locale === "de";
+  const l = (de, en, es) => locale === "de" ? de : locale === "es" ? es : en;
   return (
     <main className="legal-page" id="top">
-      <a className="breadcrumb" href="/">← {isGerman ? "Zur Übersicht" : "Back to overview"}</a>
-      <p className="section-label">Rechtliches</p>
-      <h1>Impressum</h1>
+      <a className="breadcrumb" href="/">← {isGerman ? "Zur Übersicht" : spanishText(locale, "Back to overview")}</a>
+      <p className="section-label">{l("Rechtliches", "Legal", "Información legal")}</p>
+      <h1>{l("Impressum", "Legal notice", "Aviso legal")}</h1>
       <section>
-        <h2>Angaben gemäß § 5 DDG und § 18 MStV</h2>
+        <h2>{l("Angaben gemäß § 5 DDG und § 18 MStV", "Information under section 5 DDG and section 18 MStV", "Información conforme al artículo 5 de la DDG y al artículo 18 del MStV")}</h2>
         <address>
           Katharina O&apos;Connor<br />
           Kaiserallee 2b<br />
           23570 Lübeck<br />
-          Deutschland
+          {l("Deutschland", "Germany", "Alemania")}
         </address>
       </section>
       <section>
-        <h2>Kontakt</h2>
-        <p>E-Mail: <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a></p>
-        <p><a href="/?page=kontakt">Kontaktassistent öffnen</a></p>
+        <h2>{l("Kontakt", "Contact", "Contacto")}</h2>
+        <p>{l("E-Mail", "Email", "Correo electrónico")}: <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a></p>
+        <p><a href={`/?page=kontakt&lang=${locale}`}>{l("Kontaktassistent öffnen", "Open contact assistant", "Abrir el asistente de contacto")}</a></p>
       </section>
       <section>
-        <h2>Verantwortlich für journalistisch-redaktionelle Inhalte</h2>
-        <p>Gemäß § 18 Abs. 2 MStV:<br />Katharina O&apos;Connor, Anschrift wie oben.</p>
+        <h2>{l("Verantwortlich für journalistisch-redaktionelle Inhalte", "Responsible for journalistic and editorial content", "Responsable del contenido periodístico y editorial")}</h2>
+        <p>{l("Gemäß § 18 Abs. 2 MStV", "Under section 18(2) MStV", "Conforme al artículo 18, apartado 2, del MStV")}:<br />Katharina O&apos;Connor, {l("Anschrift wie oben.", "address as above.", "con la dirección indicada arriba.")}</p>
       </section>
     </main>
   );
@@ -6703,7 +6640,7 @@ function LegalPage({ locale }) {
 
 function ContactPage({ locale }) {
   const isGerman = locale === "de";
-  const categories = isGerman
+  const categories = locale === "es" ? [["daten", "Corrección de datos"], ["quelle", "Fuente o licencia"], ["presse", "Inserción de gráficos y prensa"], ["technik", "Problema técnico"], ["sonstiges", "Otros"]] : isGerman
     ? [
         ["daten", "Datenkorrektur"],
         ["quelle", "Quelle oder Lizenz"],
@@ -6730,8 +6667,8 @@ function ContactPage({ locale }) {
     const mailSubject = `[Pollframe · ${categoryLabel}] ${subject.trim()}`;
     const body = [
       message.trim(),
-      reference.trim() ? `\n${isGerman ? "Betroffene Seite oder Quelle" : "Relevant page or source"}: ${reference.trim()}` : "",
-      `\n${isGerman ? "Kategorie" : "Category"}: ${categoryLabel}`,
+      reference.trim() ? `\n${isGerman ? "Betroffene Seite oder Quelle" : spanishText(locale, "Relevant page or source")}: ${reference.trim()}` : "",
+      `\n${isGerman ? "Kategorie" : spanishText(locale, "Category")}: ${categoryLabel}`,
     ].join("");
     const mailto = `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(mailSubject)}&body=${encodeURIComponent(body)}`;
     setPrepared(true);
@@ -6740,35 +6677,35 @@ function ContactPage({ locale }) {
 
   return (
     <main className="legal-page contact-page" id="top">
-      <a className="breadcrumb" href="/">← {isGerman ? "Zur Übersicht" : "Back to overview"}</a>
-      <p className="section-label">{isGerman ? "Direkter Kontakt" : "Direct contact"}</p>
-      <h1>{isGerman ? "Kontakt" : "Contact"}</h1>
+      <a className="breadcrumb" href="/">← {isGerman ? "Zur Übersicht" : spanishText(locale, "Back to overview")}</a>
+      <p className="section-label">{isGerman ? "Direkter Kontakt" : spanishText(locale, "Direct contact")}</p>
+      <h1>{isGerman ? "Kontakt" : spanishText(locale, "Contact")}</h1>
       <p className="contact-lead">{isGerman
         ? "Melde Datenfehler, sende eine Quellenfrage oder frage nach einer Einbettung. Je genauer die betroffene Seite genannt ist, desto schneller lässt sich die Nachricht bearbeiten."
-        : "Report a data error, ask about a source or get help with an embed. Naming the relevant page helps us handle the message more quickly."}</p>
+        : spanishText(locale, "Report a data error, ask about a source or get help with an embed. Naming the relevant page helps us handle the message more quickly.")}</p>
 
       <div className="contact-layout">
         <form className="contact-form-card" onSubmit={handleSubmit}>
           <div className="contact-form-grid">
             <label className="contact-field">
-              <span>{isGerman ? "Kategorie" : "Category"}</span>
+              <span>{isGerman ? "Kategorie" : spanishText(locale, "Category")}</span>
               <select value={category} onChange={(event) => setCategory(event.target.value)}>
                 {categories.map(([id, label]) => <option key={id} value={id}>{label}</option>)}
               </select>
             </label>
             <label className="contact-field">
-              <span>{isGerman ? "Betreff" : "Subject"}</span>
+              <span>{isGerman ? "Betreff" : spanishText(locale, "Subject")}</span>
               <input
                 type="text"
                 value={subject}
                 onChange={(event) => setSubject(event.target.value)}
                 maxLength={120}
                 required
-                placeholder={isGerman ? "Kurz zusammenfassen" : "A short summary"}
+                placeholder={isGerman ? "Kurz zusammenfassen" : spanishText(locale, "A short summary")}
               />
             </label>
             <label className="contact-field contact-field-wide">
-              <span>{isGerman ? "Betroffene Seite oder Quelle" : "Relevant page or source"} <em>{isGerman ? "optional" : "optional"}</em></span>
+              <span>{isGerman ? "Betroffene Seite oder Quelle" : spanishText(locale, "Relevant page or source")} <em>{isGerman ? "optional" : spanishText(locale, "optional")}</em></span>
               <input
                 type="url"
                 value={reference}
@@ -6778,39 +6715,39 @@ function ContactPage({ locale }) {
               />
             </label>
             <label className="contact-field contact-field-wide">
-              <span>{isGerman ? "Nachricht" : "Message"}</span>
+              <span>{isGerman ? "Nachricht" : spanishText(locale, "Message")}</span>
               <textarea
                 value={message}
                 onChange={(event) => setMessage(event.target.value)}
                 minLength={10}
                 maxLength={5000}
                 required
-                placeholder={isGerman ? "Was sollten wir wissen?" : "What should we know?"}
+                placeholder={isGerman ? "Was sollten wir wissen?" : spanishText(locale, "What should we know?")}
               />
             </label>
           </div>
           <button className="primary-button contact-submit" type="submit">
             <Icon name="external" size={16} />
-            {isGerman ? "In E-Mail-App öffnen" : "Open in email app"}
+            {isGerman ? "In E-Mail-App öffnen" : spanishText(locale, "Open in email app")}
           </button>
           {prepared && (
             <p className="contact-status" role="status">{isGerman
               ? "Die E-Mail-App wurde angefragt. Die Nachricht ist erst versendet, wenn du dort auf „Senden“ drückst."
-              : "Your email app was requested. The message is not sent until you press “Send” there."}</p>
+              : spanishText(locale, "Your email app was requested. The message is not sent until you press “Send” there.")}</p>
           )}
         </form>
 
         <aside className="contact-explainer">
           <span className="contact-explainer-icon" aria-hidden="true"><Icon name="info" size={19} /></span>
-          <h2>{isGerman ? "So funktioniert es" : "How it works"}</h2>
+          <h2>{isGerman ? "So funktioniert es" : spanishText(locale, "How it works")}</h2>
           <p>{isGerman
             ? "Dieses Formular sendet und speichert nichts auf Pollframe. Der Button öffnet lediglich dein eigenes E-Mail-Programm mit einer vorbereiteten Nachricht."
-            : "This form does not send or store anything on Pollframe. The button only opens your own email app with a prepared message."}</p>
+            : spanishText(locale, "This form does not send or store anything on Pollframe. The button only opens your own email app with a prepared message.")}</p>
           <p>{isGerman
             ? "Prüfe die Nachricht dort und drücke anschließend auf „Senden“. Erst dann wird sie über deinen E-Mail-Anbieter an Apple iCloud Mail übertragen."
-            : "Review the message there and then press “Send”. Only then is it transferred by your email provider to Apple iCloud Mail."}</p>
+            : spanishText(locale, "Review the message there and then press “Send”. Only then is it transferred by your email provider to Apple iCloud Mail.")}</p>
           <div className="contact-direct">
-            <span>{isGerman ? "Direkte E-Mail" : "Direct email"}</span>
+            <span>{isGerman ? "Direkte E-Mail" : spanishText(locale, "Direct email")}</span>
             <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>
           </div>
         </aside>
@@ -6943,6 +6880,7 @@ function AnalyticsSummary({ analytics }) {
       <article><span>Confirmed installs</span><strong>{totals.install_completed ?? 0}</strong><small>{recent("install_completed")} in the last 7 days</small></article>
       <article><span>Installed-app launches</span><strong>{recent("app_opened_standalone")}</strong><small>Last 7 days · not unique people</small></article>
       <article><span>60-second sessions</span><strong>{recent("engaged_60_seconds")}</strong><small>Last 7 days · visible tab only</small></article>
+      <article><span>Qualified reading sessions</span><strong>{recordedDays.some(day=>Object.hasOwn(days[day],'qualified_read_60_seconds')) ? recent('qualified_read_60_seconds') : '—'}</strong><small>Last 7 days · 60 visible seconds + interaction; not unique people or ad impressions. No historical backfill.</small></article>
       <article><span>Publishing actions</span><strong>{publishing.reduce((sum, [, event]) => sum + recent(event), 0)}</strong><small>Last 7 days · actions, not people</small></article>
     </div>
     <div className="analytics-table-grid">
@@ -6954,42 +6892,44 @@ function AnalyticsSummary({ analytics }) {
 }
 
 function BugReportDashboard({ locale }) {
-  const readDashboardKey = () => {
-    try { return window.sessionStorage.getItem("pollframe-bug-admin-key") ?? ""; } catch { return ""; }
-  };
-  const rememberDashboardKey = (key) => {
-    try { window.sessionStorage.setItem("pollframe-bug-admin-key", key); } catch { /* Private browsing may block storage. */ }
-  };
-  const [adminKey, setAdminKey] = useState(readDashboardKey);
+  const [adminKey, setAdminKey] = useState("");
+  const requestVersion = useRef(0);
+  useEffect(() => {
+    try { window.sessionStorage.removeItem("pollframe-bug-admin-key"); } catch { /* Clear legacy storage where available. */ }
+    return () => { requestVersion.current++; };
+  }, []);
   const [draftKey, setDraftKey] = useState(adminKey);
   const [payload, setPayload] = useState(null);
   const [state, setState] = useState("idle");
   const [statusFilter, setStatusFilter] = useState("all");
 
   const load = async (key = adminKey, filter = statusFilter) => {
+    const version = ++requestVersion.current;
     setState("loading");
     try {
       const headers = { "x-pollframe-admin-key": key };
-      const reportsResponse = await fetch(`/api/bug-reports?status=${encodeURIComponent(filter)}`, { headers });
+      const reportsResponse = await fetch(`/api/bug-reports?status=${encodeURIComponent(filter)}`, { headers, cache: "no-store" });
       if (!reportsResponse.ok) throw new Error(`HTTP ${reportsResponse.status}`);
       const reportsPayload = await reportsResponse.json();
       // Analytics are useful but optional. A missing/unconfigured analytics
       // Durable Object must never hide the bug reports themselves.
       let analytics = {};
       try {
-        const analyticsResponse = await fetch("/api/analytics", { headers });
+        const analyticsResponse = await fetch("/api/analytics", { headers, cache: "no-store" });
         if (analyticsResponse.ok) analytics = await analyticsResponse.json();
       } catch { /* Reports remain available when analytics is unavailable. */ }
+      if (version !== requestVersion.current) return;
       setPayload({ ...reportsPayload, analytics });
-      rememberDashboardKey(key);
+      setDraftKey("");
       setAdminKey(key);
       setState("ready");
-    } catch { setState("error"); }
+    } catch { if (version === requestVersion.current) setState("error"); }
   };
 
   const updateStatus = async (id, status) => {
+    const version = requestVersion.current;
     const response = await fetch("/api/bug-reports", { method: "PATCH", headers: { "content-type": "application/json", "x-pollframe-admin-key": adminKey }, body: JSON.stringify({ id, status }) });
-    if (response.ok) load(adminKey, statusFilter);
+    if (response.ok && version === requestVersion.current) load(adminKey, statusFilter);
   };
 
   const exportReports = () => {
@@ -7008,207 +6948,57 @@ function BugReportDashboard({ locale }) {
   const stats = payload.stats ?? {};
   const reports = payload.reports ?? [];
   const analytics = payload.analytics ?? {};
-  return <main className="bug-admin-page"><header className="bug-admin-heading"><div><p className="section-label">POLLFRAME · INTERNAL</p><h1>Bug reports</h1></div><div className="bug-admin-actions"><button className="secondary-button" type="button" onClick={exportReports}><Icon name="download" size={16} />Export JSON</button><button className="secondary-button" type="button" onClick={() => load()}>Refresh</button></div></header><AnalyticsSummary analytics={analytics} /><section className="bug-stats"><article><span>All reports</span><strong>{stats.total ?? 0}</strong></article><article><span>New</span><strong>{stats.statusCounts?.new ?? 0}</strong></article><article><span>Resolved</span><strong>{stats.statusCounts?.resolved ?? 0}</strong></article><article><span>Reports · last 7 days</span><strong>{Object.entries(stats.dayCounts ?? {}).filter(([day]) => Date.now() - Date.parse(`${day}T00:00:00Z`) < 604800000).reduce((sum, [, count]) => sum + count, 0)}</strong></article></section><nav className="bug-admin-filters" aria-label="Report status">{["all", "new", "reviewing", "resolved", "archived"].map((status) => <button type="button" className={statusFilter === status ? "selected" : ""} key={status} onClick={() => { setStatusFilter(status); load(adminKey, status); }}>{status} {status !== "all" && `(${stats.statusCounts?.[status] ?? 0})`}</button>)}</nav><section className="bug-report-list">{reports.length ? reports.map((report) => <article key={report.id}><header><span className={`bug-type type-${report.type}`}>{BUG_REPORT_TYPES.find((item) => item.id === report.type)?.en ?? report.type}</span><time dateTime={report.createdAt}>{new Intl.DateTimeFormat(locale === "de" ? "de-DE" : "en-GB", { dateStyle: "medium", timeStyle: "short" }).format(new Date(report.createdAt))}</time></header><p className={report.message ? "" : "empty-message"}>{report.message || "No note supplied"}</p><a href={report.page} target="_blank" rel="noreferrer">{report.page}</a><dl><div><dt>Viewport</dt><dd>{report.viewport || "–"}</dd></div><div><dt>Locale</dt><dd>{report.locale || "–"}</dd></div><div><dt>Browser</dt><dd>{report.userAgent || "–"}</dd></div></dl><footer><label>Status<select value={report.status} onChange={(event) => updateStatus(report.id, event.target.value)}>{["new", "reviewing", "resolved", "archived"].map((status) => <option key={status}>{status}</option>)}</select></label><code>{report.id.slice(0, 8)}</code></footer></article>) : <p className="bug-admin-empty">No reports in this view.</p>}</section></main>;
+  return <main className="bug-admin-page"><header className="bug-admin-heading"><div><p className="section-label">POLLFRAME · INTERNAL</p><h1>Bug reports</h1></div><div className="bug-admin-actions"><button className="secondary-button" type="button" onClick={exportReports}><Icon name="download" size={16} />Export JSON</button><button className="secondary-button" type="button" onClick={() => load()}>Refresh</button><button className="secondary-button" type="button" onClick={() => { requestVersion.current++; setAdminKey(""); setDraftKey(""); setPayload(null); setState("idle"); }}>Log out</button></div></header><AnalyticsSummary analytics={analytics} /><section className="bug-stats"><article><span>All reports</span><strong>{stats.total ?? 0}</strong></article><article><span>New</span><strong>{stats.statusCounts?.new ?? 0}</strong></article><article><span>Resolved</span><strong>{stats.statusCounts?.resolved ?? 0}</strong></article><article><span>Reports · last 7 days</span><strong>{Object.entries(stats.dayCounts ?? {}).filter(([day]) => Date.now() - Date.parse(`${day}T00:00:00Z`) < 604800000).reduce((sum, [, count]) => sum + count, 0)}</strong></article></section><nav className="bug-admin-filters" aria-label="Report status">{["all", "new", "reviewing", "resolved", "archived"].map((status) => <button type="button" className={statusFilter === status ? "selected" : ""} key={status} onClick={() => { setStatusFilter(status); load(adminKey, status); }}>{status} {status !== "all" && `(${stats.statusCounts?.[status] ?? 0})`}</button>)}</nav><section className="bug-report-list">{reports.length ? reports.map((report) => <article key={report.id}><header><span className={`bug-type type-${report.type}`}>{BUG_REPORT_TYPES.find((item) => item.id === report.type)?.en ?? report.type}</span><time dateTime={report.createdAt}>{new Intl.DateTimeFormat(locale === "de" ? "de-DE" : "en-GB", { dateStyle: "medium", timeStyle: "short" }).format(new Date(report.createdAt))}</time></header><p className={report.message ? "" : "empty-message"}>{report.message || "No note supplied"}</p><a href={report.page} target="_blank" rel="noreferrer">{report.page}</a><dl><div><dt>Viewport</dt><dd>{report.viewport || "–"}</dd></div><div><dt>Locale</dt><dd>{report.locale || "–"}</dd></div><div><dt>Browser</dt><dd>{report.userAgent || "–"}</dd></div></dl><footer><label>Status<select value={report.status} onChange={(event) => updateStatus(report.id, event.target.value)}>{["new", "reviewing", "resolved", "archived"].map((status) => <option key={status}>{status}</option>)}</select></label><code>{report.id.slice(0, 8)}</code></footer></article>) : <p className="bug-admin-empty">No reports in this view.</p>}</section></main>;
 }
 
+const LazyPrivacyPage = lazy(() => import("./privacy.jsx"));
 function PrivacyPage({ locale }) {
-  const isGerman = locale === "de";
-  if (!isGerman) {
-    return (
-      <main className="legal-page privacy-page" id="top">
-        <a className="breadcrumb" href="/">← Back to overview</a>
-        <p className="section-label">Legal</p>
-        <h1>Privacy notice</h1>
-        <p className="privacy-updated">Last updated: 26 August 2026</p>
-
-        <section>
-          <h2>1. Controller</h2>
-          <address>
-            Katharina O&apos;Connor<br />
-            Kaiserallee 2b<br />
-            23570 Lübeck<br />
-            Germany
-          </address>
-          <p>Email: <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a></p>
-        </section>
-
-        <section>
-          <h2>2. Hosting and delivery</h2>
-          <p>Pollframe is delivered through Cloudflare Workers with Static Assets, a service provided by Cloudflare, Inc. To deliver and protect the website, Cloudflare processes technical connection data. This may include the IP address, time of access, requested file, HTTP status, transferred data volume, browser and device information, and a referrer if the browser provides one.</p>
-          <p>The legal basis is Article 6(1)(f) GDPR. Our legitimate interests are reliable delivery, protection against attacks and technical fault diagnosis. We do not operate our own visitor database or analyse raw access logs ourselves.</p>
-          <p>Cloudflare operates a global network, so processing may also take place outside the European Economic Area. Cloudflare describes the safeguards used for these transfers in its <a href="https://www.cloudflare.com/cloudflare-customer-dpa/" target="_blank" rel="noreferrer">Data Processing Addendum</a> and <a href="https://www.cloudflare.com/policies/privacy/" target="_blank" rel="noreferrer">Privacy Policy</a>.</p>
-        </section>
-
-        <section>
-          <h2>3. App and information stored on your device</h2>
-          <p>Pollframe stores settings you actively select—language, appearance and text size—and the latest polling snapshot shown to you in your browser’s local storage. The Watchlist is offered only when Pollframe is opened as an installed app. Its entries contain only selected parliaments and parties plus the last comparison values; they are not sent to Pollframe or synchronised between devices. A session-only baseline keeps changes stable while the app remains open and expires when that browser session ends or after 24 hours. A service worker and browser cache retain the application files and core summaries needed for offline fallback. When Pollframe is opened as an installed app, it also prepares the German, UK and Spanish national polling archives, German state series, Spanish regional data, UK constituency results and government-rating data for offline use. An ordinary browser caches detailed datasets only after they are used.</p>
-          <p>If you actively enable device alerts, your browser asks for notification permission. Pollframe checks Watchlist changes while the app is running. Changes already displayed are marked as seen locally and do not produce a delayed system alert. A local record retained for up to 14 days prevents duplicate alerts across app restarts. There is currently no background push delivery when the app is closed. No push subscription or notification endpoint is stored on a Pollframe server.</p>
-          <p>These files remain on your device until they are replaced automatically or you remove the app or Pollframe’s website data. They are not transmitted back to Pollframe, used to identify you or combined into a visitor profile.</p>
-        </section>
-
-        <section>
-          <h2>4. Cookies, audience measurement and advertising</h2>
-          <p>Pollframe uses Cloudflare Web Analytics, provided by Cloudflare, Inc., to measure aggregate visits and page views and to understand referrer hosts, countries, device and browser categories, page-load performance and Core Web Vitals. We use these aggregated measurements to improve Pollframe&apos;s reach, usability and technical performance. The analytics beacon is loaded from <code>static.cloudflareinsights.com</code> and sends measurements to <code>cloudflareinsights.com</code>. It is not loaded in the dedicated journalist embed.</p>
-          <p>Cloudflare states that Web Analytics does not use cookies or local storage, does not track individuals across websites and does not collect or use visitors&apos; personal data. Query strings are not logged. Pollframe does not receive IP addresses or identifiers that would allow us to recognise an individual visitor. The legal basis is Article 6(1)(f) GDPR; our legitimate interests are privacy-preserving aggregate reach measurement and improving the website.</p>
-          <p>Cloudflare retains unsampled beacon data for seven days and subsequently keeps aggregated data; dashboard reports are available for up to six months. Details are provided in Cloudflare&apos;s <a href="https://developers.cloudflare.com/web-analytics/data-metrics/data-origin-and-collection/" target="_blank" rel="noreferrer">Web Analytics documentation</a>. Pollframe does not use advertising networks, sell personal data or make automated decisions about visitors.</p>
-          <p>Pollframe also operates a deliberately limited first-party counter for product improvement. It counts coarse page categories—country overviews, historical polling, maps, issues, government approval and the Watchlist—plus app-installation and installed-app launches, a page remaining visibly open for 60 seconds, and explicit publishing actions such as opening the share or PNG dialog, copying a link, embed code or source note, and starting a PNG or CSV export. The counter stores only the predefined event category, its total and the UTC calendar day in an EU-restricted Cloudflare Durable Object. It does not store an IP address, browser or device details, page address, query string, referrer, cookie, local-storage value or other identifier. It does not create user profiles or recognise returning visitors. The figures count actions rather than unique people; an opened iOS installation guide is not treated as an installation. Daily aggregate counts are deleted after 400 days. The legal basis is Article 6(1)(f) GDPR; our legitimate interests are understanding which parts of Pollframe are useful, checking whether installation and publishing functions work, and improving the service without profiling visitors.</p>
-        </section>
-
-        <section>
-          <h2>5. Embedded charts and external links</h2>
-          <p>Pollframe embeds load charts and maps directly from Pollframe through Cloudflare. They do not contain advertising or third-party tracking. When you follow an external source or licence link, the destination provider receives the technical data required to load its website and processes it under its own privacy notice.</p>
-          <p>The UK constituency finder sends only the postcode extracted from an entered address, an outward postcode or the place term to Postcodes.io after you press “Search”. Pollframe uses the response to select the matching constituency and does not retain the search. Postcodes.io receives the technical connection data required for the request and processes it under its own <a href="https://postcodes.io/about" target="_blank" rel="noreferrer">information</a>. Constituency-name matching, including typo tolerance, remains local in your browser. Northern Ireland postcode lookup is not offered.</p>
-        </section>
-
-        <section>
-          <h2>6. Bug reports</h2>
-          <p>The separate bug-report form sends the selected problem type, the affected page, language, viewport size, browser user-agent string and any optional note to Pollframe. It does not request a name or email address. Cloudflare necessarily processes the connection data described in section 2. Pollframe converts the IP address into a one-way, secret-salted rate-limit value, uses it only to prevent repeated automated submissions and deletes that value after the one-hour rate-limit period.</p>
-          <p>Reports are stored in a private Cloudflare Durable Object and are visible only in the password-protected editorial dashboard. We use them to reproduce, prioritise and repair technical, visual and data problems. The legal basis is Article 6(1)(f) GDPR; our legitimate interests are quality assurance and secure operation. Reports are deleted when no longer needed and automatically after no more than twelve months. Do not include personal or sensitive information in the optional note.</p>
-        </section>
-
-        <section>
-          <h2>7. Contact by email</h2>
-          <p>The contact assistant does not transmit entries to Pollframe or Cloudflare. It creates a prepared email and asks the browser to open your local email app. Data is transmitted only if you send the message from that app.</p>
-          <p>If you contact us, your message, email address and the information you provide are processed to answer the request. Email is provided through Apple iCloud Mail. The legal basis is Article 6(1)(f) GDPR, or Article 6(1)(b) GDPR where the message concerns steps before entering into a contract. Messages are deleted when the request has been resolved unless legal retention obligations apply. Apple’s information is available in its <a href="https://www.apple.com/legal/privacy/en-ww/" target="_blank" rel="noreferrer">Privacy Policy</a>.</p>
-        </section>
-
-        <section>
-          <h2>8. Retention and recipients</h2>
-          <p>Local preferences and app caches remain until they are automatically replaced or you remove them. Bug reports are retained as described in section 6. Contact messages are kept only as long as necessary for the request or a legal obligation. Technical security and aggregate Web Analytics data processed by Cloudflare are retained as described above and under Cloudflare’s applicable policies. Data is disclosed only to the service providers named above where necessary, or where required by law.</p>
-        </section>
-
-        <section>
-          <h2>9. Your rights</h2>
-          <p>Subject to the legal requirements, you may request access, correction, deletion, restriction of processing and data portability, and you may object to processing based on legitimate interests. You may also lodge a complaint with a data-protection supervisory authority. Use the email address above to exercise these rights.</p>
-        </section>
-
-        <section>
-          <h2>10. Changes</h2>
-          <p>This notice will be updated before introducing advertising, user accounts, payments, additional analytics services or other services that process additional data.</p>
-        </section>
-      </main>
-    );
-  }
-
-  return (
-    <main className="legal-page privacy-page" id="top">
-      <a className="breadcrumb" href="/">← Zur Übersicht</a>
-      <p className="section-label">Rechtliches</p>
-      <h1>Datenschutzerklärung</h1>
-      <p className="privacy-updated">Stand: 26. August 2026</p>
-
-      <section>
-        <h2>1. Verantwortlicher</h2>
-        <address>
-          Katharina O&apos;Connor<br />
-          Kaiserallee 2b<br />
-          23570 Lübeck<br />
-          Deutschland
-        </address>
-        <p>E-Mail: <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a></p>
-      </section>
-
-      <section>
-        <h2>2. Hosting und Auslieferung</h2>
-        <p>Pollframe wird über Cloudflare Workers mit Static Assets, einen Dienst der Cloudflare, Inc., ausgeliefert. Für die Auslieferung und Absicherung der Website verarbeitet Cloudflare technische Verbindungsdaten. Dazu können IP-Adresse, Zeitpunkt des Zugriffs, aufgerufene Datei, HTTP-Status, übertragene Datenmenge, Browser- und Geräteangaben sowie ein vom Browser übermittelter Referrer gehören.</p>
-        <p>Rechtsgrundlage ist Art. 6 Abs. 1 lit. f DSGVO. Unsere berechtigten Interessen sind eine zuverlässige Auslieferung, der Schutz vor Angriffen und die technische Fehlerdiagnose. Wir betreiben keine eigene Besucherdatenbank und werten rohe Zugriffsprotokolle nicht selbst aus.</p>
-        <p>Cloudflare betreibt ein weltweites Netzwerk, sodass eine Verarbeitung auch außerhalb des Europäischen Wirtschaftsraums stattfinden kann. Die hierfür verwendeten Schutzmaßnahmen beschreibt Cloudflare in seinem <a href="https://www.cloudflare.com/cloudflare-customer-dpa/" target="_blank" rel="noreferrer">Auftragsverarbeitungszusatz</a> und seiner <a href="https://www.cloudflare.com/policies/privacy/" target="_blank" rel="noreferrer">Datenschutzerklärung</a>.</p>
-      </section>
-
-      <section>
-        <h2>3. App und auf deinem Gerät gespeicherte Informationen</h2>
-        <p>Pollframe speichert von dir gewählte Einstellungen – Sprache, Darstellung und Textgröße – sowie den zuletzt angezeigten Umfragestand im lokalen Speicher deines Browsers. Die Watchlist wird nur angeboten, wenn Pollframe als installierte App geöffnet ist. Ihre Einträge enthalten nur ausgewählte Parlamente und Parteien sowie die letzten Vergleichswerte; sie werden nicht an Pollframe übertragen und nicht zwischen Geräten synchronisiert. Ein nur für die laufende Sitzung gespeicherter Ausgangsstand hält Änderungen während der geöffneten App stabil und verfällt beim Ende der Browsersitzung oder spätestens nach 24 Stunden. Ein Service Worker und der Browser-Cache speichern die Anwendungsdateien und kompakten Übersichten für die Offline-Reserve. Wenn Pollframe als installierte App geöffnet wird, bereitet es zusätzlich die nationalen Umfragearchive für Deutschland, das Vereinigte Königreich und Spanien, die deutschen Länderreihen, spanische Regionaldaten, britische Wahlkreisergebnisse und Daten zur Regierungsbewertung für die Offline-Nutzung vor. Im normalen Browser werden ausführliche Datensätze erst gespeichert, nachdem sie verwendet wurden.</p>
-        <p>Wenn du Gerätehinweise aktiv einschaltest, fragt dein Browser nach der Benachrichtigungsberechtigung. Pollframe prüft Watchlist-Veränderungen, solange die App läuft. Bereits angezeigte Veränderungen werden lokal als gesehen vermerkt und lösen keinen verspäteten Systemhinweis aus. Ein lokaler Vermerk für bis zu 14 Tage verhindert doppelte Hinweise nach einem App-Neustart. Bei geschlossener App gibt es derzeit keine Push-Zustellung im Hintergrund. Auf einem Pollframe-Server wird weder ein Push-Abonnement noch ein Benachrichtigungs-Endpunkt gespeichert.</p>
-        <p>Diese Dateien bleiben auf deinem Gerät, bis sie automatisch ersetzt werden oder du die App beziehungsweise die Websitedaten von Pollframe entfernst. Sie werden nicht an Pollframe zurückübermittelt, nicht zu deiner Identifizierung verwendet und nicht zu einem Besucherprofil zusammengeführt.</p>
-      </section>
-
-      <section>
-        <h2>4. Cookies, Reichweitenmessung und Werbung</h2>
-        <p>Pollframe verwendet Cloudflare Web Analytics von Cloudflare, Inc., um zusammengefasste Besuche und Seitenaufrufe zu messen und verweisende Websites, Länder, Geräte- und Browserkategorien, Ladezeiten sowie Core Web Vitals zu verstehen. Diese aggregierten Messwerte nutzen wir, um Reichweite, Bedienbarkeit und technische Leistung von Pollframe zu verbessern. Der Analyse-Beacon wird von <code>static.cloudflareinsights.com</code> geladen und übermittelt Messwerte an <code>cloudflareinsights.com</code>. Im gesonderten Journalisten-Embed wird er nicht geladen.</p>
-        <p>Nach Angaben von Cloudflare verwendet Web Analytics weder Cookies noch lokalen Speicher, verfolgt keine einzelnen Personen über Websites hinweg und erhebt oder verwendet keine personenbezogenen Besucherdaten. URL-Abfrageparameter werden nicht protokolliert. Pollframe erhält keine IP-Adressen oder Kennungen, mit denen wir einzelne Besucher wiedererkennen könnten. Rechtsgrundlage ist Art. 6 Abs. 1 lit. f DSGVO; unsere berechtigten Interessen sind eine datensparsame, aggregierte Reichweitenmessung und die Verbesserung der Website.</p>
-        <p>Cloudflare bewahrt nicht hochgerechnete Beacon-Daten sieben Tage auf und speichert anschließend aggregierte Daten; Auswertungen stehen im Dashboard bis zu sechs Monate zur Verfügung. Einzelheiten beschreibt Cloudflare in seiner <a href="https://developers.cloudflare.com/web-analytics/data-metrics/data-origin-and-collection/" target="_blank" rel="noreferrer">Dokumentation zu Web Analytics</a>. Pollframe verwendet keine Werbenetzwerke, verkauft keine personenbezogenen Daten und trifft keine automatisierten Entscheidungen über Besucher.</p>
-        <p>Pollframe betreibt außerdem einen bewusst begrenzten eigenen Zähler zur Produktverbesserung. Er zählt grobe Seitenbereiche – Länderübersichten, historische Umfragen, Karten, Problemthemen, Regierungszufriedenheit und Watchlist – sowie Installationshandlungen, Starts der installierten App, eine mindestens 60 Sekunden sichtbar geöffnete Seite und ausdrücklich ausgelöste Veröffentlichungsfunktionen wie das Öffnen von Teilen- oder PNG-Dialogen, das Kopieren eines Links, Embed-Codes oder Quellenhinweises und den Start eines PNG- oder CSV-Exports. Gespeichert werden ausschließlich die fest vorgegebene Ereignisart, ihre Summe und der UTC-Kalendertag in einem auf die EU beschränkten Cloudflare Durable Object. IP-Adresse, Browser- oder Geräteangaben, genaue Seitenadresse, Suchparameter, Referrer, Cookies, lokaler Speicher oder eine andere Kennung werden dort nicht gespeichert. Es entstehen keine Nutzerprofile und wiederkehrende Personen werden nicht erkannt. Die Zahlen zählen Handlungen und keine einzelnen Menschen; eine geöffnete iOS-Anleitung gilt nicht als Installation. Die täglichen Summen werden nach 400 Tagen gelöscht. Rechtsgrundlage ist Art. 6 Abs. 1 lit. f DSGVO; unsere berechtigten Interessen sind zu verstehen, welche Teile von Pollframe nützlich sind, die Funktion von Installation und Veröffentlichungswerkzeugen zu prüfen und den Dienst ohne Besucherprofile zu verbessern.</p>
-      </section>
-
-      <section>
-        <h2>5. Eingebettete Grafiken und externe Links</h2>
-        <p>Pollframe-Embeds laden Diagramme und Karten direkt von Pollframe über Cloudflare. Sie enthalten keine Werbung und kein Drittanbieter-Tracking. Wenn du einem externen Quellen- oder Lizenzlink folgst, erhält der Zielanbieter die technisch zur Auslieferung seiner Website erforderlichen Daten und verarbeitet sie nach seiner eigenen Datenschutzerklärung.</p>
-        <p>Die britische Wahlkreissuche übermittelt erst beim Klick auf „Suchen“ entweder nur den aus einer eingegebenen Adresse erkannten Postcode, ein Postcode-Gebiet oder den Ortsbegriff an Postcodes.io. Pollframe verwendet die Antwort zur Wahlkreisauswahl und speichert die Suche nicht. Postcodes.io erhält die für die Anfrage erforderlichen technischen Verbindungsdaten und verarbeitet sie nach seinen <a href="https://postcodes.io/about" target="_blank" rel="noreferrer">eigenen Angaben</a>. Wahlkreisnamen werden einschließlich der Tippfehlerkorrektur lokal im Browser abgeglichen. Für Nordirland wird keine Postleitzahlsuche angeboten.</p>
-      </section>
-
-      <section>
-        <h2>6. Fehlermeldungen</h2>
-        <p>Das getrennte Fehlerformular übermittelt die gewählte Fehlerart, die betroffene Seite, Sprache, Fenstergröße, die User-Agent-Angabe des Browsers und einen freiwilligen Hinweis an Pollframe. Name oder E-Mail-Adresse werden nicht abgefragt. Cloudflare verarbeitet technisch notwendig die in Abschnitt 2 beschriebenen Verbindungsdaten. Pollframe wandelt die IP-Adresse in einen einseitigen, mit einem geheimen Zusatz gesicherten Wert zur Begrenzung wiederholter Einsendungen um, verwendet ihn nur gegen automatisierten Missbrauch und löscht ihn nach dem einstündigen Begrenzungszeitraum.</p>
-        <p>Fehlermeldungen werden in einem privaten Cloudflare Durable Object gespeichert und sind nur im passwortgeschützten Redaktions-Dashboard sichtbar. Wir verwenden sie, um technische, visuelle und Datenprobleme nachzustellen, zu priorisieren und zu beheben. Rechtsgrundlage ist Art. 6 Abs. 1 lit. f DSGVO; unsere berechtigten Interessen sind Qualitätssicherung und sicherer Betrieb. Meldungen werden gelöscht, sobald sie nicht mehr benötigt werden, spätestens jedoch automatisch nach zwölf Monaten. Bitte trage in das optionale Textfeld keine persönlichen oder sensiblen Informationen ein.</p>
-      </section>
-
-      <section>
-        <h2>7. Kontakt per E-Mail</h2>
-        <p>Der Kontaktassistent überträgt Eingaben nicht an Pollframe oder Cloudflare. Er erstellt lediglich eine vorbereitete E-Mail und fordert den Browser auf, das lokale E-Mail-Programm zu öffnen. Daten werden erst übertragen, wenn du die Nachricht dort absendest.</p>
-        <p>Wenn du uns kontaktierst, werden deine Nachricht, deine E-Mail-Adresse und die von dir mitgeteilten Informationen zur Bearbeitung der Anfrage verarbeitet. Der E-Mail-Dienst wird über Apple iCloud Mail bereitgestellt. Rechtsgrundlage ist Art. 6 Abs. 1 lit. f DSGVO, bei vorvertraglichen Anfragen Art. 6 Abs. 1 lit. b DSGVO. Nachrichten werden gelöscht, wenn die Anfrage abschließend erledigt ist, sofern keine gesetzlichen Aufbewahrungspflichten bestehen. Informationen von Apple stehen in dessen <a href="https://www.apple.com/legal/privacy/en-ww/" target="_blank" rel="noreferrer">Datenschutzerklärung</a>.</p>
-      </section>
-
-      <section>
-        <h2>8. Speicherdauer und Empfänger</h2>
-        <p>Lokale Einstellungen und App-Caches bleiben bestehen, bis sie automatisch ersetzt oder von dir entfernt werden. Fehlermeldungen werden wie in Abschnitt 6 beschrieben gespeichert. Kontaktanfragen werden nur so lange gespeichert, wie es für die Bearbeitung oder eine gesetzliche Pflicht erforderlich ist. Technische Sicherheitsdaten und aggregierte Web-Analytics-Daten bei Cloudflare werden wie oben beschrieben und nach den jeweils geltenden Richtlinien von Cloudflare gespeichert. Daten werden nur an die oben genannten Dienstleister weitergegeben, soweit dies erforderlich ist, oder wenn wir gesetzlich dazu verpflichtet sind.</p>
-      </section>
-
-      <section>
-        <h2>9. Deine Rechte</h2>
-        <p>Unter den gesetzlichen Voraussetzungen hast du Rechte auf Auskunft, Berichtigung, Löschung, Einschränkung der Verarbeitung und Datenübertragbarkeit sowie ein Widerspruchsrecht gegen Verarbeitungen auf Grundlage berechtigter Interessen. Du kannst dich außerdem bei einer Datenschutzaufsichtsbehörde beschweren. Zur Ausübung deiner Rechte genügt eine Nachricht an die oben genannte E-Mail-Adresse.</p>
-      </section>
-
-      <section>
-        <h2>10. Änderungen</h2>
-        <p>Diese Erklärung wird vor der Einführung von Werbung, Benutzerkonten, Zahlungen, weiteren Analysediensten oder anderen Diensten aktualisiert, durch die zusätzliche Daten verarbeitet werden.</p>
-      </section>
-    </main>
-  );
+  return <Suspense fallback={<main role="status">Pollframe …</main>}><LazyPrivacyPage locale={locale} email={CONTACT_EMAIL} /></Suspense>;
 }
 
 function LicencesPage({ locale }) {
   const isGerman = locale === "de";
   return (
     <main className="legal-page licences-page" id="top">
-      <a className="breadcrumb" href="/">← {isGerman ? "Zur Übersicht" : "Back to overview"}</a>
-      <p className="section-label">{isGerman ? "Nachweise" : "Notices"}</p>
-      <h1>{isGerman ? "Quellen und Lizenzen" : "Sources and licences"}</h1>
+      <a className="breadcrumb" href="/">← {isGerman ? "Zur Übersicht" : spanishText(locale, "Back to overview")}</a>
+      <p className="section-label">{isGerman ? "Nachweise" : spanishText(locale, "Notices")}</p>
+      <h1>{isGerman ? "Quellen und Lizenzen" : spanishText(locale, "Sources and licences")}</h1>
       <p className="licence-lead">{isGerman
         ? "Diese Seite dokumentiert die fremden Daten, Karten und Laufzeitbibliotheken, die Pollframe öffentlich verwendet."
-        : "This page documents the third-party data, map material and runtime libraries used publicly by Pollframe."}</p>
+        : spanishText(locale, "This page documents the third-party data, map material and runtime libraries used publicly by Pollframe.")}</p>
 
       <section className="licence-card">
-        <span className="licence-kind">{isGerman ? "Datenbank" : "Database"}</span>
-        <h2>{isGerman ? "Wahlumfragen: DAWUM" : "Polling data: DAWUM"}</h2>
+        <span className="licence-kind">{isGerman ? "Datenbank" : spanishText(locale, "Database")}</span>
+        <h2>{isGerman ? "Wahlumfragen: DAWUM" : spanishText(locale, "Polling data: DAWUM")}</h2>
         <p>
-          {isGerman ? "Die Umfragedaten stammen aus der " : "Polling data comes from the "}
+          {isGerman ? "Die Umfragedaten stammen aus der " : spanishText(locale, "Polling data comes from the ")}
           <a href={DATA_SOURCE_URL} target="_blank" rel="noreferrer">DAWUM-Datenbank</a>
           {isGerman
             ? ". Diese abgeleitete Pollframe-Datenbank wird ebenfalls unter der "
-            : ". This derivative Pollframe database is also made available under the "}
+            : spanishText(locale, ". This derivative Pollframe database is also made available under the ")}
           <a href={DATA_LICENSE_URL} target="_blank" rel="noreferrer">Open Database License (ODbL) 1.0</a>
           {isGerman ? " bereitgestellt." : "."}
         </p>
         <p>{isGerman
-          ? "Änderungen durch Pollframe: Daten ab 2017, mit sieben Bundestagsinstituten in der Standardauswahl und zusätzlich GMS und Civey bei den Ländern; weitere Reihen sind wählbar; Vereinheitlichung und Umbenennung von Feldern; Aufteilung nach Parlamenten; Berechnung gleich gewichteter Institutsmittel und linearer Ländertrends. Ein weiteres Institut ist bis zur Klärung der Nutzungsrechte vorübergehend ausgeschlossen. Die herunterladbaren JSON-Dateien enthalten den Quellen- und Lizenzhinweis ebenfalls."
-          : "Changes by Pollframe: data from 2017, seven default Bundestag pollsters plus GMS and Civey for states, with additional selectable series; normalising and renaming fields; splitting records by parliament; calculating equally weighted pollster averages and linear state trends. One further pollster is temporarily excluded while reuse rights are clarified. Downloadable JSON files also contain the source and licence notice."}</p>
+          ? "Änderungen durch Pollframe: Daten ab 2017, standardmäßig sieben ausgewählte Institute für den Bundestag und weitere auswählbare Institute je Parlament; Vereinheitlichung und Umbenennung von Feldern; Aufteilung nach Parlamenten; Berechnung gleich gewichteter Institutsmittel und linearer Ländertrends. Ein weiteres Institut ist bis zur Klärung der Nutzungsrechte vorübergehend ausgeschlossen. Die herunterladbaren JSON-Dateien enthalten den Quellen- und Lizenzhinweis ebenfalls."
+          : spanishText(locale, "Changes by Pollframe: data from 2017, seven pollsters selected by default for the Bundestag and further selectable institutes by parliament; normalising and renaming fields; splitting records by parliament; calculating equally weighted pollster averages and linear state trends. One further pollster is temporarily excluded while reuse rights are clarified. Downloadable JSON files also contain the source and licence notice.")}</p>
       </section>
 
       <section className="licence-card">
-        <span className="licence-kind">{isGerman ? "Datenbank · Vereinigtes Königreich" : "Database · United Kingdom"}</span>
+        <span className="licence-kind">{isGerman ? "Datenbank · Vereinigtes Königreich" : spanishText(locale, "Database · United Kingdom")}</span>
         <h2>UK Election Data Vault · Wikipedia</h2>
         <p>{ukSupplementInfo(locale)} <a href="https://en.wikipedia.org/wiki/Opinion_polling_for_the_next_United_Kingdom_general_election" target="_blank" rel="noreferrer">Wikipedia contributors</a> · <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noreferrer">CC BY-SA 4.0</a> · <a href="/data/uk-westminster-polls.json">JSON ↗</a></p>
         <p>{isGerman
           ? "Die britischen Umfragen, der gewichtete 14-Tage-Trend und die zusammengefassten Unterhauswahlergebnisse stammen aus dem "
-          : "UK polls, the weighted 14-day trend and aggregated general-election results come from the "}
+          : spanishText(locale, "UK polls, the weighted 14-day trend and aggregated general-election results come from the ")}
           <a href="https://electiondatavault.co.uk/data/" target="_blank" rel="noreferrer">UK Election Data Vault</a>. {isGerman
             ? "Der Anbieter erklärt, dass sämtliche Daten frei für kommerzielle und sonstige Zwecke verwendet werden dürfen."
-            : "The provider states that all data is freely available for commercial or any other use."}
-          {" "}<a href="https://electiondatavault.co.uk/about/" target="_blank" rel="noreferrer">{isGerman ? "Nutzungsangabe" : "Reuse statement"}</a>.
+            : spanishText(locale, "The provider states that all data is freely available for commercial or any other use.")}
+          {" "}<a href="https://electiondatavault.co.uk/about/" target="_blank" rel="noreferrer">{isGerman ? "Nutzungsangabe" : spanishText(locale, "Reuse statement")}</a>.
         </p>
         <p>{isGerman
           ? "Änderungen durch Pollframe: Auswahl von Großbritannien, Zusammenführung historischer Parteinamen, Gruppierung einzelner Umfragezeilen, Ausdünnung alter Trendstützpunkte für schnelle Grafiken und regionale Zusammenfassung der Unterhauswahl 2024. Der Standardtrend folgt der Methodik des Data Vault; einzelne Umfragen aus Quellen mit ungeklärten Wiederverwendungsrechten sind vorübergehend ausgeschlossen."
-          : "Changes by Pollframe: selecting Great Britain, consolidating historical party names, grouping poll rows, thinning older trend points for fast graphics and regionally aggregating the 2024 general election. The default trend follows the Data Vault methodology; individual polls from sources with unresolved reuse rights are temporarily excluded."}</p>
+          : spanishText(locale, "Changes by Pollframe: selecting Great Britain, consolidating historical party names, grouping poll rows, thinning older trend points for fast graphics and regionally aggregating the 2024 general election. The default trend follows the Data Vault methodology; individual polls from sources with unresolved reuse rights are temporarily excluded.")}</p>
       </section>
 
       <section className="licence-card">
@@ -7220,8 +7010,8 @@ function LicencesPage({ locale }) {
       </section>
 
       <section className="licence-card">
-        <span className="licence-kind">{isGerman ? "Zeitreihen · Zufriedenheit" : "Time series · approval"}</span>
-        <h2>{isGerman ? "Regierung und Regierungschef" : "Government and national leader"}</h2>
+        <span className="licence-kind">{isGerman ? "Zeitreihen · Zufriedenheit" : spanishText(locale, "Time series · approval")}</span>
+        <h2>{isGerman ? "Regierung und Regierungschef" : spanishText(locale, "Government and national leader")}</h2>
         <p>{locale === "es" ? "Las series alemanas de aprobación de Forschungsgruppe Wahlen y las británicas de Ipsos no se publican mientras se aclaran los permisos de reutilización. La afirmación anterior de que existía un permiso de FGW no estaba respaldada por documentación y se ha corregido."
           : isGerman ? "Die deutschen Zufriedenheitsreihen der Forschungsgruppe Wahlen und die britischen Ipsos-Reihen werden bis zur Klärung der Nutzungsrechte nicht veröffentlicht. Die frühere Angabe einer FGW-Freigabe war nicht belegt und wurde korrigiert."
           : "German approval series from Forschungsgruppe Wahlen and British Ipsos series are withheld pending clarification of reuse rights. The earlier claim of FGW permission was not supported by documentation and has been corrected."}</p>
@@ -7229,51 +7019,51 @@ function LicencesPage({ locale }) {
       </section>
 
       <section className="licence-card">
-        <span className="licence-kind">{isGerman ? "Amtliche Daten · Vereinigtes Königreich" : "Official data · United Kingdom"}</span>
-        <h2>{isGerman ? "650 Unterhauswahlkreise" : "650 Commons constituencies"}</h2>
-        <p>{isGerman ? "Kandidaten-, Stimmen- und Wahlkreisergebnisse der Unterhauswahl 2024 stammen vom " : "Candidate, vote and constituency results for the 2024 general election come from the "}<a href="https://electionresults.parliament.uk/" target="_blank" rel="noreferrer">UK Parliament election results service</a>.</p>
+        <span className="licence-kind">{isGerman ? "Amtliche Daten · Vereinigtes Königreich" : spanishText(locale, "Official data · United Kingdom")}</span>
+        <h2>{isGerman ? "650 Unterhauswahlkreise" : spanishText(locale, "650 Commons constituencies")}</h2>
+        <p>{isGerman ? "Kandidaten-, Stimmen- und Wahlkreisergebnisse der Unterhauswahl 2024 stammen vom " : spanishText(locale, "Candidate, vote and constituency results for the 2024 general election come from the ")}<a href="https://electionresults.parliament.uk/" target="_blank" rel="noreferrer">UK Parliament election results service</a>.</p>
         <p>Contains Parliamentary information licensed under the <a href="https://www.parliament.uk/site-information/copyright/open-parliament-licence/" target="_blank" rel="noreferrer">Open Parliament Licence v3.0</a>.</p>
-        <p>{isGerman ? "Die freiwillige Postleitzahlsuche nutzt " : "The optional postcode finder uses "}<a href="https://postcodes.io/" target="_blank" rel="noreferrer">Postcodes.io</a>{isGerman ? " und für Großbritannien OS OpenData. Pollframe speichert die Eingabe nicht. Nordirische BT-Postleitzahlen werden wegen der gesonderten Geodatenlizenz nicht an den Dienst gesendet. " : " and OS OpenData for Great Britain. Pollframe does not retain the input. Northern Ireland BT postcodes are not sent because they require a separate geodata licence. "}Contains Ordnance Survey data © Crown copyright and database right 2025. {isGerman ? "Weitere Herkunfts- und Lizenzhinweise für Royal-Mail-, Statistik- und NRS-Daten stehen in der " : "Further provenance and licence notices for Royal Mail, statistical and NRS data are set out in the "}<a href="https://postcodes.io/docs/licences/" target="_blank" rel="noreferrer">Postcodes.io licence notice</a>.</p>
+        <p>{isGerman ? "Die freiwillige Postleitzahlsuche nutzt " : spanishText(locale, "The optional postcode finder uses ")}<a href="https://postcodes.io/" target="_blank" rel="noreferrer">Postcodes.io</a>{isGerman ? " und für Großbritannien OS OpenData. Pollframe speichert die Eingabe nicht. Nordirische BT-Postleitzahlen werden wegen der gesonderten Geodatenlizenz nicht an den Dienst gesendet. " : spanishText(locale, " and OS OpenData for Great Britain. Pollframe does not retain the input. Northern Ireland BT postcodes are not sent because they require a separate geodata licence. ")}Contains Ordnance Survey data © Crown copyright and database right 2025. {isGerman ? "Weitere Herkunfts- und Lizenzhinweise für Royal-Mail-, Statistik- und NRS-Daten stehen in der " : spanishText(locale, "Further provenance and licence notices for Royal Mail, statistical and NRS data are set out in the ")}<a href="https://postcodes.io/docs/licences/" target="_blank" rel="noreferrer">Postcodes.io licence notice</a>.</p>
       </section>
 
       <section className="licence-card">
-        <span className="licence-kind">{isGerman ? "Amtliche Daten" : "Official data"}</span>
-        <h2>{isGerman ? "Amtliche Wahlergebnisse" : "Official election results"}</h2>
+        <span className="licence-kind">{isGerman ? "Amtliche Daten" : spanishText(locale, "Official data")}</span>
+        <h2>{isGerman ? "Amtliche Wahlergebnisse" : spanishText(locale, "Official election results")}</h2>
         <p>
           © <a href={GERMAN_ELECTION_OPEN_DATA_URL} target="_blank" rel="noreferrer">
-            {isGerman ? "Die Bundeswahlleiterin, Wiesbaden" : "Federal Returning Officer, Wiesbaden"}
+            {isGerman ? "Die Bundeswahlleiterin, Wiesbaden" : spanishText(locale, "Federal Returning Officer, Wiesbaden")}
           </a>. <a href={GERMAN_ELECTION_DATA_LICENSE_URL} target="_blank" rel="noreferrer">Datenlizenz Deutschland – Namensnennung – Version 2.0</a>. {isGerman
             ? "Pollframe verwendet Zweitstimmen-Prozentwerte der Bundestagswahlen 2017, 2021 und 2025. Die Werte wurden gekürzt, in die Pollframe-Datenstruktur übertragen und grafisch neu dargestellt."
-            : "Pollframe uses second-vote percentages from the 2017, 2021 and 2025 federal elections. Values were shortened, transferred into Pollframe’s data structure and presented in a new graphic form."}
+            : spanishText(locale, "Pollframe uses second-vote percentages from the 2017, 2021 and 2025 federal elections. Values were shortened, transferred into Pollframe’s data structure and presented in a new graphic form.")}
         </p>
       </section>
 
       <section className="licence-card">
-        <span className="licence-kind">{isGerman ? "Kartografie" : "Cartography"}</span>
-        <h2>{isGerman ? "Kartengeometrie" : "Map geometry"}</h2>
+        <span className="licence-kind">{isGerman ? "Kartografie" : spanishText(locale, "Cartography")}</span>
+        <h2>{isGerman ? "Kartengeometrie" : spanishText(locale, "Map geometry")}</h2>
         <p>
-          {isGerman ? "Die Deutschlandkarte basiert auf " : "The map of Germany is based on "}
+          {isGerman ? "Die Deutschlandkarte basiert auf " : spanishText(locale, "The map of Germany is based on ")}
           <a href={MAP_ORIGINAL_URL} target="_blank" rel="noreferrer">MapSVG</a>
-          {isGerman ? " und wurde von " : " and was adapted by "}
+          {isGerman ? " und wurde von " : spanishText(locale, " and was adapted by ")}
           <a href={MAP_SOURCE_URL} target="_blank" rel="noreferrer">Victor Cazanave als @svg-maps/germany</a>
-          {isGerman ? " aufbereitet. Lizenz: " : ". Licence: "}
+          {isGerman ? " aufbereitet. Lizenz: " : spanishText(locale, ". Licence: ")}
           <a href={MAP_LICENSE_URL} target="_blank" rel="noreferrer">Creative Commons Attribution 4.0 International</a>.
         </p>
         <p>{isGerman
           ? "Vorherige Änderungen: technische Bereinigung, neue Namen und IDs, ViewBox und Sortierung. Änderungen durch Pollframe: responsive Einbindung, Einfärbung, Konturen, Beschriftungen, Callouts, Auswahlmarkierung und Verknüpfung mit Pollframe-Daten. Die Nennung bedeutet keine Unterstützung oder Empfehlung durch MapSVG oder Victor Cazanave."
-          : "Earlier changes: technical clean-up, new names and IDs, a viewBox and sorting. Changes by Pollframe: responsive integration, colouring, outlines, labels, callouts, selection highlighting and linking to Pollframe data. This credit does not imply endorsement by MapSVG or Victor Cazanave."}</p>
-        <p>{isGerman ? "Die interaktive UK-Karte verwendet " : "The interactive UK map uses "}<a href="https://github.com/shubhexists/react-maps" target="_blank" rel="noreferrer">@react-map/united-kingdom</a>{isGerman ? " unter der MIT-Lizenz; Pollframe färbt die Geometrie ein und verknüpft sie mit zusammengefassten Wahlergebnissen." : " under the MIT License; Pollframe colours the geometry and links it to aggregated election results."}</p>
+          : spanishText(locale, "Earlier changes: technical clean-up, new names and IDs, a viewBox and sorting. Changes by Pollframe: responsive integration, colouring, outlines, labels, callouts, selection highlighting and linking to Pollframe data. This credit does not imply endorsement by MapSVG or Victor Cazanave.")}</p>
+        <p>{isGerman ? "Die interaktive UK-Karte verwendet " : spanishText(locale, "The interactive UK map uses ")}<a href="https://github.com/shubhexists/react-maps" target="_blank" rel="noreferrer">@react-map/united-kingdom</a>{isGerman ? " unter der MIT-Lizenz; Pollframe färbt die Geometrie ein und verknüpft sie mit zusammengefassten Wahlergebnissen." : spanishText(locale, " under the MIT License; Pollframe colours the geometry and links it to aggregated election results.")}</p>
         <p>{locale === "es" ? "El mapa de comunidades autónomas utiliza " : isGerman ? "Die Karte der autonomen Gemeinschaften verwendet " : "The autonomous-community map uses "}<a href="https://public.opendatasoft.com/explore/dataset/georef-spain-comunidad-autonoma/" target="_blank" rel="noreferrer">Opendatasoft georef Spain</a>{locale === "es" ? " con licencia CC BY 4.0; Pollframe reproyecta, simplifica visualmente y hace interactiva la geometría." : isGerman ? " unter CC BY 4.0; Pollframe projiziert die Geometrie neu und macht sie interaktiv." : " under CC BY 4.0; Pollframe reprojects the geometry and makes it interactive."}</p>
       </section>
 
       <section className="licence-card">
-        <span className="licence-kind">{isGerman ? "Software" : "Software"}</span>
-        <h2>{isGerman ? "Ausgelieferte MIT-Bibliotheken" : "Bundled MIT libraries"}</h2>
+        <span className="licence-kind">{isGerman ? "Software" : spanishText(locale, "Software")}</span>
+        <h2>{isGerman ? "Ausgelieferte MIT-Bibliotheken" : spanishText(locale, "Bundled MIT libraries")}</h2>
         <p>{isGerman
           ? "Die ausgelieferte Anwendung enthält React und React DOM von Meta Platforms, Inc. and affiliates, html-to-image von W.Y. sowie @react-map/united-kingdom aus dem React Map-Projekt. Sie stehen unter der MIT-Lizenz."
-          : "The delivered application contains React and React DOM by Meta Platforms, Inc. and affiliates, html-to-image by W.Y., and @react-map/united-kingdom from the React Map project. They are provided under the MIT License."}</p>
+          : spanishText(locale, "The delivered application contains React and React DOM by Meta Platforms, Inc. and affiliates, html-to-image by W.Y., and @react-map/united-kingdom from the React Map project. They are provided under the MIT License.")}</p>
         <details className="licence-disclosure">
-          <summary>{isGerman ? "Copyright-Hinweise und MIT-Lizenztext anzeigen" : "Show copyright notices and MIT licence text"}</summary>
+          <summary>{isGerman ? "Copyright-Hinweise und MIT-Lizenztext anzeigen" : spanishText(locale, "Show copyright notices and MIT licence text")}</summary>
           <pre className="licence-text">{`MIT License
 
 Copyright (c) Meta Platforms, Inc. and affiliates.
@@ -7310,11 +7100,11 @@ SOFTWARE.`}</pre>
       </section>
 
       <section className="licence-card">
-        <span className="licence-kind">{isGerman ? "Kennzeichen & Quellen" : "Names & sources"}</span>
-        <h2>{isGerman ? "Markenzeichen und Ereignisquellen" : "Trade marks and event sources"}</h2>
+        <span className="licence-kind">{isGerman ? "Kennzeichen & Quellen" : spanishText(locale, "Names & sources")}</span>
+        <h2>{isGerman ? "Markenzeichen und Ereignisquellen" : spanishText(locale, "Trade marks and event sources")}</h2>
         <p>{isGerman
           ? "Partei- und Institutsnamen werden ausschließlich zur sachlichen Bezeichnung verwendet; Pollframe verwendet keine Partei- oder Institutslogos und behauptet keine Verbindung oder Unterstützung. Die kurzen Ereignistexte sind eigenständige Zusammenfassungen. Jeder Ereignismarker verlinkt die zugehörige Quelle; bevorzugt werden amtliche, parlamentarische oder andere fachlich belastbare Veröffentlichungen."
-          : "Party and pollster names are used only for factual identification; Pollframe uses no party or pollster logos and claims no affiliation or endorsement. Short event texts are original summaries. Each event marker links to its source, with official, parliamentary or otherwise authoritative publications preferred."}</p>
+          : spanishText(locale, "Party and pollster names are used only for factual identification; Pollframe uses no party or pollster logos and claims no affiliation or endorsement. Short event texts are original summaries. Each event marker links to its source, with official, parliamentary or otherwise authoritative publications preferred.")}</p>
       </section>
     </main>
   );
@@ -7550,7 +7340,6 @@ function App() {
           <a className="brand" href="#top" aria-label="Pollframe home">
             <BrandMark />
             <span>POLLFRAME</span>
-            <em>BETA</em>
           </a>
           <div className="header-actions">
             <button className="header-button info-button" onClick={() => setMethodOpen(true)} aria-label={t.dataInfo}>
@@ -7570,7 +7359,7 @@ function App() {
             <h1>{t.title}</h1>
             <p>{t.intro}</p>
           </div>
-          {pollData && currentDate && <ResultsCard t={t} locale={locale} current={current} previous={previous} date={currentDate} statusLabel={pollData.pollsters?.[current.pollster]} metadata={pollData.metadata} selectedPollsters={selectedPollsters} />}
+          {pollData && currentDate && <ResultsCard t={t} locale={locale} current={current} previous={previous} date={currentDate} statusLabel={pollData.pollsters?.[current.pollster]} metadata={pollData.metadata} pollsters={pollData.pollsters} selectedPollsters={selectedPollsters} />}
           {!pollData && <div className="loading-card">{loadError ? t.error : t.loading}</div>}
         </section>
 
@@ -7738,7 +7527,7 @@ function RegionalApp() {
   const embedMode = IS_EMBED_ENTRY;
   const sharedView = query.get("share") === "1";
   const legalPage = !embedMode && query.get("page") === "impressum";
-  const privacyPage = !embedMode && query.get("page") === "datenschutz";
+  const privacyPage = !embedMode && ["datenschutz", "privacy"].includes(query.get("page"));
   const licencesPage = !embedMode && query.get("page") === "lizenzen";
   const editorialStandardsPage = !embedMode && query.get("page") === "redaktion";
   const contactPage = !embedMode && query.get("page") === "kontakt";
@@ -7809,23 +7598,8 @@ function RegionalApp() {
   }, [analyticsView]);
 
   useEffect(() => {
-    if (embedMode) return undefined;
-    let visibleSince = document.visibilityState === "visible" ? Date.now() : null;
-    let visibleMs = 0;
-    let timer;
-    const schedule = () => {
-      window.clearTimeout(timer);
-      if (visibleSince === null) return;
-      timer = window.setTimeout(() => trackAggregateEventOnce("engaged_60_seconds"), Math.max(0, 60_000 - visibleMs));
-    };
-    const visibilityChanged = () => {
-      if (document.visibilityState === "visible") visibleSince = Date.now();
-      else if (visibleSince !== null) { visibleMs += Date.now() - visibleSince; visibleSince = null; }
-      schedule();
-    };
-    document.addEventListener("visibilitychange", visibilityChanged);
-    schedule();
-    return () => { window.clearTimeout(timer); document.removeEventListener("visibilitychange", visibilityChanged); };
+    if (embedMode || analyticsExcluded() || !import.meta.env.PROD || location.protocol!=='https:') return undefined;
+    return observeUsage(event=>trackAggregateEventOnce(event));
   }, [embedMode]);
 
   const [pollData, setPollData] = useState(null);
@@ -7921,9 +7695,15 @@ function RegionalApp() {
     return () => systemDark.removeEventListener?.("change", update);
   }, [theme]);
 
+  const spanishStatus = useSpanishLocale(locale);
   const baseT = copy[locale];
   const isGerman = locale === "de";
   const t = useMemo(() => {
+    if (locale === "es" && spanishSection("_countries")) {
+      const country = region?.type === "uk-federal" ? "uk" : region?.type === "spain-federal" ? "es" : "de";
+      const translated = { ...baseT, ...spanishSection("_countries")[country] };
+      return region?.type === "state" ? { ...translated, ...stateLocaleOverrides(locale, region) } : translated;
+    }
     if (region?.type === "uk-federal") return {
       ...baseT,
       overview: isGerman ? "Westminster · Wahlabsicht in Großbritannien" : "Westminster · Great Britain voting intention",
@@ -7985,10 +7765,10 @@ function RegionalApp() {
       ? "Umfragen sind Momentaufnahmen mit Unsicherheit. Der Durchschnitt korrigiert derzeit weder institutsspezifische Effekte noch Stichprobenfehler. Die geglättete Linie verbindet berechnete Stützpunkte. Tendenzkarten bewerten 90-Tage-Änderungen ab ±0,4 Prozentpunkten als leicht und ab ±1,2 als deutlich. Keine Darstellung ist eine Wahlprognose."
       : "Polls are uncertain snapshots. The average does not currently adjust for pollster-specific effects or sampling error. The smoothed line connects calculated points. Tendency cards classify 90-day changes from ±0.4 percentage points as slight and from ±1.2 as clear. No display is an election forecast.",
     sourceText: isGerman
-      ? "Die einzelnen Umfragen seit 2017 stammen aus der offenen DAWUM-Datenbank (ODbL 1.0). Pollframe verwendet standardmäßig sieben Institute für den Bundestag, bei den Ländern zusätzlich GMS und Civey; weitere Reihen sind wählbar. Pollframe vereinheitlicht Felder und berechnet eigene Mittelwerte und Trends. Landeswahltermine in der Ereignisebene verlinken die jeweils angegebene amtliche Quelle."
-      : "Individual polls since 2017 come from the open DAWUM database (ODbL 1.0). Pollframe defaults to seven Bundestag pollsters, plus GMS and Civey for states; additional series are selectable. Pollframe normalises fields and calculates its own averages and trends. State election dates in the event layer link to the stated official source.",
+      ? "Die einzelnen Umfragen seit 2017 stammen aus der offenen DAWUM-Datenbank (ODbL 1.0). Pollframe wählt die Institute je Parlament aus (Bundestag: sieben; Länder: zusätzlich GMS und Civey), vereinheitlicht Felder und berechnet daraus eigene Mittelwerte und Trends. Landeswahltermine in der Ereignisebene verlinken die jeweils angegebene amtliche Quelle."
+      : "Individual polls since 2017 come from the open DAWUM database (ODbL 1.0). Pollframe selects pollsters by parliament (Bundestag: seven; states: additionally GMS and Civey), normalises fields and calculates its own averages and trends. State election dates in the event layer link to the stated official source.",
     };
-  }, [baseT, locale, region, isGerman]);
+  }, [baseT, locale, region, isGerman, spanishStatus]);
 
   useEffect(() => {
     if (legalPage || privacyPage || licencesPage || editorialStandardsPage || contactPage || bugReportPage || bugReportsDashboard || watchlistPage) return;
@@ -8203,10 +7983,10 @@ function RegionalApp() {
       const selectedSeat = summary?.constituencies?.constituencies?.find((seat) => seat.slug === query.get("seat"));
       title = selectedSeat
         ? `${selectedSeat.name} · Wahlergebnis 2024 · Pollframe`
-        : (isGerman ? "Britische Wahlkreisergebnisse 2024 · Pollframe" : "UK constituency results 2024 · Pollframe");
+        : (isGerman ? "Britische Wahlkreisergebnisse 2024 · Pollframe" : spanishText(locale, "UK constituency results 2024 · Pollframe"));
       description = isGerman
         ? "Wahlkreissuche und amtliche Ergebnisse der Unterhauswahl 2024 für alle 650 britischen Wahlkreise."
-        : "Constituency search and official 2024 general-election results for all 650 UK constituencies.";
+        : spanishText(locale, "Constituency search and official 2024 general-election results for all 650 UK constituencies.");
       canonicalPath = selectedSeat ? `${publicViewPath("uk-constituencies")}?seat=${encodeURIComponent(selectedSeat.slug)}` : publicViewPath("uk-constituencies");
     } else if (ukCountryPage) {
       title = isGerman ? "Aktuelle UK-Umfragen zur Unterhauswahl · Pollframe" : "Latest UK Westminster election polls · Pollframe";
@@ -8412,13 +8192,15 @@ function RegionalApp() {
     };
   }, []);
 
+  if (spanishStatus !== "ready") return <div className="embed-loading" role={spanishStatus === "error" ? "alert" : "status"}>{spanishStatus === "error" ? <>No se pudo cargar la traducción. <button onClick={() => window.location.reload()}>Volver a intentar</button></> : "Cargando traducción…"}</div>;
+
   if (approvalPage) {
     return <main className="legal-page"><h1>{locale === "es" ? "Temporalmente no disponible" : isGerman ? "Vorübergehend nicht verfügbar" : "Temporarily unavailable"}</h1><p>{locale === "es" ? "Las series de aprobación se han retirado mientras se aclaran los permisos de reutilización." : isGerman ? "Die Zufriedenheitsreihen sind bis zur Klärung der Nutzungsrechte nicht verfügbar." : "Approval series have been withdrawn while reuse permissions are clarified."}</p><a href="/">{locale === "es" ? "Volver a Pollframe" : isGerman ? "Zurück zu Pollframe" : "Back to Pollframe"}</a></main>;
   }
 
   if (embedMode && approvalPage) {
     return summary
-      ? <Suspense fallback={<div className="embed-loading">{t.loading}</div>}><ApprovalPage data={summary} locale={locale} embed eventCatalog={{ de: POLITICAL_EVENTS, uk: UK_POLITICAL_EVENTS }} /></Suspense>
+      ? <Suspense fallback={<div className="embed-loading">{t.loading}</div>}><ApprovalPage data={summary} locale={locale} embed eventCatalog={{ de: locale === "es" ? POLITICAL_EVENTS.map(spanishEvent) : POLITICAL_EVENTS, uk: locale === "es" ? UK_POLITICAL_EVENTS.map(spanishEvent) : UK_POLITICAL_EVENTS }} /></Suspense>
       : <div className="embed-loading">{loadError ? t.error : t.loading}</div>;
   }
 
@@ -8566,7 +8348,7 @@ function RegionalApp() {
     return (
       <>
         <SiteHeader t={t} locale={locale} pwa={pwa} onSettings={() => setSettingsOpen(true)} homeHref={homeHref} homeLabel={homeLabel} countryCode={approvalCountry} />
-        {approvalSummary ? <Suspense fallback={<div className="embed-loading">{t.loading}</div>}><ApprovalPage data={approvalSummary} locale={locale} eventCatalog={{ de: POLITICAL_EVENTS, uk: UK_POLITICAL_EVENTS }} /></Suspense> : <div className="embed-loading">{loadError ? t.error : t.loading}</div>}
+        {approvalSummary ? <Suspense fallback={<div className="embed-loading">{t.loading}</div>}><ApprovalPage data={approvalSummary} locale={locale} eventCatalog={{ de: locale === "es" ? POLITICAL_EVENTS.map(spanishEvent) : POLITICAL_EVENTS, uk: locale === "es" ? UK_POLITICAL_EVENTS.map(spanishEvent) : UK_POLITICAL_EVENTS }} /></Suspense> : <div className="embed-loading">{loadError ? t.error : t.loading}</div>}
         <SiteFooter t={t} pwa={pwa} onSettings={() => setSettingsOpen(true)} homeHref={homeHref} homeLabel={homeLabel} />
         {settings}
         <PartyInfoModalHost locale={locale} />
@@ -8662,9 +8444,9 @@ function RegionalApp() {
   return (
     <>
       <SiteHeader t={t} locale={locale} pwa={pwa} onSettings={() => setSettingsOpen(true)} onInfo={["uk-federal", "spain-federal"].includes(region.type) ? undefined : () => setMethodOpen(true)} homeHref={homeHref} homeLabel={homeLabel} />
-      <main id="top">
-        <nav className="region-breadcrumb" aria-label={isGerman ? "Region" : "Region"}>
-          <BackButton fallback={homeHref} label={locale === "es" ? "Atrás" : isGerman ? "Zurück" : "Back"} /><span>/</span><a href={homeHref}>{locale === "es" ? "Resumen" : isGerman ? "Übersicht" : "Overview"}</a><span>/</span><strong>{region.name}</strong>
+      <main id="top" data-studio-context={JSON.stringify({ region: region.slug, range, mode, parties: selectedParties.join(","), pollsters: selectedPollsters.join(","), events: selectedEventCategories.join(","), from: customStartDate, to: customEndDate, party: selectedPartyDetail?.slug })}>
+        <nav className="region-breadcrumb" aria-label={isGerman ? "Region" : spanishText(locale, "Region")}>
+          <BackButton fallback={homeHref} label={locale === "es" ? "Atrás" : isGerman ? "Zurück" : spanishText(locale, "Back")} /><span>/</span><a href={homeHref}>{locale === "es" ? "Resumen" : isGerman ? "Übersicht" : spanishText(locale, "Overview")}</a><span>/</span><strong>{region.type === "federal" ? localizedCountryName("de", locale) : region.name}</strong>
         </nav>
         {region.slug === "sachsen-anhalt" && <Suspense fallback={null}><ElectionResult locale={locale} /></Suspense>}
         <section className={`intro-section ${region.type === "state" ? "state-intro" : ""} ${region.type === "spain-federal" ? "spain-intro" : ""}`}>
@@ -8682,10 +8464,11 @@ function RegionalApp() {
               date={currentDate}
               partyDefinitions={activePartyDefinitions}
               statusLabel={region.type === "uk-federal" && selectedPollsters.includes(pollData.metadata?.weightedAveragePollsterId)
-                ? (isGerman ? "Gewichteter 14-Tage-Trend" : "Weighted 14-day trend")
+                ? (isGerman ? "Gewichteter 14-Tage-Trend" : spanishText(locale, "Weighted 14-day trend"))
                 : pollData.pollsters?.[current.pollster] ?? null}
               region={region}
               metadata={pollData.metadata}
+              pollsters={pollData.pollsters}
               selectedPollsters={selectedPollsters}
             />
           )}
@@ -8699,7 +8482,7 @@ function RegionalApp() {
                 <div className="chart-title-row widget-info-heading">
                   <GraphInfoPopover locale={locale} title={chartInfo.title} paragraphs={chartInfo.paragraphs} source={pollInfoSource(locale, region, null, pollData.metadata)} className="graph-info-compact" />
                   <div>
-                    <p className="section-label">{region.type === "uk-federal" && selectedPollsters.includes(pollData.metadata?.weightedAveragePollsterId) ? (isGerman ? "Qualitätsgewichteter 14-Tage-Trend" : "Quality-weighted 14-day trend") : selectedPollsters.length === 1 ? t.onePollster : t.basedOn(selectedPollsters.length)}</p>
+                    <p className="section-label">{region.type === "uk-federal" && selectedPollsters.includes(pollData.metadata?.weightedAveragePollsterId) ? (isGerman ? "Qualitätsgewichteter 14-Tage-Trend" : spanishText(locale, "Quality-weighted 14-day trend")) : selectedPollsters.length === 1 ? t.onePollster : t.basedOn(selectedPollsters.length)}</p>
                     <h2 id="main-chart-heading">{t.chartTitle}</h2>
                     <p>{t.chartSubtitle}</p>
                   </div>
@@ -8743,7 +8526,7 @@ function RegionalApp() {
                     { value: "two", label: t.twoYears },
                     { value: "election", label: t.sinceElection },
                     { value: "five", label: t.fiveYearsLong },
-                    ...(region.type === "spain-federal" ? [] : [{ value: "ten", label: isGerman ? "10 Jahre" : "10 years" }]),
+                    ...(region.type === "spain-federal" ? [] : [{ value: "ten", label: isGerman ? "10 Jahre" : spanishText(locale, "10 years") }]),
                     { value: "all", label: t.fullArchive },
                     { value: "custom", label: locale === "es" ? "Periodo personalizado" : isGerman ? "Eigener Zeitraum" : "Custom dates" },
                   ]} />
@@ -8929,26 +8712,42 @@ function RegionalApp() {
   );
 }
 
+const StudioPublishDialog = lazy(() => import("./studio-publish-dialog.jsx"));
+function StudioPublishBridge(props) {return <StudioPublishDialog {...props} ShareModal={WidgetShareModal} translations={copy}/>;}
+const GraphicStudio = lazy(() => import("./graphic-studio.jsx"));
 const ElectionPage = lazy(() => import("./election-page.jsx"));
+const StudioCurrentEmbed = lazy(() => import("./studio-current-embed.jsx"));
 function ElectionShareTools({ kind, elementRef, title, locale, options }) {
   const params = { view: "election-st2026", electionWidget: kind, baseline: options.baseline, all: options.all, electionPollster: options.electionPollster, coalition: options.coalition };
   const share = new URLSearchParams({ ...params, lang: locale });
   return <WidgetShareTools widget={`election-${kind}`} elementRef={elementRef} filename={`pollframe-sachsen-anhalt-2026-${kind}`} title={title} subtitle="Sachsen-Anhalt · Landtagswahl 2026" locale={locale} t={copy[locale]} region={{slug:"sachsen-anhalt",type:"state"}} extraEmbedParams={params} shareHref={`${publicShareOrigin(location.origin)}/?${share}#election-${kind}`} credit={`Statistisches Landesamt Sachsen-Anhalt, Halle (Saale) 2026 · dl-de/by-2-0 · Pollframe${kind === "comparison" && options.baseline === "poll" ? " · DAWUM · ODbL 1.0" : ""}`} profile="election" height={kind === "comparison" ? 510 + options.rows * 48 : kind === "seats" ? 900 : 560}/>;
 }
-function ElectionSiteHeader({ locale, setLocale }) {
+function StudioSiteHeader({ locale, setLocale }) {
   const [open, setOpen] = useState(false);
   const [theme, setTheme] = useState(() => storedPreference("opinion-poll-theme", "system", ["system", "light", "dark"]));
-  const [textSize, setTextSize] = useState("standard");
+  const [textSize, setTextSize] = useState(() => storedPreference("opinion-poll-text-size", "standard", ["standard", "large"]));
   const pwa = usePwaLifecycle();
+  const status = useSpanishLocale(locale);
   useEffect(() => {
-    try { localStorage.setItem("opinion-poll-theme", theme); localStorage.setItem("opinion-poll-locale", locale); } catch {}
+    try { localStorage.setItem("opinion-poll-theme", theme); localStorage.setItem("opinion-poll-locale", locale); localStorage.setItem("opinion-poll-text-size", textSize); } catch {}
     document.documentElement.dataset.theme = theme === "dark" || (theme === "system" && matchMedia("(prefers-color-scheme: dark)").matches) ? "dark" : "light";
-    document.documentElement.dataset.textSize = textSize;
+    document.documentElement.dataset.text = textSize;
   }, [theme, locale, textSize]);
-  return <><SiteHeader t={copy[locale]} locale={locale} pwa={pwa} onSettings={() => setOpen(true)} /><SettingsPanel open={open} onClose={() => setOpen(false)} locale={locale} setLocale={setLocale} t={copy[locale]} theme={theme} setTheme={setTheme} textSize={textSize} setTextSize={setTextSize} pwa={pwa} /></>;
+  if (status !== "ready") return <div role="status">Cargando…</div>;
+  return <><SiteHeader t={copy[locale]} locale={locale} pwa={pwa} onSettings={() => setOpen(true)} /><SettingsPanel open={open} onClose={() => setOpen(false)} locale={locale} setLocale={setLocale} t={copy[locale]} theme={theme} setTheme={setTheme} textSize={textSize} setTextSize={setTextSize} pwa={pwa} />{pwa.installed && <MobileAppNavigation t={copy[locale]} homeHref="/" />}</>;
 }
-
-function EventRouter() {
- return new URLSearchParams(location.search).get("view") === "election-st2026" ? <Suspense fallback={<main role="status">Pollframe …</main>}><ElectionPage Header={IS_EMBED_ENTRY ? null : ElectionSiteHeader} ShareTools={ElectionShareTools} embed={IS_EMBED_ENTRY}/></Suspense> : <RegionalApp/>;
+function AppRouter() {
+  const [, update] = useState(0);
+  useEffect(() => {
+    const navigate = () => update((version) => version + 1);
+    window.addEventListener("popstate", navigate);
+    return () => window.removeEventListener("popstate", navigate);
+  }, []);
+  if (IS_EMBED_ENTRY && new URLSearchParams(location.search).get("studioDesign") === "1") return <Suspense fallback={<main role="status">Pollframe …</main>}><StudioCurrentEmbed /></Suspense>;
+  if (routeQueryForLocation().get("view") === "election-st2026") return <Suspense fallback={<main role="status">Pollframe …</main>}><ElectionPage Header={IS_EMBED_ENTRY ? null : StudioSiteHeader} ShareTools={ElectionShareTools} embed={IS_EMBED_ENTRY}/></Suspense>;
+  return !IS_EMBED_ENTRY && routeQueryForLocation().get("view") === "studio"
+    ? <Suspense fallback={<main className="embed-loading" role="status">Pollframe Studio …</main>}><GraphicStudio Header={StudioSiteHeader} PublishDialog={StudioPublishBridge} /></Suspense>
+    : <RegionalApp />;
 }
-createRoot(document.getElementById("root")).render(<EventRouter />);
+createRoot(document.getElementById("root")).render(<StudioLoadBoundary><AppRouter /></StudioLoadBoundary>);
+if (IS_EMBED_ENTRY) import('./embed-size.js').then(module => module.startEmbedSizeReporting());

@@ -36,7 +36,8 @@ for (const path of ["/", "/uk", "/es", "/de/bundestag/umfragen", "/sources"]) {
   const html = await response.text();
   assert.ok(html.includes(`rel="canonical" href="${origin}${path}"`), `${path}: canonical`);
   assert.ok(html.includes(config.vars.WEB_ANALYTICS_TOKEN), `${path}: analytics token`);
-  assert.equal((html.match(/beacon\.min\.js/g) ?? []).length, 1, `${path}: duplicate/missing analytics`);
+  assert.equal((html.match(/data-pollframe-beacon=/g) ?? []).length, 1, `${path}: duplicate/missing analytics`);
+  assert.ok(!html.includes('beacon.min.js'), `${path}: unconditional beacon bypasses opt-out`);
   for (const asset of assets) assert.ok(html.includes(asset), `${path}: stale HTML`);
   assert.match(response.headers.get("content-security-policy") ?? "", /default-src 'none'/);
 }
@@ -55,7 +56,7 @@ for (const host of [origin, old]) {
   const response = await get(`${host}/embed.html?region=bundestag`);
   assert.equal(response.status, 200);
   const html = await response.text();
-  assert.ok(!html.includes("beacon.min.js"), "embeds must stay analytics-free");
+  assert.ok(!html.includes("beacon.min.js") && !html.includes("analytics-beacon.js"), "embeds must stay analytics-free");
   assert.ok(!response.headers.has("x-frame-options"));
   assert.match(response.headers.get("content-security-policy"), /frame-ancestors \*/);
   assert.match(response.headers.get("x-robots-tag"), /noindex/);

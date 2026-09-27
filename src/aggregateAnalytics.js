@@ -1,9 +1,12 @@
+import { analyticsExcluded } from "../public/analytics-preference.js";
+
 const ALLOWED_EVENTS = new Set([
   "install_prompt_accepted",
   "install_completed",
   "ios_install_instructions_opened",
   "app_opened_standalone",
   "engaged_60_seconds",
+  "qualified_read_60_seconds",
   "country_switch_de",
   "country_switch_uk",
   "country_switch_es",
@@ -35,6 +38,7 @@ const ALLOWED_EVENTS = new Set([
 const sentOnce = new Set();
 
 export function trackAggregateEvent(event) {
+  if (analyticsExcluded()) return false;
   if (!import.meta.env.PROD || !ALLOWED_EVENTS.has(event)) return false;
   if (window.location.protocol !== "https:") return false;
   if (document.documentElement.dataset.embed === "true") return false;

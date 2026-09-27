@@ -2,7 +2,7 @@ import { writeFile, appendFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { collectDataFreshness } from "./lib/data-freshness.mjs";
 
-const sources = ["election", "germany", "uk", "spain", "spain_issues", "spain_regions", "approval"];
+const sources = ["germany", "uk", "spain", "spain_issues", "spain_regions", "approval"];
 const outcomes = Object.fromEntries(sources.map((source) => [source, process.env[`${source.toUpperCase()}_OUTCOME`] ?? "missing"]));
 const report = {
   checkedAt: new Date().toISOString(),

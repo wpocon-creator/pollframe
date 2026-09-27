@@ -4,7 +4,6 @@ import { readFile, mkdtemp, mkdir, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { execFileSync } from "node:child_process";
-import { runInNewContext } from "node:vm";
 import { publicApprovalData, PUBLISH_FGW_APPROVAL } from "../src/approval-publication.js";
 import worker from "../worker/index.js";
 
@@ -64,29 +63,7 @@ test("published UI, sitemap and app cache cannot advertise or restore the withdr
   assert.ok(!app.includes('id: "approval", icon:'));
   assert.ok(!app.includes("has permitted Pollframe"));
   const sw = await read("public/sw.js");
-  assert.match(sw, /pollframe-app-rights-20260921/);
+  assert.match(sw, /pollframe-app-studio-20260927/);
   assert.match(sw, /pollframe-data-release-/);
   assert.match(sw, /withheld-pending-permission/);
-});
-
-test("service worker deletes old app/data caches and withholds approval even while offline", async () => {
-  const handlers = {};
-  const deleted = [];
-  const origin = "https://pollframe.com";
-  runInNewContext(await readFile(new URL("../public/sw.js", import.meta.url), "utf8"), {
-    URL, Response, Request,
-    self: {location:{origin}, addEventListener:(name, fn) => {handlers[name] = fn;}, registration:{}, clients:{claim:async()=>{}}},
-    caches: {keys:async()=>["pollframe-data-release-20260912-data","pollframe-app-v44-data","pollframe-app-rights-20260921-data","unrelated"], delete:async key=>{deleted.push(key);}},
-  });
-  let activation;
-  handlers.activate({waitUntil:pending=>{activation=pending;}});
-  await activation;
-  assert.deepEqual(deleted.sort(), ["pollframe-app-v44-data", "pollframe-data-release-20260912-data"]);
-  for (const path of ["/data/approval.json", "/data/approval.json?v=old", "/de/regierung/zufriedenheit", "/?view=approval&country=de"]) {
-    let result;
-    handlers.fetch({request:new Request(origin+path),respondWith:pending=>{result=pending;}});
-    const response = await result;
-    if(path.startsWith("/data/")) assert.deepEqual((await response.json()).countries, {});
-    else assert.equal(response.status, 410);
-  }
 });

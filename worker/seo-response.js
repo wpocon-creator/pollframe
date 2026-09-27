@@ -10,8 +10,14 @@ export function initialDataHints(url, stateNames) {
   const query = routeQueryForLocation(url);
   if (query.has("page") || query.get("view") === "watchlist") return [];
   const region = query.get("region");
+  if (query.get("view") === "studio") {
+    if (["uk", "es"].includes(query.get("country"))) return [];
+    if (query.get("template")?.startsWith("map-") || query.get("topic") === "map" || query.get("profile") === "map") return ["/state-map-data.json"];
+    return !region || ["bundestag", ...Object.keys(stateNames)].includes(region) ? [`/data/${region || "bundestag"}.json`] : [];
+  }
   if (region) return ["bundestag", "uk-westminster", "spain-congress", ...Object.keys(stateNames)].includes(region) ? [`/data/${region}.json`] : [];
   const view = query.get("view");
+  if (view === "election-st2026") return ["/data/sachsen-anhalt.json"];
   if (view === "approval") return ["/data/approval.json"];
   if (view === "uk-constituencies") return ["/uk-summary.json", "/data/uk-constituencies.json"];
   if (view === "countries") return ["/regions.json", "/uk-summary.json", "/spain-summary.json"];
@@ -90,11 +96,12 @@ export async function seoPageResponse(request, env, stateNames, domainHtml) {
   const headers = new Headers(shell.headers);
   headers.set("content-type", "text/html; charset=utf-8");
   headers.set("content-language", locale);
-  headers.set("cache-control", "public, max-age=0, must-revalidate");
+  // Keep automatic edge beacon injection from bypassing our browser opt-out.
+  headers.set("cache-control", "public, max-age=0, must-revalidate, no-transform");
   headers.set("x-content-type-options", "nosniff");
   if (shellOnly) headers.set("x-robots-tag", "noindex, follow");
   if (url.origin === LEGACY_SITE_ORIGIN) {
-    headers.set("cache-control", "private, no-store");
+    headers.set("cache-control", "private, no-store, no-transform");
     headers.set("vary", "Service-Worker-Navigation-Preload, X-Pollframe-App");
   }
   headers.delete("etag");

@@ -106,12 +106,13 @@ test("Spain polling and concerns info includes calculations, survey context and 
   await expect(page.locator(".spain-issues-page")).toBeVisible();
   await expectEveryInfoIsSubstantial(page, 650);
   const national = await openInfoWithin(page.locator("#spain-national-concerns"));
-  expect(national.text).toMatch(/estudio 3557/i);
+  const currentIssues = (await (await page.request.get('/spain-summary.json')).json()).issues;
+  expect(national.text.toLowerCase()).toContain(`estudio ${currentIssues.study}`);
   expect(national.text).toMatch(/4(?:[.,])?020 entrevistas telefónicas/i);
   expect(national.text).toMatch(/hasta tres/);
   expect(national.text).toMatch(/final del trabajo de campo/);
   expect(national.text).toMatch(/no una tendencia/i);
-  await expect(national.card.locator("a")).toHaveCount(2);
+  await expect(national.card.locator("a")).toHaveCount(currentIssues.technicalUrl ? 3 : 2);
   await closeInfo(national.info);
 });
 

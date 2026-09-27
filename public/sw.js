@@ -1,4 +1,4 @@
-const VERSION = "pollframe-app-rights-20260921";
+const VERSION = "pollframe-app-studio-20260927";
 const SHELL_CACHE = `${VERSION}-shell`;
 const RUNTIME_CACHE = `${VERSION}-runtime`;
 const DATA_CACHE = `${VERSION}-data`;
@@ -16,6 +16,8 @@ const CORE_DATA = [
   "/state-map-data.json",
   "/uk-summary.json",
   "/spain-summary.json",
+  "/data/spanish-events.json",
+  "/data/spanish-ui.json",
 ];
 const COUNTRY_DATA = {
   de: [
@@ -58,7 +60,7 @@ async function cacheBuiltAssetGraph(cache, initialPaths) {
     if (absolute.origin !== self.location.origin || visited.has(absolute.href)) continue;
     visited.add(absolute.href);
     const response = await fetch(absolute.href);
-    if (!response.ok) continue;
+    if (!canCacheResponse(new Request(absolute), response)) continue;
     await cache.put(absolute.href, response.clone());
     if (!absolute.pathname.endsWith(".js")) continue;
     const source = await response.text();
@@ -72,19 +74,26 @@ async function cacheBuiltAssetGraph(cache, initialPaths) {
   }
 }
 
+const dataPrefetches = new Map();
 async function cacheDataPaths(paths) {
   const dataCache = await caches.open(DATA_CACHE);
-  const results = await Promise.all([...new Set(paths)].map(async (path) => {
-    try {
-      const response = await fetch(path);
-      if (!response.ok) return false;
-      await dataCache.put(new URL(path, self.location.origin).href, response);
-      return true;
-    } catch {
-      return false;
+  const queue = [...new Set(paths)];
+  let cursor = 0, complete = true;
+  await Promise.all(Array.from({length: Math.min(3, queue.length)}, async () => {
+    while (cursor < queue.length) {
+      const path = queue[cursor++];
+      if (!dataPrefetches.has(path)) dataPrefetches.set(path, (async () => {
+        try {
+          const response = await fetch(path);
+          if (!canCacheResponse(new Request(new URL(path, self.location.origin)), response)) return false;
+          await dataCache.put(new URL(path, self.location.origin).href, response);
+          return true;
+        } catch { return false; }
+      })().finally(() => dataPrefetches.delete(path)));
+      if (!await dataPrefetches.get(path)) complete = false;
     }
   }));
-  return results.every(Boolean);
+  return complete;
 }
 
 async function installAppShell() {
@@ -92,6 +101,7 @@ async function installAppShell() {
   await shellCache.addAll(SHELL);
   const rootResponse = await fetch("/", { headers: { "X-Pollframe-App": "1" } });
   if (!rootResponse.ok) throw new Error(`App shell returned ${rootResponse.status}`);
+  if (!canCacheResponse(new Request(new URL("/", self.location.origin)), rootResponse)) return;
   await shellCache.put("/", rootResponse.clone());
   const html = await rootResponse.text();
   const builtAssets = [...html.matchAll(/(?:src|href)="(\/assets\/[^"]+)"/g)].map((match) => match[1]);
@@ -136,6 +146,9 @@ self.addEventListener("activate", (event) => {
 });
 
 self.addEventListener("message", (event) => {
+  if (event.data?.type === "POLLFRAME_LOGOUT") {
+    event.waitUntil(Promise.all([caches.delete(SHELL_CACHE), caches.delete(RUNTIME_CACHE)]));
+  }
   if (event.data?.type === "SKIP_WAITING") self.skipWaiting();
   if (event.data?.type === "PREFETCH_COUNTRY") event.waitUntil(prefetchCountry(event.data.country));
   if (event.data?.type === "PREFETCH_OFFLINE_APP") event.waitUntil(prefetchOfflineApp());
@@ -166,9 +179,40 @@ function isStaticAsset(url) {
     || /\.(?:png|svg|webmanifest)$/.test(url.pathname);
 }
 
+// Public offline data must never turn a personal page into a shared-device cache.
+function isPrivateRequest(request) {
+  const url = new URL(request.url);
+  return request.headers.has("authorization")
+    || request.headers.has("x-pollframe-admin-key")
+    || /^\/(?:api|account|auth|login|register|admin|pf-ops)(?:\/|$)/i.test(url.pathname)
+    || /^(?:account|login|register|admin|bug-report)$/i.test(url.searchParams.get("view") || "")
+    || ["token", "code", "key"].some((key) => url.searchParams.has(key));
+}
+
+function canCacheResponse(request, response) {
+  return response.ok && !isPrivateRequest(request)
+    && !/\b(?:no-store|private)\b/i.test(response.headers.get("cache-control") || "")
+    && !(response.headers.get("vary") || "").split(",").some((field) => /^(?:cookie|authorization|\*)$/i.test(field.trim()));
+}
+
 async function notifyCachedData() {
   const clients = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
   clients.forEach((client) => client.postMessage({ type: "POLLFRAME_CACHED_DATA" }));
+}
+
+async function cachedPublicData(cache, request) {
+  const exact = await cache.match(request);
+  if (exact) return exact;
+  const url = new URL(request.url);
+  if (url.origin !== self.location.origin || !(isDataRequest(url) || isStaticAsset(url)) || isPrivateRequest(request)) return undefined;
+  // Same-origin static JSON has the same contents whether requested by an
+  // HTML preload or fetch(). Preloads add Origin; browser-decompressed cache
+  // bodies may also retain Vary: Accept-Encoding. Neither selects user data.
+  // Never ignore other Vary fields, credentials or a private/no-store response.
+  const candidate = await cache.match(request, { ignoreVary: true });
+  if (!candidate || !canCacheResponse(request, candidate)) return undefined;
+  const fields = (candidate.headers.get("vary") || "").split(",").map(v => v.trim().toLowerCase()).filter(Boolean);
+  return fields.every(field => ["origin", "accept-encoding"].includes(field)) ? candidate : undefined;
 }
 
 async function networkFirst(request, cacheName, { data = false } = {}) {
@@ -177,12 +221,14 @@ async function networkFirst(request, cacheName, { data = false } = {}) {
   const timeout = setTimeout(() => controller.abort(), data ? 4500 : 10000);
   try {
     const response = await fetch(request, { signal: controller.signal });
-    if (response.ok) {
+    if (canCacheResponse(request, response)) {
       try { await cache.put(request, response.clone()); } catch { /* Never discard a valid network response because cache storage raced or filled up. */ }
+    } else {
+      await cache.delete(request).catch(() => {});
     }
     return response;
   } catch (error) {
-    const cached = await cache.match(request, { ignoreSearch: request.mode === "navigate", ignoreVary: true });
+    const cached = data ? await cachedPublicData(cache, request) : await cache.match(request);
     if (!cached) throw error;
     if (data) await notifyCachedData();
     return cached;
@@ -194,9 +240,12 @@ async function networkFirst(request, cacheName, { data = false } = {}) {
 async function navigationResponse(event) {
   const preloaded = await event.preloadResponse;
   if (preloaded) {
-    if (preloaded.ok) {
+    if (canCacheResponse(event.request, preloaded)) {
       const cache = await caches.open(SHELL_CACHE);
       try { await cache.put(event.request, preloaded.clone()); } catch { /* Return the preloaded page even if cache storage is unavailable. */ }
+    } else {
+      const cache = await caches.open(SHELL_CACHE);
+      await cache.delete(event.request).catch(() => {});
     }
     return preloaded;
   }
@@ -209,10 +258,12 @@ async function navigationResponse(event) {
 
 async function cacheFirst(request) {
   const cache = await caches.open(RUNTIME_CACHE);
-  const cached = await caches.match(request, { ignoreVary: true });
+  const cached = await caches.match(request)
+    || await cachedPublicData(await caches.open(SHELL_CACHE), request)
+    || await cachedPublicData(cache, request);
   if (cached) return cached;
   const response = await fetch(request);
-  if (response.ok) {
+  if (canCacheResponse(request, response)) {
     try { await cache.put(request, response.clone()); } catch { /* The network response remains usable without a runtime-cache write. */ }
   }
   return response;
@@ -223,6 +274,7 @@ self.addEventListener("fetch", (event) => {
   if (request.method !== "GET" || request.headers.has("range")) return;
   const url = new URL(request.url);
   if (url.origin !== self.location.origin || url.pathname === "/embed.html") return;
+  if (isPrivateRequest(request)) return;
 
   // Offline caches must not resurrect approval series withdrawn for rights review.
   if (url.pathname === "/data/approval.json") {

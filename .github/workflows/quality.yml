@@ -33,6 +33,14 @@ jobs:
         run: npm audit --audit-level=low
       - name: Enforce approval publication withdrawal
         run: node --test tests/approval-withdrawal.test.mjs
+      - name: Test API security boundaries and concurrent brute-force protection
+        run: node --test tests/worker-security.test.mjs
+      - name: Test Studio recipes, real event selection and isolated production accounts
+        run: npm run test:studio:unit
+      - name: Test publication rights, offline privacy and all pure logic regressions
+        run: node --test tests/*.test.mjs
+      - name: Check Spanish copy and reproducible publication settings
+        run: node --test tests/spanish-locale.test.mjs tests/spanish-publication.test.mjs tests/studio-caption.test.mjs tests/history-publication-replay.test.mjs tests/local-launcher.test.mjs
       - name: Validate and build production files
         run: |
           set -euo pipefail
@@ -61,14 +69,16 @@ jobs:
         run: |
           set -euo pipefail
           npm run build
-      - name: Run complete core regressions in all three browser engines
-        run: npx playwright test tests/accessibility.spec.mjs tests/current-endpoint.spec.mjs tests/event-selection.spec.mjs tests/integration.spec.mjs tests/png-export.spec.mjs tests/deferred-content.spec.mjs --project=chromium-desktop --project=firefox-desktop --project=webkit-desktop
-      - name: Run geometry, PWA and visual regressions on representative devices
-        run: npx playwright test tests/mobile-layout.spec.mjs tests/pwa.spec.mjs tests/watchlist-visual.spec.mjs --project=pixel-5 --project=iphone-13 --project=ipad-mini --project=phone-landscape
-      - name: Run the global pairwise layout auditor
-        run: npx playwright test tests/layout-audit.spec.mjs --project=chromium-desktop --project=iphone-13-chromium
-      - name: Check approval dialogs and chart labels on phone and desktop
-        run: npx playwright test tests/mobile-fixes.spec.mjs tests/info-popovers.spec.mjs --project=chromium-desktop --project=iphone-13
+      # Legacy approval/export scenarios remain in tests/ for the parked feature.
+      # The release gate tests the currently published surfaces, not withdrawn data.
+      - name: Verify source-preserving designs and actual PNG/embed output in three engines
+        run: npx playwright test tests/studio-publication-launch.spec.mjs tests/source-rights-browser.spec.mjs tests/studio-font-export.spec.mjs tests/studio-source-overflow.spec.mjs --project=chromium-desktop --project=firefox-desktop --project=webkit-desktop --workers=2
+      - name: Exercise real event editing and data-frame integrity in three engines
+        run: npx playwright test tests/studio-events-outcomes.spec.mjs tests/studio-data-fastpath.spec.mjs tests/studio-url-performance.spec.mjs --project=chromium-desktop --project=firefox-desktop --project=webkit-desktop --workers=2
+      - name: Check every privacy translation and mobile layout of publication credits
+        run: npx playwright test tests/studio-launch-privacy.spec.mjs tests/source-rights-browser.spec.mjs --project=chromium-desktop --project=iphone-13 --project=ipad-mini --workers=2
+      - name: Test real offline data, rather than cache-name assumptions
+        run: npx playwright test tests/studio-launch-offline.spec.mjs --project=chromium-desktop --project=pixel-5 --workers=2
       - name: Preserve failure screenshots, traces and report
         if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

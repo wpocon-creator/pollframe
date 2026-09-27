@@ -1,0 +1,15 @@
+[eval]:1
+const fs=require('fs'),s=fs.readFileSync('node_modules/@fontsource-variable/roboto-slab/LICENSE','utf8');if(!s.includes('SIL OPEN FONT LICENSE'))throw Error('license');process.stdout.write(s)
+                                                                                                                                                 ^
+
+Error: license
+    at [eval]:1:152
+    at Script.runInThisContext (node:vm:122:12)
+    at Object.runInThisContext (node:vm:298:38)
+    at node:internal/process/execution:82:21
+    at [eval]-wrapper:6:24
+    at runScript (node:internal/process/execution:81:62)
+    at evalScript (node:internal/process/execution:103:10)
+    at node:internal/main/eval_string:30:3
+
+Node.js v18.19.1

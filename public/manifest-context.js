@@ -11,7 +11,16 @@
   var region = query.get("region");
   var targets = [];
   if (!page) {
-    if (view === "approval") targets = ["/data/approval.json"];
+    if (view === "studio") {
+      // Thumbnails use real data too. Never preload federal data for a state
+      // design, or unrelated polling data for the map catalogue.
+      var german = ["bundestag","baden-wuerttemberg","bayern","berlin","brandenburg","bremen","hamburg","hessen","mecklenburg-vorpommern","niedersachsen","nordrhein-westfalen","rheinland-pfalz","saarland","sachsen","sachsen-anhalt","schleswig-holstein","thueringen"];
+      if (country !== "uk" && country !== "es") {
+        if ((query.get("template") || "").indexOf("map-") === 0 || query.get("topic") === "map" || query.get("profile") === "map") targets = ["/state-map-data.json"];
+        else if (!region || german.indexOf(region) !== -1) targets = ["/data/" + (region || "bundestag") + ".json"];
+      }
+    }
+    else if (view === "approval") targets = ["/data/approval.json"];
     else if (view === "countries") targets = ["/regions.json", "/uk-summary.json", "/spain-summary.json"];
     else if (view === "uk-constituencies") targets = ["/uk-summary.json", "/data/uk-constituencies.json"];
     else if (country === "de") targets = ["/regions.json", "/data/bundestag.json"];

@@ -162,17 +162,27 @@ test.describe("installable Pollframe app", () => {
     });
     await page.goto("/?view=watchlist&country=de");
     await expect(page.locator(".watch-card-party")).toBeVisible();
-    await expect(page.locator(".watch-card-value span")).toBeVisible();
+    const value = page.locator(".watch-current-value strong");
+    const change = page.locator(".watch-change-value strong");
+    await expect(value).toHaveText(/\d.*%/);
+    await expect(change).toHaveText(/[+-].*pp/);
     await page.evaluate(() => navigator.serviceWorker.ready);
     if (!await page.evaluate(() => Boolean(navigator.serviceWorker.controller))) await page.reload();
     await page.waitForFunction(() => Boolean(navigator.serviceWorker.controller));
     await page.reload();
-    await expect(page.locator(".watch-card-value span")).toBeVisible();
+    await expect(change).toBeVisible();
+    const onlineValue = await value.innerText();
+    const onlineChange = await change.innerText();
+    // As in the desktop case, Chromium can report onLine=true after a
+    // service-worker reload despite context.setOffline blocking all networking.
+    await page.addInitScript(() => Object.defineProperty(Navigator.prototype, "onLine", { configurable: true, get: () => false }));
     await context.setOffline(true);
     await page.reload({ waitUntil: "domcontentloaded" });
     await expect(page.locator(".watch-card-party")).toContainText("Grüne");
-    await expect(page.locator(".watch-card-value span")).toBeVisible();
+    await expect(value).toHaveText(onlineValue);
+    await expect(change).toHaveText(onlineChange);
     await expect(page.getByRole("status")).toContainText(/Offline|Sin conexión|Gespeicherter Datenstand|Saved data shown/);
+    expect(await page.evaluate(() => fetch("/api/analytics").then(() => false, () => true))).toBe(true);
     await context.setOffline(false);
   });
 
