@@ -5,7 +5,7 @@ const routes = [
   "/?region=bundestag&lang=de",
   "/?country=uk&lang=en-GB",
   "/?country=es&view=spain-issues&lang=es",
-  "/?view=approval&country=de&lang=de",
+  "/?view=studio&country=de&lang=de",
   "/?page=redaktion&lang=de",
   "/?page=kontakt&lang=en-GB",
   "/?page=bug-report&lang=en-GB",

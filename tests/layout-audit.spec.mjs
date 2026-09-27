@@ -9,7 +9,7 @@ const cases = [
   { route: "/", theme: "light", label: "Germany overview" },
   { route: "/?region=bundestag&lang=de", theme: "dark", label: "Bundestag history" },
   { route: "/?view=map&lang=en-US", theme: "light", label: "Germany map" },
-  { route: "/?view=approval&country=de&lang=de", theme: "dark", label: "approval history" },
+  { route: "/?view=studio&lang=de", theme: "dark", label: "Studio gallery" },
   { route: "/?country=uk&lang=en-GB", theme: "light", label: "UK overview" },
   { route: "/?region=uk-westminster&lang=en-US", theme: "dark", label: "UK history" },
   { route: "/?country=uk&view=uk-map&lang=de", theme: "light", label: "UK map" },
