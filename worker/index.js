@@ -366,6 +366,8 @@ export class BugReportStore {
 }
 
 const ANALYTICS_EVENTS = new Set([
+  'notice_studio_shown', 'notice_studio_dismissed', 'notice_studio_clicked',
+  'notice_feedback_shown', 'notice_feedback_dismissed', 'notice_feedback_clicked',
   "install_prompt_accepted",
   "install_completed",
   "ios_install_instructions_opened",
@@ -452,6 +454,12 @@ export class AnalyticsStore {
         totals,
         days,
         definitions: {
+          notice_studio_shown: 'Studio introduction visibly displayed',
+          notice_studio_dismissed: 'Studio introduction explicitly closed with X',
+          notice_studio_clicked: 'Studio introduction video link clicked; not proof of viewing',
+          notice_feedback_shown: 'Feedback invitation visibly displayed',
+          notice_feedback_dismissed: 'Feedback invitation explicitly closed with X',
+          notice_feedback_clicked: 'Feedback invitation link clicked; not proof of submission',
           install_completed: "Browser-confirmed completed PWA installations (supported browsers only)",
           install_prompt_accepted: "Install prompts accepted; may precede or duplicate a completed-install event",
           ios_install_instructions_opened: "iOS installation instructions opened; not proof of installation",

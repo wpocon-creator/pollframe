@@ -17,6 +17,8 @@ await storage.put("day:2020-01-01", { install_completed: 99 });
 const store = new AnalyticsStore({ storage });
 
 const allowedEvents = [
+  'notice_studio_shown', 'notice_studio_dismissed', 'notice_studio_clicked',
+  'notice_feedback_shown', 'notice_feedback_dismissed', 'notice_feedback_clicked',
   "install_prompt_accepted", "install_completed", "ios_install_instructions_opened", "app_opened_standalone", "engaged_60_seconds", "qualified_read_60_seconds",
   "country_switch_de", "country_switch_uk", "country_switch_es", "country_switch_all",
   "view_country_de", "view_country_uk", "view_country_es", "view_country_all",

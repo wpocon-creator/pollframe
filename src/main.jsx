@@ -13,6 +13,8 @@ import { includeHistoricalEvent, isPrimaryElectionEvent, rankHistoricalEvents } 
 import { trackAggregateEvent, trackAggregateEventOnce } from "./aggregateAnalytics.js";
 import { analyticsExcluded } from '../public/analytics-preference.js';
 import { observeUsage } from './usage-quality.js';
+const FeedbackNotice = lazy(() => import('./feedback-notice.jsx'));
+import NoticeStats from './notice-stats.jsx';
 import { requestWasAborted } from "./network.js";
 import { SITE_ORIGIN, publicShareOrigin } from "./site-origin.js";
 import { localizedCanonical, languageAlternates } from "./seo-locale.js";
@@ -4624,6 +4626,7 @@ function SiteHeader({ t, locale = "de", onSettings, onInfo, pwa, homeHref = "/",
   };
   return (
     <header className="site-header">
+      {showReport && <Suspense fallback={null}><FeedbackNotice locale={locale} href={reportBugHref()} /></Suspense>}
       <div className="header-inner">
         <a className="brand" href={homeHref} aria-label={homeLabel}>
           <BrandMark />
@@ -6861,7 +6864,7 @@ function BugReportPage({ locale }) {
   );
 }
 
-function AnalyticsSummary({ analytics }) {
+function AnalyticsSummary({ analytics, locale }) {
   const days = analytics.days ?? {};
   const totals = analytics.totals ?? {};
   const recent = (event, period = 7) => Object.entries(days)
@@ -6885,6 +6888,7 @@ function AnalyticsSummary({ analytics }) {
       <article><span>Publishing actions</span><strong>{publishing.reduce((sum, [, event]) => sum + recent(event), 0)}</strong><small>Last 7 days · actions, not people</small></article>
     </div>
     <div className="analytics-table-grid">
+      <NoticeStats days={days} locale={locale} />
       <article><h3>What people open</h3><table><thead><tr><th>Area</th><th>7 days</th><th>All</th></tr></thead><tbody>{groups.flatMap(([group, items]) => items.map(([label, event], index) => <tr key={event}><td>{index === 0 && <small>{group}</small>}<span>{label}</span></td><td>{recent(event)}</td><td>{totals[event] ?? 0}</td></tr>))}</tbody></table></article>
       <article><h3>Publishing workflow</h3><table><thead><tr><th>Action</th><th>7 days</th><th>All</th></tr></thead><tbody>{publishing.map(([label, event]) => <tr key={event}><td>{label}</td><td>{recent(event)}</td><td>{totals[event] ?? 0}</td></tr>)}</tbody></table></article>
     </div>
@@ -6903,14 +6907,26 @@ function BugReportDashboard({ locale }) {
   const [payload, setPayload] = useState(null);
   const [state, setState] = useState("idle");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [failure, setFailure] = useState("");
 
   const load = async (key = adminKey, filter = statusFilter) => {
     const version = ++requestVersion.current;
     setState("loading");
+    setFailure("");
     try {
+      key = key.trim();
       const headers = { "x-pollframe-admin-key": key };
       const reportsResponse = await fetch(`/api/bug-reports?status=${encodeURIComponent(filter)}`, { headers, cache: "no-store" });
-      if (!reportsResponse.ok) throw new Error(`HTTP ${reportsResponse.status}`);
+      if (!reportsResponse.ok) {
+        const status = reportsResponse.status;
+        const messages = locale === 'de' ? {
+          401: 'Dieser Schlüssel ist nicht gültig. Bitte verwende die aktuelle Key-Datei in Pollframe/Verwaltung.',
+          403: 'Der Zugriff wurde vom Sicherheitsdienst abgelehnt. Das bedeutet nicht automatisch, dass der Schlüssel falsch ist.',
+          429: 'Zu viele Anmeldeversuche. Bitte 15 Minuten warten und nicht wiederholt versuchen.',
+          503: 'Der Meldungsdienst ist derzeit nicht verfügbar. Dein Schlüssel wurde nicht als falsch bestätigt.',
+        } : { 401: 'This key is not valid. Use the current key file in Pollframe/Verwaltung.', 403: 'The security service denied this request. This does not necessarily mean the key is wrong.', 429: 'Too many attempts. Wait 15 minutes before trying again.', 503: 'The report service is currently unavailable. This does not establish that your key is wrong.' };
+        throw new Error(messages[status] || `Report service: HTTP ${status}`);
+      }
       const reportsPayload = await reportsResponse.json();
       // Analytics are useful but optional. A missing/unconfigured analytics
       // Durable Object must never hide the bug reports themselves.
@@ -6924,7 +6940,7 @@ function BugReportDashboard({ locale }) {
       setDraftKey("");
       setAdminKey(key);
       setState("ready");
-    } catch { if (version === requestVersion.current) setState("error"); }
+    } catch (error) { if (version === requestVersion.current) { setState("error"); setFailure(error.message || 'Could not connect to the report service.'); } }
   };
 
   const updateStatus = async (id, status) => {
@@ -6944,12 +6960,12 @@ function BugReportDashboard({ locale }) {
     window.setTimeout(() => URL.revokeObjectURL(url), 0);
   };
 
-  if (!payload) return <main className="bug-admin-page"><a className="breadcrumb" href="/">← Pollframe</a><section className="bug-admin-login"><p className="section-label">POLLFRAME · INTERNAL</p><h1>Bug reports</h1><p>Enter the private dashboard key configured for the Worker.</p><form onSubmit={(event) => { event.preventDefault(); load(draftKey); }}><input type="password" autoComplete="current-password" value={draftKey} onChange={(event) => setDraftKey(event.target.value)} aria-label="Dashboard key" required /><button className="primary-button" type="submit" disabled={state === "loading"}>Open dashboard</button></form>{state === "error" && <p role="alert">The key was rejected or the reporting service is unavailable.</p>}</section></main>;
+  if (!payload) return <main className="bug-admin-page"><a className="breadcrumb" href="/">← Pollframe</a><section className="bug-admin-login"><p className="section-label">POLLFRAME · INTERNAL</p><h1>Bug reports</h1><p>Enter the private dashboard key configured for the Worker.</p><form onSubmit={(event) => { event.preventDefault(); load(draftKey); }}><input type="password" autoComplete="current-password" value={draftKey} onChange={(event) => setDraftKey(event.target.value)} aria-label="Dashboard key" required /><button className="primary-button" type="submit" disabled={state === "loading"}>Open dashboard</button></form>{state === "error" && <p role="alert">{failure}</p>}</section></main>;
 
   const stats = payload.stats ?? {};
   const reports = payload.reports ?? [];
   const analytics = payload.analytics ?? {};
-  return <main className="bug-admin-page"><header className="bug-admin-heading"><div><p className="section-label">POLLFRAME · INTERNAL</p><h1>Bug reports</h1></div><div className="bug-admin-actions"><button className="secondary-button" type="button" onClick={exportReports}><Icon name="download" size={16} />Export JSON</button><button className="secondary-button" type="button" onClick={() => load()}>Refresh</button><button className="secondary-button" type="button" onClick={() => { requestVersion.current++; setAdminKey(""); setDraftKey(""); setPayload(null); setState("idle"); }}>Log out</button></div></header><AnalyticsSummary analytics={analytics} /><section className="bug-stats"><article><span>All reports</span><strong>{stats.total ?? 0}</strong></article><article><span>New</span><strong>{stats.statusCounts?.new ?? 0}</strong></article><article><span>Resolved</span><strong>{stats.statusCounts?.resolved ?? 0}</strong></article><article><span>Reports · last 7 days</span><strong>{Object.entries(stats.dayCounts ?? {}).filter(([day]) => Date.now() - Date.parse(`${day}T00:00:00Z`) < 604800000).reduce((sum, [, count]) => sum + count, 0)}</strong></article></section><nav className="bug-admin-filters" aria-label="Report status">{["all", "new", "reviewing", "resolved", "archived"].map((status) => <button type="button" className={statusFilter === status ? "selected" : ""} key={status} onClick={() => { setStatusFilter(status); load(adminKey, status); }}>{status} {status !== "all" && `(${stats.statusCounts?.[status] ?? 0})`}</button>)}</nav><section className="bug-report-list">{reports.length ? reports.map((report) => <article key={report.id}><header><span className={`bug-type type-${report.type}`}>{BUG_REPORT_TYPES.find((item) => item.id === report.type)?.en ?? report.type}</span><time dateTime={report.createdAt}>{new Intl.DateTimeFormat(locale === "de" ? "de-DE" : "en-GB", { dateStyle: "medium", timeStyle: "short" }).format(new Date(report.createdAt))}</time></header><p className={report.message ? "" : "empty-message"}>{report.message || "No note supplied"}</p><a href={report.page} target="_blank" rel="noreferrer">{report.page}</a><dl><div><dt>Viewport</dt><dd>{report.viewport || "–"}</dd></div><div><dt>Locale</dt><dd>{report.locale || "–"}</dd></div><div><dt>Browser</dt><dd>{report.userAgent || "–"}</dd></div></dl><footer><label>Status<select value={report.status} onChange={(event) => updateStatus(report.id, event.target.value)}>{["new", "reviewing", "resolved", "archived"].map((status) => <option key={status}>{status}</option>)}</select></label><code>{report.id.slice(0, 8)}</code></footer></article>) : <p className="bug-admin-empty">No reports in this view.</p>}</section></main>;
+  return <main className="bug-admin-page"><header className="bug-admin-heading"><div><p className="section-label">POLLFRAME · INTERNAL</p><h1>Bug reports</h1></div><div className="bug-admin-actions"><button className="secondary-button" type="button" onClick={exportReports}><Icon name="download" size={16} />Export JSON</button><button className="secondary-button" type="button" onClick={() => load()}>Refresh</button><button className="secondary-button" type="button" onClick={() => { requestVersion.current++; setAdminKey(""); setDraftKey(""); setPayload(null); setState("idle"); }}>Log out</button></div></header><AnalyticsSummary analytics={analytics} locale={locale} /><section className="bug-stats"><article><span>All reports</span><strong>{stats.total ?? 0}</strong></article><article><span>New</span><strong>{stats.statusCounts?.new ?? 0}</strong></article><article><span>Resolved</span><strong>{stats.statusCounts?.resolved ?? 0}</strong></article><article><span>Reports · last 7 days</span><strong>{Object.entries(stats.dayCounts ?? {}).filter(([day]) => Date.now() - Date.parse(`${day}T00:00:00Z`) < 604800000).reduce((sum, [, count]) => sum + count, 0)}</strong></article></section><nav className="bug-admin-filters" aria-label="Report status">{["all", "new", "reviewing", "resolved", "archived"].map((status) => <button type="button" className={statusFilter === status ? "selected" : ""} key={status} onClick={() => { setStatusFilter(status); load(adminKey, status); }}>{status} {status !== "all" && `(${stats.statusCounts?.[status] ?? 0})`}</button>)}</nav><section className="bug-report-list">{reports.length ? reports.map((report) => <article key={report.id}><header><span className={`bug-type type-${report.type}`}>{BUG_REPORT_TYPES.find((item) => item.id === report.type)?.en ?? report.type}</span><time dateTime={report.createdAt}>{new Intl.DateTimeFormat(locale === "de" ? "de-DE" : "en-GB", { dateStyle: "medium", timeStyle: "short" }).format(new Date(report.createdAt))}</time></header><p className={report.message ? "" : "empty-message"}>{report.message || "No note supplied"}</p><a href={report.page} target="_blank" rel="noreferrer">{report.page}</a><dl><div><dt>Viewport</dt><dd>{report.viewport || "–"}</dd></div><div><dt>Locale</dt><dd>{report.locale || "–"}</dd></div><div><dt>Browser</dt><dd>{report.userAgent || "–"}</dd></div></dl><footer><label>Status<select value={report.status} onChange={(event) => updateStatus(report.id, event.target.value)}>{["new", "reviewing", "resolved", "archived"].map((status) => <option key={status}>{status}</option>)}</select></label><code>{report.id.slice(0, 8)}</code></footer></article>) : <p className="bug-admin-empty">No reports in this view.</p>}</section></main>;
 }
 
 const LazyPrivacyPage = lazy(() => import("./privacy.jsx"));

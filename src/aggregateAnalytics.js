@@ -1,6 +1,8 @@
 import { analyticsExcluded } from "../public/analytics-preference.js";
+import { NOTICE_EVENTS } from './notice-policy.js';
 
 const ALLOWED_EVENTS = new Set([
+  ...NOTICE_EVENTS,
   "install_prompt_accepted",
   "install_completed",
   "ios_install_instructions_opened",

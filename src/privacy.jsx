@@ -10,7 +10,7 @@ export default function PrivacyPage({ locale, email: CONTACT_EMAIL }) {
         <p className="section-label">Legal</p>
         <h1>Privacy notice</h1>
         <p>You can <a href="?page=datenschutz&lang=en-GB&analytics=off">exclude this browser from our visit statistics</a> or <a href="?page=datenschutz&lang=en-GB&analytics=on">include it again</a>. Pollframe saves only an on/off preference locally; it is not an identifier and is not sent to our counters. Clearing website data removes the preference. Cloudflare's technical request statistics are unaffected.</p>
-        <p className="privacy-updated">Last updated: 27 September 2026</p>
+        <p className="privacy-updated">Last updated: 28 September 2026</p>
 
         <section>
           <h2>1. Controller</h2>
@@ -41,6 +41,7 @@ export default function PrivacyPage({ locale, email: CONTACT_EMAIL }) {
 
         <section>
           <h2>4. Cookies, audience measurement and advertising</h2>
+          <p>For each informative notice (Studio introduction or feedback invitation), our aggregate counter also records displays, explicit dismissals and link clicks separately. It does not connect these actions to a visitor. Local notice flags and a timing limit prevent repeated or simultaneous notices; these functional values are never sent to analytics. The analytics opt-out applies to these counters too.</p>
           <p>We also count a qualified reading session when a page remains visible for at least 60 seconds and receives a browser-reported interaction. Only the daily total is sent; keys, pointer positions and sequences of actions are not recorded. This is an engagement indicator, not proof of a human visitor or an ad impression. Known automated analytics submissions and explicitly configured internal IP addresses are excluded before storage; connection headers are examined transiently, not added to the analytics dataset. Unrecognised browsers and single-page visits are not automatically classified as bots.</p>
           <p>Pollframe uses Cloudflare Web Analytics, provided by Cloudflare, Inc., to measure aggregate visits and page views and to understand referrer hosts, countries, device and browser categories, page-load performance and Core Web Vitals. We use these aggregated measurements to improve Pollframe&apos;s reach, usability and technical performance. The analytics beacon is loaded from <code>static.cloudflareinsights.com</code> and sends measurements to <code>cloudflareinsights.com</code>. It is not loaded in the dedicated journalist embed.</p>
           <p>Cloudflare states that Web Analytics does not use cookies or local storage, does not track individuals across websites and does not collect or use visitors&apos; personal data. Query strings are not logged. Pollframe does not receive IP addresses or identifiers that would allow us to recognise an individual visitor. The legal basis is Article 6(1)(f) GDPR; our legitimate interests are privacy-preserving aggregate reach measurement and improving the website.</p>
@@ -91,7 +92,7 @@ export default function PrivacyPage({ locale, email: CONTACT_EMAIL }) {
       <p className="section-label">Rechtliches</p>
       <h1>Datenschutzerklärung</h1>
       <p>Du kannst diesen Browser <a href="?page=datenschutz&analytics=off">von unserer Besuchsstatistik ausschließen</a> oder <a href="?page=datenschutz&analytics=on">wieder mitzählen lassen</a>. Dafür speichert Pollframe ausschließlich eine Ein-/Aus-Einstellung lokal; sie ist keine Kennung und wird nicht an unsere Zähler übertragen. Beim Löschen der Website-Daten entfällt die Einstellung. Cloudflares technische Anfragestatistik bleibt davon unberührt.</p>
-      <p className="privacy-updated">Stand: 27. September 2026</p>
+      <p className="privacy-updated">Stand: 28. September 2026</p>
 
       <section>
         <h2>1. Verantwortlicher</h2>
@@ -122,6 +123,7 @@ export default function PrivacyPage({ locale, email: CONTACT_EMAIL }) {
 
       <section>
         <h2>4. Cookies, Reichweitenmessung und Werbung</h2>
+        <p>Für jeden Informationshinweis (Studio-Einführung oder Feedback-Einladung) zählen wir außerdem Einblendungen, ausdrückliches Schließen und Linkklicks getrennt als Tagessummen. Diese Handlungen werden keiner Person zugeordnet. Lokale Hinweis-Merkmale und eine Zeitbegrenzung verhindern wiederholte oder gleichzeitige Hinweise; diese funktionalen Werte werden niemals an die Statistik gesendet. Der Analyse-Widerspruch gilt auch für diese Zähler.</p>
         <p>Zusätzlich zählen wir einen qualifizierten Leseaufruf, wenn eine Seite mindestens 60 Sekunden sichtbar bleibt und eine vom Browser gemeldete Bedienhandlung stattfindet. Übermittelt wird nur der Zähler; Tasten, Zeigerpositionen und Handlungsfolgen werden nicht aufgezeichnet. Das ist ein Hinweis auf Nutzung, kein Nachweis eines menschlichen Besuchers oder einer Werbeeinblendung. Bekannte automatisierte Statistikmeldungen und ausdrücklich konfigurierte interne IP-Adressen werden vor der Speicherung ausgeschlossen; Verbindungsheader werden dafür nur kurzzeitig geprüft und nicht in den Statistikdatensatz übernommen. Unbekannte Browser und Aufrufe nur einer Seite gelten nicht automatisch als Bots.</p>
         <p>Pollframe verwendet Cloudflare Web Analytics von Cloudflare, Inc., um zusammengefasste Besuche und Seitenaufrufe zu messen und verweisende Websites, Länder, Geräte- und Browserkategorien, Ladezeiten sowie Core Web Vitals zu verstehen. Diese aggregierten Messwerte nutzen wir, um Reichweite, Bedienbarkeit und technische Leistung von Pollframe zu verbessern. Der Analyse-Beacon wird von <code>static.cloudflareinsights.com</code> geladen und übermittelt Messwerte an <code>cloudflareinsights.com</code>. Im gesonderten Journalisten-Embed wird er nicht geladen.</p>
         <p>Nach Angaben von Cloudflare verwendet Web Analytics weder Cookies noch lokalen Speicher, verfolgt keine einzelnen Personen über Websites hinweg und erhebt oder verwendet keine personenbezogenen Besucherdaten. URL-Abfrageparameter werden nicht protokolliert. Pollframe erhält keine IP-Adressen oder Kennungen, mit denen wir einzelne Besucher wiedererkennen könnten. Rechtsgrundlage ist Art. 6 Abs. 1 lit. f DSGVO; unsere berechtigten Interessen sind eine datensparsame, aggregierte Reichweitenmessung und die Verbesserung der Website.</p>
