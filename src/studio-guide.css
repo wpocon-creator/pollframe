@@ -8,15 +8,15 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  width: min(960px, calc(100% - 32px));
+  width: min(520px, calc(100% - 24px));
   margin: 0;
-  padding: 7px 10px 7px 54px;
+  padding: 4px 6px 4px 18px;
   border: 1px solid var(--line);
   border-radius: 18px;
   box-shadow: 0 8px 28px #00000014;
   background: var(--surface);
   color: var(--ink);
-  font-size: 14px;
+  font-size: 13px;
   line-height: 1.5;
   animation: studio-notice-arrive 0.55s both;
 }

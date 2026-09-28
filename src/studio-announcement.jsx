@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useLayoutEffect, useState } from "react";
+import {createPortal} from 'react-dom';
 
 // Only remembers an explicitly dismissed notice, never a visitor identifier.
 export default function StudioAnnouncement({
@@ -17,6 +18,14 @@ export default function StudioAnnouncement({
     }
   });
   const [hovered, setHovered] = useState(false);
+  const [top,setTop]=useState(80);
+  useLayoutEffect(()=>{
+    const header=document.querySelector('.site-header');
+    if(!header)return;
+    const measure=()=>setTop(header.getBoundingClientRect().height+8);
+    const observer=new ResizeObserver(measure);observer.observe(header);measure();
+    return()=>observer.disconnect();
+  },[]);
   const [focused, setFocused] = useState(false);
   const [replay,setReplay] = useState(0);
   useEffect(()=>{
@@ -40,10 +49,11 @@ export default function StudioAnnouncement({
     return () => clearTimeout(timer);
   }, [dismissed, engaged, replay]);
   if (dismissed) return null;
-  return (
+  return createPortal(
     <aside
       key={replay}
       className="studio-announcement"
+      style={{top}}
       aria-label="Studio"
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
@@ -74,6 +84,6 @@ export default function StudioAnnouncement({
       >
         ×
       </button>
-    </aside>
+    </aside>,document.body
   );
 }

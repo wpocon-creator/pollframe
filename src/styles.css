@@ -2789,12 +2789,27 @@ body > #root > footer {
 @media(max-width:1000px) {.site-header .header-button>span {display:none;}}
 @media(max-width:600px) {.site-header .app-header-button,.site-header .brand>span {display:none;} .site-header .header-inner {gap:12px;} .product-navigation {gap:16px;} .product-navigation a {font-size:13px;} }
 @media(max-width:400px) {
-  .site-header .header-inner {display:grid;grid-template-columns:auto 1fr;gap:0 12px;}
-  .site-header .header-actions {justify-self:end;grid-column:2;grid-row:1;}
-  .site-header .product-navigation {grid-column:1 / -1;grid-row:2;justify-content:center;margin:0;gap:28px;}
-  .site-header .product-navigation a {min-height:34px;}
-  .site-header .product-navigation a[aria-current]::after {bottom:2px;}
+  .site-header .header-inner {display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:8px;}
+  .site-header .header-actions {justify-self:end;grid-column:3;grid-row:1;gap:4px;}
+  .site-header .product-navigation {grid-column:2;grid-row:1;justify-content:flex-start;margin:0;gap:10px;}
+  .site-header .product-navigation a {min-height:44px;font-size:12px;}
+  .site-header .product-navigation a[aria-current]::after {bottom:4px;}
+  .site-header .header-button {width:36px;min-width:36px;padding-inline:5px;}
 }
+@media(max-width:700px) {
+  :root[data-standalone="true"] .site-header .product-navigation {display:none;}
+  :root[data-standalone="true"] .site-header .header-inner {display:flex;}
+  :root[data-standalone="true"] .site-header .header-actions {margin-left:auto;}
+}
+:root[data-modal-scroll-locked="true"] {overflow:hidden!important;}
+:root[data-modal-scroll-locked="true"] body {position:fixed!important;top:var(--modal-scroll-top);left:0;right:0;overflow:hidden!important;}
+dialog[open],[aria-modal="true"] {overscroll-behavior:contain;}
+.tendency-reading {display:flex;align-items:baseline;flex-wrap:wrap;gap:6px 10px;}
+.tendency-reading .delta {font-size:.8rem;white-space:nowrap;}
+/* Keep publication context in standalone PNGs; the interactive page explains
+   comparisons in its Info dialog instead of repeating them below every row. */
+:is(.results-card,.tendency-section) .comparison-export-detail {display:none;}
+:is(.png-export-clone,.png-preview-clone) .comparison-export-detail {display:block;}
 
 .brand em {
   padding: 3px 5px;

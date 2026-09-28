@@ -33,9 +33,9 @@ export default function StudioGuide({ l, lang }) {
         )}
       >
         {l(
-          "Pollframe Studio kennenlernen: Grafiken gestalten und Stile wiederverwenden.",
-          "Discover Pollframe Studio: design graphics and reuse your styles.",
-          "Descubre Pollframe Studio: diseña gráficas y reutiliza tus estilos.",
+          "Neu in Studio?",
+          "New to Studio?",
+          "¿Primera vez en Studio?",
         )}
       </StudioAnnouncement>
       {open && (

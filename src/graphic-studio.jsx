@@ -3,6 +3,7 @@ import { analyticsExcluded } from "../public/analytics-preference.js";
 import { trackAggregateEventOnce } from "./aggregateAnalytics.js";
 import { observeUsage } from "./usage-quality.js";
 import StudioSelect from "./studio-select.jsx";
+import {useStudioSwipe} from './studio-swipe.js';
 import StudioThumbnail from "./studio-thumbnail.jsx";
 import StudioGuide from "./studio-guide.jsx";
 import {
@@ -396,8 +397,13 @@ export default function GraphicStudio({ Header, PublishDialog }) {
     window.scrollTo({top:0,behavior:'instant'});
     requestAnimationFrame(()=>window.scrollTo({top:0,behavior:'instant'}));
   };
+  const swipe=useStudioSwipe(editing && state.workspace!=='edit',direction=>{
+    const index=templates.findIndex(item=>item.id===state.template);
+    const adjacent=index<0?null:templates[index+direction];
+    if(adjacent)update({template:adjacent.id});
+  });
   return (
-    <div className="studio-shell" data-assistant-state={JSON.stringify(state)}>
+    <div className="studio-shell" data-swipe-preview={editing && state.workspace!=='edit' || undefined} {...swipe} data-assistant-state={JSON.stringify(state)}>
       {STUDIO_ASSISTANT_ENABLED && !editing && (
         <button
           className="secondary-button studio-gallery-assistant-toggle"

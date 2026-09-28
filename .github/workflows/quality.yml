@@ -86,6 +86,8 @@ jobs:
         run: npx playwright test tests/studio-launch-privacy.spec.mjs tests/source-rights-browser.spec.mjs --project=chromium-desktop --project=iphone-13 --project=ipad-mini --workers=2
       - name: Test real offline data, rather than cache-name assumptions
         run: npx playwright test tests/studio-launch-offline.spec.mjs --project=chromium-desktop --project=pixel-5 --workers=2
+      - name: Keep mobile Studio navigation, modal scrolling and compact comparisons working
+        run: npx playwright test tests/studio-mobile-polish.spec.mjs tests/comparison-compact.spec.mjs --project=chromium-desktop --project=iphone-13 --workers=2
       - name: Preserve failure screenshots, traces and report
         if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

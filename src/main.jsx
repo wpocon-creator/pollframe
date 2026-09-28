@@ -23,6 +23,7 @@ import { EventMarkerGlyph } from "./event-marker-glyph.jsx";
 import { eventLabelMetrics } from "./event-marker-layout.js";
 import { iframeMarkup } from './embed-markup.js';
 import { StudioLoadBoundary } from "./studio-load-boundary.jsx";
+import { installModalScrollGuard } from "./modal-scroll-guard.js";
 import { continuousSmoothPath, continuousLinearPath } from "./chart-paths.js";
 import { PARTY_DEFINITIONS, UK_PARTY_DEFINITIONS } from "./party-definitions.js";
 import { useSpanishLocale, spanishEvent, spanishSection, spanishText } from "./spanish-locale.js";
@@ -2716,7 +2717,7 @@ function ResultsCard({ t, locale, current, previous, date, partyDefinitions = PA
         ))}
       </div>
       {region.type === "spain-federal" && rows.length > collapsedCount && <button className="results-more" type="button" onClick={() => setShowAll((value) => !value)}>{showAll ? (locale === "es" ? "Mostrar menos" : locale === "de" ? "Weniger anzeigen" : "Show fewer") : (locale === "es" ? `Ver ${rows.length - collapsedCount} partidos más` : locale === "de" ? `${rows.length - collapsedCount} weitere Parteien` : `${rows.length - collapsedCount} more parties`)}</button>}
-      <div className="results-note"><Icon name="info" size={16} /><span>{comparisonLabel}</span></div>
+      <div className={`results-note${embed ? "" : " comparison-export-detail"}`}><Icon name="info" size={16} /><span>{comparisonLabel}</span></div>
     </section>
   );
 }
@@ -2770,8 +2771,8 @@ function TendencySection({ t, locale, current, baseline, onSelectParty = () => {
           <article className="tendency-card" key={party.id}>
             <button type="button" className="tendency-card-main" onClick={() => onSelectParty(party)} aria-label={t.openParty(party.name)}>
               <div className="tendency-party"><span style={{ background: party.color }} /><strong><PartyInfoButton party={party} as="span" /></strong><b>{party.value.toLocaleString(numberLocale, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%</b></div>
-              <div className={`tendency-status ${party.direction}`}>{party.status}</div>
-              <p>{Number.isFinite(party.delta) && baseline.date ? `${party.delta > 0 ? "+" : ""}${party.delta.toLocaleString(numberLocale, {minimumFractionDigits:1,maximumFractionDigits:1})} ${locale === "de" ? "Pp. seit" : locale === "es" ? "puntos desde" : "pp since"} ${formatDate(baseline.date,locale,{year:true})}` : t.tendencyUnavailable}</p>
+              <div className="tendency-reading"><span className={`tendency-status ${party.direction}`}>{party.status}</span>{Number.isFinite(party.delta) && <span className={`delta ${party.delta > 0.04 ? "up" : party.delta < -0.04 ? "down" : ""}`}>{`${party.delta > 0 ? "+" : ""}${party.delta.toLocaleString(numberLocale, {minimumFractionDigits:1,maximumFractionDigits:1})} ${locale === "de" ? "Pp." : "pp"}`}</span>}</div>
+              {baseline.date && <p className={embed ? undefined : "comparison-export-detail"}>{`${locale === "de" ? "Vergleich:" : locale === "es" ? "Comparación:" : "Compared with:"} ${formatDate(baseline.date,locale,{year:true})}`}</p>}
               <span className="tendency-open" aria-hidden="true">↗</span>
             </button>
             {!embed && <WatchlistStar country={region.type === "uk-federal" ? "uk" : region.type === "spain-federal" ? "es" : "de"} regionSlug={region.slug} regionName={region.name} partyIds={[party.id]} label={`${party.name} · ${region.name}`} className="tendency-watch-star" />}
@@ -8749,5 +8750,6 @@ function AppRouter() {
     ? <Suspense fallback={<main className="embed-loading" role="status">Pollframe Studio …</main>}><GraphicStudio Header={StudioSiteHeader} PublishDialog={StudioPublishBridge} /></Suspense>
     : <RegionalApp />;
 }
+installModalScrollGuard();
 createRoot(document.getElementById("root")).render(<StudioLoadBoundary><AppRouter /></StudioLoadBoundary>);
 if (IS_EMBED_ENTRY) import('./embed-size.js').then(module => module.startEmbedSizeReporting());

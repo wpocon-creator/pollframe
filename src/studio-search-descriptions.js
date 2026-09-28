@@ -1,6 +1,13 @@
 // Search-only editorial metadata. Describe the actual design, not every design
 // with every adjective. Shared renderers inherit the same visual vocabulary.
 export const SEARCH_STYLES = {
+  airy: "airy spacious light delicate subtle calm luftig leicht filigran dezent ruhig fein aireado ligero sutil delicado tranquilo",
+  refined: "refined premium luxurious luxury sophisticated chic edel hochwertig luxuriös stilvoll nobel refinado lujo sofisticado",
+  retro: "retro vintage nostalgic analog nostalgisch buchartig historisierend antiguo nostálgico",
+  futuristic: "futuristic cyber neon glowing hightech futuristisch zukunft leuchtend futurista ciber luminoso",
+  geometric: "geometric architectural modular sculptural dimensional geometrisch architektonisch skulptural räumlich plastisch geométrico arquitectónico escultórico tridimensional",
+  playful: "playful fun friendly lively colourful colorful vibrant pop spielerisch freundlich fröhlich lebendig bunt farbenfroh alegre divertido lúdico juguetón colorido",
+  sober: "sober restrained neutral objective unaufgeregt nüchtern sachlich zurückhaltend seriös sobrio sobria objetivo discreto serio",
   modern:
     "modern contemporary sleek polished elegant stylish fresh modern minimalista moderno moderna modernos zeitgemäß zeitgemaess zeitgenössisch zeitgenoessisch elegant edel aktuelle zeitgemäße elegante contemporáneo contemporánea elegante actual limpio",
   simple:
@@ -9,7 +16,7 @@ export const SEARCH_STYLES = {
     "traditional classic classical conventional familiar timeless established conservative traditional design traditionell traditionelle klassisch klassische vertraut konventionell zeitlos bewährt bewaehrt tradicional clásico clásica clásicos convencional familiar atemporal",
   detailed:
     "detailed detail informative information comprehensive thorough analytical analysis precise exact granular breakdown rich data detailreich detailliert detaillierte ausführlich ausfuehrlich informativ genau präzise praezise analyse analytisch fakten datenreich aufschlüsselung aufschluesselung detallado detallada detalles completo completa informativo analítico análisis preciso desglose cifras",
-  bold: "bold striking expressive dramatic creative experimental playful colourful colorful eye catching standout attention impact large big auffällig auffaellig ausdrucksstark kräftig kraeftig kreativ experimentell spielerisch bunt plakativ groß gross llamativo llamativa creativo creativa experimental expresivo colorido vistoso grande impactante",
+  bold: "bold striking expressive dramatic creative experimental eye catching standout attention impact large big auffällig auffaellig ausdrucksstark kräftig kraeftig kreativ experimentell plakativ groß gross llamativo llamativa creativo creativa experimental expresivo vistoso grande impactante",
   editorial:
     "editorial professional serious newsroom newspaper journalist article report reporting publication press redaktion redaktionell professionell seriös serioes sachlich journalist journalistisch zeitung artikel bericht veröffentlichung veroeffentlichung presse editorial profesional periodístico periodística periodista periódico artículo informe prensa sobrio",
   technical:
@@ -206,6 +213,16 @@ export function searchDescription(item) {
         ]
       : []);
   const concepts = new Set(tags.split(" ").filter(Boolean));
+  const moods={
+    airy:['news','lollipop','dotplot','dots','dumbbell'],
+    refined:['news','paper','print','atlas'],
+    retro:['paper','print'],
+    futuristic:['neon','signal'],
+    geometric:['material','columns','cards','map-tiles','waffle'],
+    playful:['poster','cards','map-poster','map-tiles','waffle','change-poster','change-cards'],
+    sober:['classic','original','native','map-original','table','briefing','rail','coalition-table','change-table'],
+  };
+  for(const [mood,styles] of Object.entries(moods))if(styles.includes(item.design))concepts.add(mood);
   if (["history", "party", "approval", "tendencies"].includes(item.topic))
     concepts.add("change");
   return {

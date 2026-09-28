@@ -28,7 +28,7 @@ export default function StudioSelect({
     if (!option || option.props.disabled) return;
     onChange?.({ target: { value: String(option.props.value) } });
     setOpen(false);
-    anchor.current?.focus();
+    anchor.current?.focus({preventScroll:true});
   };
   useEffect(() => {
     if (!open) return;
@@ -40,17 +40,17 @@ export default function StudioSelect({
         (viewport?.offsetTop || 0) + (viewport?.height || innerHeight) - 12;
       const below = Math.max(0, bottomEdge - r.bottom - 6);
       const above = Math.max(0, r.top - topEdge - 6);
-      const desired = Math.min(320, options.length * 40 + 12);
+      const desired = Math.min(288, options.length * 44 + 12);
       // Short menus belong beside their trigger, not 320 px above it.
       const down = below >= Math.min(desired, 160) || below >= above;
       const h = Math.min(desired, down ? below : above);
       setPos({
         left: Math.max(
           12,
-          Math.min(r.left, innerWidth - Math.max(r.width, 220) - 12),
+          Math.min(r.left, innerWidth - Math.max(r.width, 176) - 12),
         ),
         top: down ? r.bottom + 6 : Math.max(topEdge, r.top - h - 6),
-        width: Math.min(Math.max(r.width, 220), innerWidth - 24),
+        width: Math.min(Math.max(r.width, 176), innerWidth - 24),
         maxHeight: h,
       });
     };
@@ -59,26 +59,41 @@ export default function StudioSelect({
       if (
         !anchor.current?.contains(e.target) &&
         !list.current?.contains(e.target)
-      )
+      ) {
         setOpen(false);
+        if(navigator.maxTouchPoints>0 || matchMedia('(pointer:coarse)').matches || e.pointerType==='touch'){
+          e.preventDefault();e.stopPropagation();
+        }
+      }
     };
-    document.addEventListener("pointerdown", close, true);
+    // Prevent Safari moving focus (and scrolling/closing this menu) before
+    // the release click has been consumed. Do not dismiss on pointer-down.
+    const outsidePress=e=>{
+      if((e.pointerType==='touch'||matchMedia('(pointer:coarse)').matches) && !anchor.current?.contains(e.target) && !list.current?.contains(e.target)){
+        e.preventDefault();e.stopPropagation();
+      }
+    };
+    const scrolled=e=>{if(!list.current?.contains(e.target))setOpen(false);};
+    document.addEventListener("click", close, true);
+    document.addEventListener("pointerdown", outsidePress, true);
     window.addEventListener("resize", place);
-    window.addEventListener("scroll", place, true);
+    window.addEventListener("scroll", scrolled, true);
     window.visualViewport?.addEventListener("resize", place);
     return () => {
-      document.removeEventListener("pointerdown", close, true);
+      document.removeEventListener("click", close, true);
+      document.removeEventListener("pointerdown", outsidePress, true);
       window.removeEventListener("resize", place);
-      window.removeEventListener("scroll", place, true);
+      window.removeEventListener("scroll", scrolled, true);
       window.visualViewport?.removeEventListener("resize", place);
     };
   }, [open]);
   useEffect(() => {
-    if (open)
-      list.current
-        ?.querySelector(`[data-index="${index}"]`)
-        ?.scrollIntoView({ block: "nearest" });
-  }, [index, open]);
+    const menu=list.current,item=menu?.querySelector(`[data-index="${index}"]`);
+    if(open && item){
+      if(item.offsetTop<menu.scrollTop)menu.scrollTop=item.offsetTop;
+      else if(item.offsetTop+item.offsetHeight>menu.scrollTop+menu.clientHeight)menu.scrollTop=item.offsetTop+item.offsetHeight-menu.clientHeight;
+    }
+  }, [index, open, Boolean(pos)]);
   return (
     <span className="studio-select">
       <button
