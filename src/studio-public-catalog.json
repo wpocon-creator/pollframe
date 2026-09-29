@@ -1,0 +1,416 @@
+[
+  {
+    "id": "poll-classic",
+    "name": [
+      "Pollframe Original",
+      "Pollframe Original",
+      "Pollframe Original"
+    ],
+    "topic": "current"
+  },
+  {
+    "id": "poll-pie",
+    "name": [
+      "Kreisdiagramm",
+      "Pie chart",
+      "Gráfico circular"
+    ],
+    "topic": "current"
+  },
+  {
+    "id": "poll-material",
+    "name": [
+      "Skulptur",
+      "Sculpture",
+      "Escultura"
+    ],
+    "topic": "current"
+  },
+  {
+    "id": "poll-wide",
+    "name": [
+      "Nachrichtenlage",
+      "Newsroom",
+      "Noticias"
+    ],
+    "topic": "current"
+  },
+  {
+    "id": "poll-paper",
+    "name": [
+      "Morgenblatt",
+      "Morning paper",
+      "El diario"
+    ],
+    "topic": "current"
+  },
+  {
+    "id": "poll-columns",
+    "name": [
+      "Sendebild",
+      "On air",
+      "En antena"
+    ],
+    "topic": "current"
+  },
+  {
+    "id": "poll-lollipop",
+    "name": [
+      "Punktlandung",
+      "On point",
+      "En el punto"
+    ],
+    "topic": "current"
+  },
+  {
+    "id": "poll-dotplot",
+    "name": [
+      "Messlatte",
+      "Benchmark",
+      "Referencia"
+    ],
+    "topic": "current"
+  },
+  {
+    "id": "poll-table",
+    "name": [
+      "Faktenblatt",
+      "Fact sheet",
+      "Ficha de datos"
+    ],
+    "topic": "current"
+  },
+  {
+    "id": "poll-square",
+    "name": [
+      "Kartenstapel",
+      "Cards",
+      "Tarjetas"
+    ],
+    "topic": "current"
+  },
+  {
+    "id": "poll-poster",
+    "name": [
+      "Plakat",
+      "Poster",
+      "Cartel"
+    ],
+    "topic": "current"
+  },
+  {
+    "id": "poll-signal",
+    "name": [
+      "Signal",
+      "Signal",
+      "Señal"
+    ],
+    "topic": "current"
+  },
+  {
+    "id": "poll-ladder",
+    "name": [
+      "Werte-Leiter",
+      "Value ladder",
+      "Escala de valores"
+    ],
+    "topic": "current"
+  },
+  {
+    "id": "history-original",
+    "name": [
+      "Pollframe Original",
+      "Pollframe original",
+      "Original de Pollframe"
+    ],
+    "topic": "history"
+  },
+  {
+    "id": "history-paper",
+    "name": [
+      "Zeitungsdruck",
+      "Newspaper",
+      "Prensa impresa"
+    ],
+    "topic": "history"
+  },
+  {
+    "id": "history-panels",
+    "name": [
+      "Parteien-Panels",
+      "Party panels",
+      "Paneles por partido"
+    ],
+    "topic": "history"
+  },
+  {
+    "id": "history-briefing",
+    "name": [
+      "Redaktionsbriefing",
+      "Editorial briefing",
+      "Resumen editorial"
+    ],
+    "topic": "history"
+  },
+  {
+    "id": "history-square",
+    "name": [
+      "Verlaufsplakat",
+      "Timeline poster",
+      "Cartel de evolución"
+    ],
+    "topic": "history"
+  },
+  {
+    "id": "history-neon",
+    "name": [
+      "Leuchtlinien",
+      "Luminous lines",
+      "Líneas luminosas"
+    ],
+    "topic": "history"
+  },
+  {
+    "id": "history-focus",
+    "name": [
+      "Eine Partei im Fokus",
+      "One party in focus",
+      "Un partido en foco"
+    ],
+    "topic": "history"
+  },
+  {
+    "id": "map-original",
+    "name": [
+      "Karte · Pollframe Original",
+      "Map · Pollframe Original",
+      "Mapa · Pollframe Original"
+    ],
+    "topic": "map"
+  },
+  {
+    "id": "map-atlas",
+    "name": [
+      "Karte mit Länderwerten",
+      "Map with state values",
+      "Mapa con valores regionales"
+    ],
+    "topic": "map"
+  },
+  {
+    "id": "map-poster",
+    "name": [
+      "Deutschland im Hochformat",
+      "Germany in portrait",
+      "Alemania en vertical"
+    ],
+    "topic": "map"
+  },
+  {
+    "id": "map-tiles",
+    "name": [
+      "Länder-Kacheln",
+      "State tiles",
+      "Mosaico regional"
+    ],
+    "topic": "map"
+  },
+  {
+    "id": "party-original",
+    "name": [
+      "Partei · Pollframe Original",
+      "Party · Pollframe original",
+      "Partido · Original de Pollframe"
+    ],
+    "topic": "party"
+  },
+  {
+    "id": "party-print",
+    "name": [
+      "Partei · Zeitungsdruck",
+      "Party · Newspaper",
+      "Partido · Prensa impresa"
+    ],
+    "topic": "party"
+  },
+  {
+    "id": "party-briefing",
+    "name": [
+      "Partei · Redaktionsbriefing",
+      "Party · Editorial briefing",
+      "Partido · Resumen editorial"
+    ],
+    "topic": "party"
+  },
+  {
+    "id": "party-focus",
+    "name": [
+      "Partei · Eine Partei im Fokus",
+      "Party · One party in focus",
+      "Partido · Un partido en foco"
+    ],
+    "topic": "party"
+  },
+  {
+    "id": "seats-original",
+    "name": [
+      "Sitze · Pollframe Original",
+      "Seats · Pollframe Original",
+      "Escaños · Pollframe Original"
+    ],
+    "topic": "seats"
+  },
+  {
+    "id": "seats-wide",
+    "name": [
+      "Parlamentshalbkreis",
+      "Parliament hemicycle",
+      "Hemiciclo parlamentario"
+    ],
+    "topic": "seats"
+  },
+  {
+    "id": "seats-grid",
+    "name": [
+      "Jeder Sitz zählt",
+      "Every seat counts",
+      "Cada escaño cuenta"
+    ],
+    "topic": "seats"
+  },
+  {
+    "id": "seats-bars",
+    "name": [
+      "Sitzstärken",
+      "Seat strengths",
+      "Escaños por partido"
+    ],
+    "topic": "seats"
+  },
+  {
+    "id": "seats-columns",
+    "name": [
+      "Sitzsäulen",
+      "Seat columns",
+      "Columnas de escaños"
+    ],
+    "topic": "seats"
+  },
+  {
+    "id": "seats-ring",
+    "name": [
+      "Das Parlament als Ring",
+      "Parliament ring",
+      "Anillo parlamentario"
+    ],
+    "topic": "seats"
+  },
+  {
+    "id": "seats-portrait",
+    "name": [
+      "Sitzmodell im Detail",
+      "Seat model in detail",
+      "Modelo de escaños detallado"
+    ],
+    "topic": "seats"
+  },
+  {
+    "id": "seats-square",
+    "name": [
+      "Sitzkarten",
+      "Seat cards",
+      "Tarjetas de escaños"
+    ],
+    "topic": "seats"
+  },
+  {
+    "id": "seats-strip",
+    "name": [
+      "Mehrheit im Parlament",
+      "Parliamentary majority",
+      "Mayoría parlamentaria"
+    ],
+    "topic": "seats"
+  },
+  {
+    "id": "majority-original",
+    "name": [
+      "Mehrheit · Pollframe Original",
+      "Majority · Pollframe Original",
+      "Mayoría · Pollframe Original"
+    ],
+    "topic": "majority"
+  },
+  {
+    "id": "majority-cards",
+    "name": [
+      "Mehrheitskarten",
+      "Majority cards",
+      "Tarjetas de mayorías"
+    ],
+    "topic": "majority"
+  },
+  {
+    "id": "majority-table",
+    "name": [
+      "Koalitionsbriefing",
+      "Coalition briefing",
+      "Resumen de coaliciones"
+    ],
+    "topic": "majority"
+  },
+  {
+    "id": "tendencies-original",
+    "name": [
+      "Tendenzen · Pollframe Original",
+      "Trends · Pollframe Original",
+      "Tendencias · Pollframe Original"
+    ],
+    "topic": "tendencies"
+  },
+  {
+    "id": "tendencies-bars",
+    "name": [
+      "Gewinne und Verluste",
+      "Gains and losses",
+      "Ganancias y pérdidas"
+    ],
+    "topic": "tendencies"
+  },
+  {
+    "id": "tendencies-dots",
+    "name": [
+      "Vorher und jetzt",
+      "Then and now",
+      "Antes y ahora"
+    ],
+    "topic": "tendencies"
+  },
+  {
+    "id": "tendencies-table",
+    "name": [
+      "Veränderungen im Detail",
+      "Changes in detail",
+      "Cambios detallados"
+    ],
+    "topic": "tendencies"
+  },
+  {
+    "id": "tendencies-cards",
+    "name": [
+      "Veränderungskarten",
+      "Change cards",
+      "Tarjetas de cambios"
+    ],
+    "topic": "tendencies"
+  },
+  {
+    "id": "tendencies-poster",
+    "name": [
+      "Bewegung im Parteiensystem",
+      "Shifts in polling",
+      "Cambios en las encuestas"
+    ],
+    "topic": "tendencies"
+  }
+]

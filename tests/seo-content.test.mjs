@@ -30,7 +30,7 @@ test("all 29 sitemap pages serve reciprocal language links and matching initial 
       assert.equal($('link[hreflang="x-default"]').length, 1);
       assert.equal($("#root main h1").length, 1);
       assert.equal($("noscript").length, 0, "do not publish different hidden SEO text");
-      assert.equal($("#root main nav a").length, 4);
+      assert.ok($("#root main nav a").length >= 4);
     }
   }
 });

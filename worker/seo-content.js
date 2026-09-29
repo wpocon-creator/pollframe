@@ -1,4 +1,5 @@
 import { SITE_ORIGIN } from "../src/site-origin.js";
+import { studioPublicCatalog, studioTemplateAtPath } from '../src/studio-public-routes.js';
 import { defaultPageLocale, languageAlternates, localizedCanonical } from "../src/seo-locale.js";
 
 export const escapeHtml = (value) => String(value).replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[character]));
@@ -57,6 +58,24 @@ const copy = {
 
 export function routeContent(path, locale, stateNames) {
   const c = copy[locale === "de" || locale === "es" ? locale : "en"];
+  if (path === '/studio' || studioTemplateAtPath(path)) {
+    const i = locale === 'de' ? 0 : locale === 'es' ? 2 : 1;
+    const template = studioTemplateAtPath(path);
+    const topics = {
+      current: ['Aktuelle Wahlumfragen','Current election polls','Encuestas electorales actuales'],
+      history: ['Historische Wahlumfragen','Historical election polls','Evolución de las encuestas'],
+      party: ['Umfrageverlauf einer Partei','Party polling history','Evolución de un partido'],
+      seats: ['Modellierte Sitzverteilung','Modelled seat allocation','Distribución de escaños modelizada'],
+      majority: ['Koalitionen und Mehrheiten','Coalitions and majorities','Coaliciones y mayorías'],
+      tendencies: ['Veränderungen der Umfragewerte','Changes in polling','Cambios en las encuestas'],
+      map: ['Wahlumfragen der Bundesländer','German state polling map','Encuestas de los estados alemanes'],
+    };
+    const heading = template ? `${topics[template.topic][i]} – ${template.name[i]}` : ['Pollframe Studio: Wahlumfragen als Grafik','Pollframe Studio: election polling graphics','Pollframe Studio: gráficos de encuestas electorales'][i];
+    const description = ['Gestalte Grafiken zu deutschen Wahlumfragen für Artikel, Websites und Social Media. Wähle eine Vorlage, passe Schrift, Farben und Format an und exportiere PNGs oder bette die Grafik ein. Quellen, Datenstand und methodische Hinweise bleiben nachvollziehbar.', 'Create German election polling graphics for articles, websites and social media. Choose a template, adjust typography, colours and format, then export a PNG or embed the chart. Sources, polling dates and methodological notes stay traceable.', 'Crea gráficos de encuestas electorales alemanas para artículos, sitios web y redes sociales. Elige una plantilla, ajusta tipografía, colores y formato, y exporta un PNG o inserta el gráfico. Las fuentes, fechas y notas metodológicas siguen siendo verificables.'][i];
+    return {lang:locale, heading, title:`${heading} · Pollframe`, description, c, snapshot:null,
+      links:[['Pollframe','/'],['Studio','/studio'],[c.sources[0],'/sources'],[c.editorial[0],'/editorial-standards']],
+      templates:studioPublicCatalog.filter(item => !template || item.topic === template.topic).map(item => [ `${topics[item.topic][i]} – ${item.name[i]}`, `/studio/${item.id}` ])};
+  }
   const index = path.startsWith("/uk") ? 1 : path.startsWith("/es") ? 2 : 0;
   const state = path.match(/^\/de\/landtagswahl\/([a-z-]+)\/umfragen\/?$/)?.[1];
   let kind = "overview";
@@ -73,7 +92,7 @@ export function routeContent(path, locale, stateNames) {
   const [heading, description] = c[kind].map(expand);
   return { lang: locale, heading, title: `${heading} · Pollframe`, description, paragraphs: [description], c,
     snapshot: ["overview", "polls", "state"].includes(kind) ? state ?? ["bundestag", "uk-westminster", "spain-congress"][index] : null,
-    links: [[c.overviewNames[0], "/"], [c.overviewNames[1], "/uk"], [c.overviewNames[2], "/es"], [c.sources[0], "/sources"]],
+    links: [[c.overviewNames[0], "/"], [c.overviewNames[1], "/uk"], [c.overviewNames[2], "/es"], [c.sources[0], "/sources"], ['Pollframe Studio', '/studio']],
   };
 }
 
@@ -102,7 +121,8 @@ export function snapshotHtml(snapshot, route) {
 }
 
 export function seoFallback(route, path, snapshot) {
+  const templates = route.templates ? `<ul>${route.templates.map(([label,href]) => `<li><a href="${escapeHtml(localizedCanonical(href,route.lang))}">${escapeHtml(label)}</a></li>`).join('')}</ul>` : '';
   const links = route.links.map(([label, href]) => `<a href="${escapeHtml(localizedCanonical(href, route.lang))}">${escapeHtml(label)}</a>`).join(" · ");
   const languages = languageAlternates(path).map(({ locale, href }) => `<a href="${escapeHtml(href)}" hreflang="${locale}" lang="${locale}">${({ de: "Deutsch", "en-GB": "English (UK)", "en-US": "English (US)", es: "Español" })[locale]}</a>`).join(" · ");
-  return `<main class="legal-page" id="seo-initial-content"><a class="breadcrumb" href="${SITE_ORIGIN}/">Pollframe</a><h1>${escapeHtml(route.heading)}</h1><p>${escapeHtml(route.description)}</p>${snapshotHtml(snapshot, route)}<nav aria-label="${escapeHtml(route.c.navigation)}">${links}</nav><p>${escapeHtml(route.c.languages)}: ${languages}</p></main>`;
+  return `<main class="legal-page" id="seo-initial-content"><a class="breadcrumb" href="${SITE_ORIGIN}/">Pollframe</a><h1>${escapeHtml(route.heading)}</h1><p>${escapeHtml(route.description)}</p>${templates}${snapshotHtml(snapshot, route)}<nav aria-label="${escapeHtml(route.c.navigation)}">${links}</nav><p>${escapeHtml(route.c.languages)}: ${languages}</p></main>`;
 }

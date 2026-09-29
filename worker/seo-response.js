@@ -63,7 +63,7 @@ export async function seoPageResponse(request, env, stateNames, domainHtml) {
   const url = new URL(request.url);
   const path = url.pathname.replace(/\/+$/, "") || "/";
   const locale = pageLocale(url);
-  const shellOnly = path === "/" && ["page", "view", "region"].some((key) => url.searchParams.has(key));
+  const shellOnly = (path === "/" && ["page", "view", "region"].some((key) => url.searchParams.has(key))) || (path.startsWith('/studio') && url.searchParams.get('workspace') === 'edit');
   const content = shellOnly ? null : routeContent(path, locale, stateNames);
   const canonical = localizedCanonical(path, locale);
   const [shell, snapshot] = await Promise.all([

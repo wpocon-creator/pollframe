@@ -103,7 +103,10 @@ function legacyPublicRedirect(requestUrl) {
   let pathname = null;
   const routeKeys = [];
 
-  if (region && (region === "bundestag" || region === "uk-westminster" || region === "spain-congress" || STATE_NAMES[region])) {
+  if (view === "studio") {
+    pathname = "/studio";
+    routeKeys.push("view");
+  } else if (region && (region === "bundestag" || region === "uk-westminster" || region === "spain-congress" || STATE_NAMES[region])) {
     pathname = publicRegionPath(region);
     routeKeys.push("region");
   } else if (page === "lizenzen" || page === "redaktion") {

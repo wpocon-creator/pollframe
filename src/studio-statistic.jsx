@@ -150,11 +150,14 @@ export const StatisticDesign = React.memo(function StatisticDesign({
                   ? 760
                   : Math.ceil(ordered.length / 2) * 165 + 30
             : Math.max(
-                majority ? 590 : design === "hemicycle" ? 530 : 0,
+                majority ? 590 : design === "hemicycle" ? 530 : seats && design === "ring" ? 560 : seats && design === "waffle" ? 32 + Math.ceil(snapshot.totalSeats / 30) * 23 + 140 : 0,
                 baseHeight,
                 rowSpace,
               ),
-    bottom = top + body,
+    // The legend occupies its own band, never the majority total's chart area.
+    hasSeatLegend = seats && ['hemicycle', 'waffle', 'ring', 'strip'].includes(design),
+    legendTop = top + body + 28,
+    bottom = top + body + (hasSeatLegend ? Math.ceil(ordered.length / 3) * 38 + 28 : 0),
     H =
       bottom +
       150 +
@@ -1038,8 +1041,8 @@ export const StatisticDesign = React.memo(function StatisticDesign({
                 data-editor-target="legend"
                 data-legend-id={row.id}
                 data-layout-width="284"
-                data-layout-height="23"
-                transform={`translate(${48 + (i % 3) * 294},${bottom + Math.floor(i / 3) * 25 - 65})`}
+                data-layout-height={hasSeatLegend ? "36" : "23"}
+                transform={`translate(${48 + (i % 3) * 294},${hasSeatLegend ? legendTop + Math.floor(i / 3) * 38 : bottom + Math.floor(i / 3) * 25 - 65})`}
               >
                 <circle cx="7" cy="-6" r="6" fill={row.color} />
                 {text(

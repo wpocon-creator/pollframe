@@ -1,4 +1,6 @@
+import { studioTemplateAtPath } from './studio-public-routes.js';
 const STATIC_PATH_ROUTES = new Map([
+  ["/studio", { view: "studio" }],
   ["/countries", { view: "countries" }],
   ["/de/bundestag/umfragen", { region: "bundestag" }],
   ["/de/bundeslaender/karte", { view: "map" }],
@@ -24,6 +26,8 @@ export function routeParamsForPath(pathname) {
   const path = normalizedPath(pathname);
   const staticRoute = STATIC_PATH_ROUTES.get(path);
   if (staticRoute) return { ...staticRoute };
+  const template = studioTemplateAtPath(path);
+  if (template) return { view: 'studio', template: template.id, editor: '1' };
   const stateMatch = path.match(GERMAN_STATE_PATH);
   return stateMatch ? { region: stateMatch[1] } : {};
 }
@@ -51,6 +55,7 @@ export function publicCountryPath(country) {
 }
 
 export function publicViewPath(view, country = "de") {
+  if (view === "studio") return "/studio";
   if (view === "countries") return "/countries";
   if (view === "map") return "/de/bundeslaender/karte";
   if (view === "approval" && country === "de") return "/de/regierung/zufriedenheit";
@@ -67,5 +72,5 @@ export function publicPagePath(page) {
 
 export function isPublicContentPath(pathname) {
   const path = normalizedPath(pathname);
-  return path === "/" || STATIC_PATH_ROUTES.has(path) || GERMAN_STATE_PATH.test(path);
+  return path === "/" || STATIC_PATH_ROUTES.has(path) || !!studioTemplateAtPath(path) || GERMAN_STATE_PATH.test(path);
 }

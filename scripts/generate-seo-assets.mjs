@@ -1,6 +1,17 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import assert from "node:assert/strict";
+import { STUDIO_TEMPLATES } from '../src/studio-model.js';
+const catalog = `${JSON.stringify(STUDIO_TEMPLATES.map(({id,name,topic}) => ({id,name,topic})),null,2)}\n`;
+const sitemapBefore = await readFile('public/sitemap.xml','utf8');
+const sitemap = sitemapBefore.replace(/  <url><loc>https:\/\/pollframe\.com\/studio[^<]*<\/loc><\/url>\n/g,'').replace('</urlset>', ['studio',...STUDIO_TEMPLATES.map(t=>`studio/${t.id}`)].map(path=>`  <url><loc>https://pollframe.com/${path}</loc></url>`).join('\n')+'\n</urlset>');
+if (process.argv.includes('--check')) {
+  assert.equal(await readFile('src/studio-public-catalog.json','utf8'),catalog,'Rebuild the Studio public catalog');
+  assert.equal(sitemapBefore,sitemap,'Rebuild the Studio sitemap');
+} else {
+  await writeFile('src/studio-public-catalog.json',catalog);
+  await writeFile('public/sitemap.xml',sitemap);
+}
 
 // A small, deterministic projection of the already vetted public archives.
 // The normal data workflow builds and publishes public/data, so this is updated

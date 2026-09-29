@@ -4634,7 +4634,7 @@ function SiteHeader({ t, locale = "de", onSettings, onInfo, pwa, homeHref = "/",
         </a>
         <nav className="product-navigation" aria-label={locale === "de" ? "Pollframe-Bereiche" : locale === "es" ? "Secciones de Pollframe" : "Pollframe sections"}>
           <a href={inStudio ? `/?lang=${locale}` : homeHref} aria-current={!inStudio ? "page" : undefined}>{locale === "de" ? "Umfragen" : locale === "es" ? "Encuestas" : "Polls"}</a>
-          <a href={`/?view=studio&lang=${locale}&back=${encodeURIComponent(inStudio ? routeQueryForLocation().get("back") || "/" : `${location.pathname}${location.search}${location.hash}`)}`} aria-current={inStudio ? "page" : undefined}>Studio</a>
+          <a href={`/studio?lang=${locale}&back=${encodeURIComponent(inStudio ? routeQueryForLocation().get("back") || "/" : `${location.pathname}${location.search}${location.hash}`)}`} aria-current={inStudio ? "page" : undefined}>Studio</a>
         </nav>
         <div className="header-actions">
           {!inStudio && <HeaderCountryMenu locale={locale} country={headerCountry} />}
@@ -4683,7 +4683,7 @@ function MobileAppNavigation({ t, homeHref }) {
   const overviewHref = isUK ? "/?country=uk" : isSpain ? "/?country=es" : "/";
   const exploreHref = isUK ? "/?country=uk&view=uk-map" : isSpain ? "/?country=es#spain-map" : "/?view=states";
   const watchlistHref = `/?view=watchlist&country=${country}`;
-  const studioHref = "/?view=studio";
+  const studioHref = "/studio";
   const active = query.get("view") === "studio" ? "studio" : query.get("view") === "watchlist" ? "watchlist" : (isUK && query.get("view") === "uk-map") || (isSpain && window.location.hash === "#spain-map") || (!isUK && !isSpain && query.get("view") === "states") ? "explore" : "overview";
   return (
     <nav className="mobile-app-nav" aria-label={t.app}>

@@ -261,7 +261,9 @@ requireCondition(serviceWorker.includes('url.pathname === "/embed.html"'), "serv
 requireCondition(serviceWorker.includes("POLLFRAME_CACHED_DATA"), "service worker does not disclose cached-data fallback to the UI");
 
 const sitemapUrls = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => match[1]);
-requireCondition(sitemapUrls.length === 28, `sitemap contains ${sitemapUrls.length} URLs instead of 28`);
+const {studioPublicCatalog} = await import('../src/studio-public-routes.js');
+requireCondition(sitemapUrls.length === 29 + studioPublicCatalog.length, `sitemap URL count does not match the public pages and Studio catalog`);
+requireCondition(studioPublicCatalog.every(t => sitemapUrls.includes(`https://pollframe.com/studio/${t.id}`)), 'sitemap omits a public Studio template');
 requireCondition(!sitemapUrls.includes("https://pollframe.com/de/regierung/zufriedenheit"), "sitemap exposes withdrawn German approval data");
 requireCondition(!sitemapUrls.includes("https://pollframe.com/uk/government/approval"), "sitemap still exposes the withheld UK approval page");
 requireCondition(sitemapUrls.includes("https://pollframe.com/editorial-standards"), "sitemap omits the public editorial standards and correction log");

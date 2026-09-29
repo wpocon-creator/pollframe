@@ -1,4 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { routeQueryForLocation } from './public-routes.js';
+import { studioPublicPath } from './studio-public-routes.js';
+import { localizedCanonical } from './seo-locale.js';
 import { analyticsExcluded } from "../public/analytics-preference.js";
 import { trackAggregateEventOnce } from "./aggregateAnalytics.js";
 import { observeUsage } from "./usage-quality.js";
@@ -91,7 +94,7 @@ export default function GraphicStudio({ Header, PublishDialog }) {
     if (analyticsExcluded() || !import.meta.env.PROD || location.protocol !== "https:" || document.documentElement.dataset.embed === "true") return;
     return observeUsage(event => trackAggregateEventOnce(event));
   }, []);
-  const initial = useRef(new URLSearchParams(window.location.search));
+  const initial = useRef(routeQueryForLocation());
   const [pausedRequest, setPausedRequest] = useState(() =>
     isPausedStudioRequest(Object.fromEntries(initial.current)));
   const explicitTheme = useRef(initial.current.has("theme"));
@@ -306,13 +309,15 @@ export default function GraphicStudio({ Header, PublishDialog }) {
     return () => media.removeEventListener("change", apply);
   }, []);
   useEffect(() => {
-    document.title = `${l("Grafikstudio", "Graphic studio", "Estudio gráfico")} · Pollframe`;
+    const currentTemplate = STUDIO_TEMPLATES.find(t => t.id === state.template);
+    document.title = `${editing && currentTemplate ? studioText(topicLabels[currentTemplate.topic],state.lang)+' – '+studioText(currentTemplate.name,state.lang)+' · ' : ''}${l("Grafikstudio", "Graphic studio", "Estudio gráfico")} · Pollframe`;
     document.documentElement.lang = state.lang;
     document.documentElement.dataset.embed = "false";
     document
       .querySelector('meta[name="robots"]')
-      ?.setAttribute("content", "noindex, nofollow");
-  }, [state.lang]);
+      ?.setAttribute("content", state.workspace === 'edit' || library ? "noindex, follow" : "index, follow");
+    document.querySelector('link[rel="canonical"]')?.setAttribute('href', localizedCanonical(studioPublicPath(editing ? state.template : null), state.lang));
+  }, [state.lang, state.template, state.workspace, editing, library]);
   const lastUrlWrite = useRef(0);
   useEffect(() => {
     if (pausedRequest) return; // Do not silently rewrite an approval bookmark as a poll.
@@ -326,7 +331,7 @@ export default function GraphicStudio({ Header, PublishDialog }) {
     for (const key of ["events", "parties", "pollsters"])
       if (state[key] === "") params.set(key, "");
     if (editing) params.set("editor", "1");
-    const next = `/?${params}`;
+    const next = `${studioPublicPath(editing ? state.template : null)}?${params}`;
     const sync = () => {
       if (location.pathname + location.search === next) return;
       try {
@@ -347,7 +352,7 @@ export default function GraphicStudio({ Header, PublishDialog }) {
   }, [state, editing, back, query, topic, contextProfile, pausedRequest]);
   useEffect(() => {
     const restore = () => {
-      const params = new URLSearchParams(window.location.search);
+      const params = routeQueryForLocation();
       if (params.get("view") !== "studio") return;
       const paused = isPausedStudioRequest(Object.fromEntries(params));
       setPausedRequest(paused);
@@ -383,7 +388,7 @@ export default function GraphicStudio({ Header, PublishDialog }) {
     const params = new URLSearchParams(window.location.search);
     params.set("editor", "1");
     params.set("template", template.id);
-    history.pushState({ studioPreview: true, studioGalleryDepth: 1 }, "", `/?${params}`);
+    history.pushState({ studioPreview: true, studioGalleryDepth: 1 }, "", `${studioPublicPath(template.id)}?${params}`);
     update({ template: template.id });
     setEditing(true);
     window.scrollTo({ top: 0, behavior: "instant" });
@@ -393,7 +398,7 @@ export default function GraphicStudio({ Header, PublishDialog }) {
     setSort('recommended');setEditing(false);
     update({workspace:'preview'});
     const params=new URLSearchParams({view:'studio',country:'de',lang:state.lang,topic:'all'});
-    history.replaceState({},'',`/?${params}`);
+    history.replaceState({},'',`/studio?${params}`);
     window.scrollTo({top:0,behavior:'instant'});
     requestAnimationFrame(()=>window.scrollTo({top:0,behavior:'instant'}));
   };
@@ -896,11 +901,12 @@ export default function GraphicStudio({ Header, PublishDialog }) {
                 )}
                 <div className="studio-gallery studio-picture-gallery">
                   {templates.map((template) => (
-                    <button
+                    <a
                       key={template.id}
                       id={`studio-${template.id}`}
+                      href={`${studioPublicPath(template.id)}?lang=${state.lang}&region=${state.region}`}
                       className={`studio-template-card template-${template.preset}`}
-                      onClick={() => openTemplate(template)}
+                      onClick={(event) => { if (event.button || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return; event.preventDefault(); openTemplate(template); }}
                     >
                       <StudioThumbnail
                         topic={template.topic}
@@ -940,7 +946,7 @@ export default function GraphicStudio({ Header, PublishDialog }) {
                           <h2>{studioText(template.name, state.lang)}</h2>
                         </div>
                       </div>
-                    </button>
+                    </a>
                   ))}
                 </div>
                 {!templates.length && (

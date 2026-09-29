@@ -38,6 +38,8 @@
       "/sitemap.xml",
       "/pf-ops/*",
       "/countries",
+      "/studio",
+      "/studio/*",
       "/de/*",
       "/uk",
       "/uk/*",
