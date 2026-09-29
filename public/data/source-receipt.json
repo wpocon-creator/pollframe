@@ -175,8 +175,8 @@
         "sourceUrl": "https://dawum.de/API/",
         "license": "ODC-ODbL",
         "licenseUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
-        "databaseUpdated": "2026-09-27T17:56:45+02:00",
-        "generatedAt": "2026-09-27T19:46:53.514Z",
+        "databaseUpdated": "2026-09-29T16:45:36+02:00",
+        "generatedAt": "2026-09-29T18:06:12.080Z",
         "derivativeDatabaseNotice": "Derived from the dawum.de election polling database. This derivative Pollframe database is made available under the Open Database License (ODbL) 1.0.",
         "changes": "DAWUM records from 2017; fields normalised and split by parliament. GMS, Civey and pollytix are selectable where available. Existing default institute selections retained. Pollframe calculates averages separately. Ipsos remains excluded pending permission.",
         "inclusionRule": "Default: seven institutes. Additional DAWUM GMS, Civey and pollytix records are selectable. Methods are recorded per poll. Archive from 2017.",
@@ -215,7 +215,7 @@
         "sourceUrl": "https://electiondatavault.co.uk/data/",
         "license": "Free commercial reuse",
         "licenseUrl": "https://electiondatavault.co.uk/about/",
-        "generatedAt": "2026-09-29T10:42:35.450Z",
+        "generatedAt": "2026-09-29T18:06:14.521Z",
         "supplementarySource": {
           "name": "Wikipedia contributors",
           "url": "https://en.wikipedia.org/wiki/Opinion_polling_for_the_next_United_Kingdom_general_election",
@@ -234,7 +234,7 @@
         "license": "Open Parliament Licence",
         "licenseUrl": "https://www.parliament.uk/site-information/copyright/open-parliament-licence/",
         "electionDate": "2024-07-04",
-        "generatedAt": "2026-09-29T10:42:35.450Z"
+        "generatedAt": "2026-09-29T18:06:14.521Z"
       }
     },
     {
@@ -260,7 +260,7 @@
         "license": "CC BY-SA 4.0",
         "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/",
         "databaseUpdated": "2026-09-26T00:00:00.000Z",
-        "generatedAt": "2026-09-29T10:43:38.951Z",
+        "generatedAt": "2026-09-29T18:07:22.117Z",
         "derivativeDatabaseNotice": "Pollframe extracts and normalises cited Spanish voting-intention tables and links each row to its original publication where available.",
         "changes": "Dates normalised to ISO format; seat ranges removed; successor-party series kept separate except Podemos/UP; invalid and future rows rejected; polls from a rights-pending source temporarily excluded.",
         "attribution": "Wikipedia contributors, Spanish general-election polling archive pages, CC BY-SA 4.0; individual poll publications remain linked per row.",
@@ -474,7 +474,7 @@
       "file": "/data/spain-regions.json",
       "rightsSource": "wikipedia",
       "metadata": {
-        "generatedAt": "2026-09-29T10:44:10.932Z",
+        "generatedAt": "2026-09-29T18:07:54.268Z",
         "methodology": "Headline vote estimates from the cited regional polling tables (raw vote-intention duplicates are excluded); the current snapshot averages each pollster's latest post-election poll within 180 days of the latest poll.",
         "rightsSource": "wikipedia",
         "source": "Wikipedia contributors",
