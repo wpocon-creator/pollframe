@@ -1,4 +1,4 @@
-const VERSION = "pollframe-app-studio-seo-20260929";
+const VERSION = "pollframe-app-spain-update-fix-20261006";
 const SHELL_CACHE = `${VERSION}-shell`;
 const RUNTIME_CACHE = `${VERSION}-runtime`;
 const DATA_CACHE = `${VERSION}-data`;

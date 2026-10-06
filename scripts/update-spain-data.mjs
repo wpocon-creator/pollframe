@@ -2,6 +2,7 @@ import { readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { load } from "cheerio/slim";
 import { fetchTextWithRetry } from "./lib/resilient-source.mjs";
+import { wikipediaParseUrl, assertSpainArchiveContinuity } from "./lib/spain-archive-health.mjs";
 
 const WIKIPEDIA_PAGE = "Opinion_polling_for_the_next_Spanish_general_election";
 const WIKIPEDIA_URL = `https://en.wikipedia.org/wiki/${WIKIPEDIA_PAGE}`;
@@ -200,7 +201,7 @@ function yearForTable($, table, fallbackYear) {
 }
 
 async function fetchWikipediaPage(page, attempts = 4) {
-  const apiUrl = `https://en.wikipedia.org/w/api.php?action=parse&page=${page}&prop=text&format=json&formatversion=2`;
+  const apiUrl = wikipediaParseUrl(page);
   const pageUrl = `https://en.wikipedia.org/wiki/${page}?action=render`;
   const body = await fetchTextWithRetry(apiUrl, {
     attempts,
@@ -224,7 +225,9 @@ async function fetchWikipediaPage(page, attempts = 4) {
 }
 
 const currentPage = await fetchWikipediaPage(WIKIPEDIA_PAGE);
-currentPage("table.wikitable").slice(0, 4).each((tableIndex, table) => {
+const currentTables = currentPage("table.wikitable").filter((_, table) => /Polling firm/i.test(currentPage(table).find("tr").first().text())).slice(0, 4);
+if (!currentTables.length) throw new Error('Spain current article contains no national polling tables; retaining the published snapshot');
+currentTables.each((tableIndex, table) => {
   const year = yearForTable(currentPage, table, tableIndex === 0 ? new Date().getUTCFullYear() : NaN);
   if (Number.isInteger(year)) parsePollingTable(currentPage, table, year, WIKIPEDIA_URL);
 });
@@ -249,7 +252,8 @@ for (const poll of polls) {
   deduplicated.set(key, poll);
 }
 const cleanPolls = [...deduplicated.values()].sort((a, b) => a.date.localeCompare(b.date) || a.pollster.localeCompare(b.pollster));
-if (cleanPolls.length < 1_500) throw new Error(`Only ${cleanPolls.length} valid Spain polls parsed`);
+const previousArchive = JSON.parse(await readFile(resolve("public/data/spain-congress.json"), "utf8"));
+assertSpainArchiveContinuity(cleanPolls, previousArchive.polls);
 
 const now = new Date().toISOString();
 const pollData = {

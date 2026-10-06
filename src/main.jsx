@@ -2013,6 +2013,25 @@ function DateRangeSlider({ locale, min, max, start, end, onStart, onEnd }) {
   );
 }
 
+function SpainRegionalPollingChart({ regional, t, locale, partyInfoProps }) {
+  const parties = [...regional.parties]
+    .sort((a, b) => (regional.current?.results?.[b.id] ?? 0) - (regional.current?.results?.[a.id] ?? 0))
+    .slice(0, 6);
+  const institutes = [...new Set(regional.polls.map(poll => poll.pollster))];
+  const start = regional.polls[0].date;
+  const end = regional.polls.at(-1).date;
+  return <PollChart
+    t={{ ...t, chartTitle: regional.names[locale] ?? regional.names.en }} locale={locale}
+    selectedParties={parties.map(party => party.id)} selectedPollsters={institutes}
+    selectedEventCategories={[]} mode="polls" range="custom" individualPolls
+    polls={regional.polls} pollsters={Object.fromEntries(institutes.map(name => [name, name]))}
+    latestDate={end} partyDefinitions={parties} events={[]} eventCategories={[]} electionResults={{}}
+    termStart={start} archiveStart={start} customStartDate={start} customEndDate={end}
+    maxConnectionGapDays={120}
+    partyInfoProps={partyInfoProps}
+  />;
+}
+
 function PollChart({
   t,
   locale,
@@ -2037,6 +2056,8 @@ function PollChart({
   customEndDate,
   interactiveEventDots = true,
   embedLayout = false,
+  individualPolls = false,
+  partyInfoProps = () => ({}),
 }) {
   const [compactLayout, setCompactLayout] = useState(() => window.matchMedia("(max-width: 680px)").matches);
   const width = compactLayout ? 420 : 1320;
@@ -2132,14 +2153,14 @@ function PollChart({
     [visiblePolls],
   );
   const averagePoints = useMemo(
-    () => makeAverageSeries(polls, selectedPollsters, averageDates, partyIds),
-    [polls, selectedPollsters, averageDates, partyIds],
+    () => individualPolls ? visiblePolls.map(poll => ({ ...poll, pollsterCount: 1 })) : makeAverageSeries(polls, selectedPollsters, averageDates, partyIds),
+    [individualPolls, visiblePolls, polls, selectedPollsters, averageDates, partyIds],
   );
   const endpointSnapshot = useMemo(
     () => latestPollAtOrBefore(polls, selectedPollsters, endDate, partyIds),
     [polls, selectedPollsters, endDate, partyIds],
   );
-  const latestIndividual = endpointSnapshot.date >= startDate && !endpointSnapshot.synthetic ? endpointSnapshot : null;
+  const latestIndividual = !individualPolls && endpointSnapshot.date >= startDate && !endpointSnapshot.synthetic ? endpointSnapshot : null;
 
   const activeParties = useMemo(
     () => partyDefinitions.filter((party) => selectedPartySet.has(party.id)),
@@ -2359,7 +2380,7 @@ function PollChart({
         ...nearest,
         date: nearestPoint.date,
         x: chartX,
-        pollster: t.basedOn(nearestPoint.pollsterCount),
+        pollster: individualPolls ? pollsters[nearestPoint.pollster] || nearestPoint.pollster : t.basedOn(nearestPoint.pollsterCount),
       },
     };
     setCursor((current) => (
@@ -2409,7 +2430,7 @@ function PollChart({
       <div className="line-legend" aria-label={t.parties}>
         <strong>{t.lineLegend}:</strong>
         {activeParties.map((party) => (
-          <PartyInfoButton key={party.id} party={party} includeDot />
+          <PartyInfoButton key={party.id} party={party} includeDot {...partyInfoProps(party)} />
         ))}
         <span className="axis-range-note">{t.axisRange(yAxis.min, yAxis.max)}</span>
       </div>
@@ -8418,7 +8439,7 @@ function RegionalApp() {
       <>
         <SiteHeader t={t} locale={locale} pwa={pwa} onSettings={() => setSettingsOpen(true)} homeHref={homeHref} homeLabel={homeLabel} countryCode="es" />
         {spainSummary ? (spainRegionPage
-          ? <SpainRegionPage locale={locale} regions={spainSummary.regions} area={spainRegionArea} formatDate={formatDate} />
+          ? <SpainRegionPage locale={locale} regions={spainSummary.regions} area={spainRegionArea} formatDate={formatDate} renderTrend={(regional, partyInfoProps) => <SpainRegionalPollingChart regional={regional} t={t} locale={locale} partyInfoProps={partyInfoProps} />} />
           : spainIssuesPage
             ? <SpainIssuesPage locale={locale} summary={spainSummary} formatDate={formatDate} numberLocale={getNumberLocale(locale)} />
             : <SpainCountryOverview locale={locale} summary={spainSummary} formatDate={formatDate} numberLocale={getNumberLocale(locale)} />) : <div className="embed-loading">{loadError ? t.error : t.loading}</div>}

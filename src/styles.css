@@ -335,7 +335,11 @@ html { scrollbar-gutter: stable; }
 .region-election-leader b { grid-column: 3; grid-row: 1 / 3; font-size: 1.25rem; }
 .spain-region-history { margin-top: 1rem; }
 .spain-region-history.is-recent { border-color: color-mix(in srgb, var(--accent) 18%, var(--line)); }
-.spain-region-history>header { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
+.spain-region-history>header { display: grid; grid-template-columns: minmax(0, 1fr); gap: .5rem; }
+.spain-region-history>header .current-widget-meta { grid-row: 1; align-items: center; }
+.spain-region-history>header .current-widget-meta .data-age-label { max-width: none; text-align: center; }
+.spain-region-history>header .widget-info-heading { grid-row: 2; }
+.spain-region-history>header .widget-info-heading>div { flex: 1; }
 .region-trend { overflow: hidden; }
 .region-trend svg { display: block; width: 100%; height: auto; min-height: 230px; }
 .region-trend svg line { stroke: var(--line); stroke-dasharray: 3 5; }
@@ -443,9 +447,7 @@ html { scrollbar-gutter: stable; }
   .spain-region-hero { padding: 1.15rem; border-radius: 16px; }
   .spain-region-snapshot>article,.spain-region-history,.spain-region-quality { padding: .9rem; border-radius: 15px; }
   .region-results>div { grid-template-columns: minmax(5.8rem, .85fr) minmax(3.5rem, 1fr) 3rem; gap: .4rem; }
-  .region-trend { margin-inline: -.55rem; overflow-x: auto; }
-  .region-trend svg { width: 34rem; max-width: none; min-height: 220px; }
-  .region-trend>div { padding-inline: .55rem; }
+  .spain-region-history>header .widget-info-heading>div>p { display: none; }
   .spain-region-source { display: grid; }
 }
 
@@ -6903,6 +6905,8 @@ body > #root > footer nav .footer-action:hover {
 .spain-approval-entry { grid-column: 1 / -1; }
 .current-widget-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 7px; flex: 0 0 auto; }
 .current-widget-meta .data-age-label { max-width: 190px; text-align: right; line-height: 1.3; }
+.spain-region-history .line-legend { flex-wrap: wrap; margin-inline: 0; padding-inline: 0; overflow: visible; }
+.spain-region-history .line-legend .party-info-trigger { flex: 0 0 auto; }
 @media (max-width: 620px) { .current-widget-meta { align-items: flex-start; } .current-widget-meta .data-age-label { text-align: left; } }
 .approval-share-modal { position: fixed; inset: 0; z-index: 250; display: grid; place-items: center; padding: 22px; }
 .approval-modal-backdrop { position: absolute; inset: 0; border: 0; background: rgba(12, 15, 18, .62); backdrop-filter: blur(4px); }

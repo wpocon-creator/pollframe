@@ -5,6 +5,22 @@ import { discoverFgwCurrentDownloads, fetchWithRetry } from "../scripts/lib/appr
 import { fetchTextWithRetry, settleWithConcurrency } from "../scripts/lib/resilient-source.mjs";
 import { isLiveDataPath } from "../worker/index.js";
 import { previousMeasurement } from "../scripts/lib/data-review.mjs";
+import { wikipediaParseUrl, assertSpainArchiveContinuity } from "../scripts/lib/spain-archive-health.mjs";
+
+test('Spanish article moves are resolved explicitly, including encoded archive titles', () => {
+  const url = new URL(wikipediaParseUrl('Nationwide_opinion_polling_(2019%E2%80%932021)'));
+  assert.equal(url.searchParams.get('redirects'), '1');
+  assert.equal(url.searchParams.get('page'), 'Nationwide_opinion_polling_(2019–2021)');
+  assert.equal(url.origin, 'https://en.wikipedia.org');
+});
+
+test('a missing current Spanish table cannot silently replace the current archive with old polls', () => {
+  const archive = Array.from({ length: 3273 }, () => ({ date: '2026-10-03' }));
+  assert.throws(() => assertSpainArchiveContinuity(Array.from({ length: 2780 }, () => ({ date: '2023-07-22' })), archive), /incomplete/);
+  assert.throws(() => assertSpainArchiveContinuity(Array.from({ length: 3200 }, () => ({ date: '2023-07-22' })), archive), /regressed/);
+  assert.throws(() => assertSpainArchiveContinuity(Array.from({ length: 3100 }, () => ({ date: '2026-10-04' })), archive), /lost more/);
+  assert.doesNotThrow(() => assertSpainArchiveContinuity([...archive, { date: '2026-10-04' }], archive));
+});
 
 test("anomaly checks use the latest eligible poll even when source rows are unordered", () => {
   const rows = [{date:"2026-09-06",pollster:"1"}, {date:"2026-09-01",pollster:"1"}, {date:"2026-09-02",pollster:"2"}, {date:"2024-01-01",pollster:"1"}];
