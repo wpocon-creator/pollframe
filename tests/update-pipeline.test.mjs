@@ -124,6 +124,11 @@ test("the update workflow cannot be blocked by dependency audit or one source", 
   assert.match(workflow, /cp incoming-poll-data\/public\/poll-data\.json public\/poll-data\.json/);
   assert.match(workflow, /cp -R incoming-poll-data\/public\/data\/\. public\/data\//);
   assert.doesNotMatch(workflow, /incoming-poll-data\/poll-data\.json/);
+  const publishJob = workflow.split('\n  publish:')[1].split('\n  health:')[0];
+  assert.match(publishJob, /ref: main/);
+  assert.match(publishJob, /for attempt in 1 2 3/);
+  assert.match(publishJob, /git rebase origin\/main\s+node scripts\/validate-source-rights\.mjs\s+node scripts\/validate-poll-data\.mjs/);
+  assert.doesNotMatch(publishJob, /git push[^\n]*--force|git rebase[^\n]*-X/);
 });
 
 test("all public polling data paths use the fast live-data route", () => {
