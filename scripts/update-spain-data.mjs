@@ -2,7 +2,7 @@ import { readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { load } from "cheerio/slim";
 import { fetchTextWithRetry } from "./lib/resilient-source.mjs";
-import { wikipediaParseUrl, assertSpainArchiveContinuity } from "./lib/spain-archive-health.mjs";
+import { wikipediaParseUrl, nationalVotingIntentionTables, assertSpainArchiveContinuity } from "./lib/spain-archive-health.mjs";
 
 const WIKIPEDIA_PAGE = "Opinion_polling_for_the_next_Spanish_general_election";
 const WIKIPEDIA_URL = `https://en.wikipedia.org/wiki/${WIKIPEDIA_PAGE}`;
@@ -225,7 +225,7 @@ async function fetchWikipediaPage(page, attempts = 4) {
 }
 
 const currentPage = await fetchWikipediaPage(WIKIPEDIA_PAGE);
-const currentTables = currentPage("table.wikitable").filter((_, table) => /Polling firm/i.test(currentPage(table).find("tr").first().text())).slice(0, 4);
+const currentTables = nationalVotingIntentionTables(currentPage);
 if (!currentTables.length) throw new Error('Spain current article contains no national polling tables; retaining the published snapshot');
 currentTables.each((tableIndex, table) => {
   const year = yearForTable(currentPage, table, tableIndex === 0 ? new Date().getUTCFullYear() : NaN);

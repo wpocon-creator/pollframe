@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { assertSpainArchiveContinuity } from '../scripts/lib/spain-archive-health.mjs';
+import { load } from 'cheerio/slim';
+import { assertSpainArchiveContinuity, nationalVotingIntentionTables } from '../scripts/lib/spain-archive-health.mjs';
 
 // The original publication initially had a publication-day placeholder. The
 // source later supplied its actual fieldwork and additional small-party values.
@@ -82,4 +83,26 @@ test('maximum date is independent of input sorting', () => {
 test('ordinary new and unchanged snapshots require no correction exception', () => {
   assert.deepEqual(assertSpainArchiveContinuity(previous, previous, options), []);
   assert.deepEqual(assertSpainArchiveContinuity([...previous, { date: '2026-10-13' }], previous, options), []);
+});
+
+test('an empty extra coalition table does not displace 2023, and hypothetical polls stay excluded', () => {
+  const table = (id) => `<table class="wikitable" id="${id}"><tr><th>Polling firm/Commissioner</th></tr><tr><td>example</td></tr></table>`;
+  for (const modern of [true, false]) {
+    const heading = (level, text) => modern ? `<div class="mw-heading mw-heading${level}"><h${level}>${text}</h${level}></div>` : `<h${level}>${text}</h${level}>`;
+    const $ = load(heading(2, 'Voting intention estimates')
+      + ['2026-after', '2026-before', '2025', '2024', '2023'].map((id) => heading(3, id) + table(id)).join('')
+      + heading(2, 'Voting preferences') + table('preferences')
+      + heading(2, 'Hypothetical scenarios') + heading(3, 'Coalition') + table('hypothetical'));
+    assert.deepEqual(nationalVotingIntentionTables($).map((_, t) => $(t).attr('id')).get(), ['2026-after', '2026-before', '2025', '2024', '2023']);
+  }
+});
+
+test('a missing section is rejected instead of guessing which tables contain real polls', () => {
+  const $ = load('<table class="wikitable"><tr><th>Polling firm</th></tr></table>');
+  assert.equal(nationalVotingIntentionTables($).length, 0);
+});
+
+test('year-level coverage catches a lost historical table even below the overall 5% loss limit', () => {
+  const history = Array.from({ length: 68 }, () => ({ date: '2023-08-01' }));
+  assert.throws(() => assertSpainArchiveContinuity([...previous, { date: '2026-10-13' }], [...previous, ...history], options), /lost too many.*2023/);
 });
