@@ -21,7 +21,7 @@
     "qa:offline-contract": "node scripts/qa-lab/offline-contract.mjs",
     "test:studio:unit": "node --test tests/studio-event-layout.test.mjs tests/studio-event-selection.test.mjs tests/studio-event-seed.test.mjs tests/studio-custom-events.test.mjs tests/studio-model.test.mjs tests/studio-style-library.test.mjs tests/poll-calculation-receipt.test.mjs tests/accounts-production.test.mjs tests/account-worker-runtime.test.mjs",
     "test:studio:browser": "playwright test tests/quality-review-september.spec.mjs tests/studio-events-outcomes.spec.mjs tests/studio-event-editing.spec.mjs tests/header-account-responsive.spec.mjs tests/account-ui-quality.spec.mjs tests/studio-font-export.spec.mjs --project=chromium-desktop --project=firefox-desktop --project=webkit-desktop --workers=2",
-    "test:update-pipeline": "node --test tests/update-pipeline.test.mjs",
+    "test:update-pipeline": "node --test tests/update-pipeline.test.mjs tests/spain-archive-health.test.mjs",
     "test:seo": "node --test tests/seo-routes.test.mjs",
     "test:watchlist-reorder": "node --test tests/watchlist-reorder.test.mjs",
     "data:update": "node scripts/update-poll-data.mjs",

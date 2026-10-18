@@ -253,7 +253,13 @@ for (const poll of polls) {
 }
 const cleanPolls = [...deduplicated.values()].sort((a, b) => a.date.localeCompare(b.date) || a.pollster.localeCompare(b.pollster));
 const previousArchive = JSON.parse(await readFile(resolve("public/data/spain-congress.json"), "utf8"));
-assertSpainArchiveContinuity(cleanPolls, previousArchive.polls);
+const pollsters = Object.fromEntries(Object.entries(pollsterIds).map(([name, id]) => [id, name]));
+const corrections = assertSpainArchiveContinuity(cleanPolls, previousArchive.polls, {
+  pollsters, previousPollsters: previousArchive.pollsters,
+});
+for (const correction of corrections) {
+  console.log(`Spain: verified fieldwork correction for ${correction.pollster}: ${correction.previousDate} → ${correction.correctedDate} (${correction.sourceUrl})`);
+}
 
 const now = new Date().toISOString();
 const pollData = {
@@ -287,7 +293,7 @@ const pollData = {
     electionSourceUrl: "https://infoelectoral.interior.gob.es/es/elecciones-celebradas/procesos-electorales/",
     electionSourceLabel: "Ministerio del Interior",
   },
-  pollsters: Object.fromEntries(Object.entries(pollsterIds).map(([name, id]) => [id, name])),
+  pollsters,
   parties: PARTY_LABELS,
   polls: cleanPolls,
 };
