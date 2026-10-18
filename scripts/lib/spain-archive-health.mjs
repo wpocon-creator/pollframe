@@ -11,8 +11,12 @@ export function nationalVotingIntentionTables($) {
   // Select the section, not the first N tables: otherwise an empty new table
   // silently pushes a whole historical year out of the imported archive.
   return $('table.wikitable').filter((_, table) => {
-    const section = $(table).prevAll('div.mw-heading2,h2').first().text();
-    return /^Voting intention estimates\b/i.test(section.trim())
+    // The source has nested this section at h2 and h4 at different times.
+    // Ignore year subheadings, but stop at any other intervening section.
+    const section = $(table).prevAll('div.mw-heading,h2,h3,h4,h5,h6')
+      .map((_, heading) => $(heading).text().trim()).get()
+      .find((heading) => !/^(?:19|20)\d{2}\b/.test(heading));
+    return /^Voting intention estimates\b/i.test(section ?? '')
       && /Polling firm/i.test($(table).find('tr').first().text());
   });
 }

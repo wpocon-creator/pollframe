@@ -87,12 +87,13 @@ test('ordinary new and unchanged snapshots require no correction exception', () 
 
 test('an empty extra coalition table does not displace 2023, and hypothetical polls stay excluded', () => {
   const table = (id) => `<table class="wikitable" id="${id}"><tr><th>Polling firm/Commissioner</th></tr><tr><td>example</td></tr></table>`;
-  for (const modern of [true, false]) {
+  for (const [modern, level] of [[true, 2], [false, 2], [true, 4], [false, 4]]) {
     const heading = (level, text) => modern ? `<div class="mw-heading mw-heading${level}"><h${level}>${text}</h${level}></div>` : `<h${level}>${text}</h${level}>`;
-    const $ = load(heading(2, 'Voting intention estimates')
-      + ['2026-after', '2026-before', '2025', '2024', '2023'].map((id) => heading(3, id) + table(id)).join('')
-      + heading(2, 'Voting preferences') + table('preferences')
-      + heading(2, 'Hypothetical scenarios') + heading(3, 'Coalition') + table('hypothetical'));
+    const $ = load(heading(2, 'Electoral polling') + heading(3, 'Nationwide polling') + heading(level, 'Voting intention estimates')
+      + ['2026-after', '2026-before', '2025', '2024', '2023'].map((id) => heading(level + 1, id) + table(id)).join('')
+      + heading(level, 'Voting preferences') + table('preferences')
+      + heading(level, 'Hypothetical scenarios') + heading(level + 1, 'Coalition') + table('hypothetical')
+      + heading(3, 'Subnational polling') + table('regional'));
     assert.deepEqual(nationalVotingIntentionTables($).map((_, t) => $(t).attr('id')).get(), ['2026-after', '2026-before', '2025', '2024', '2023']);
   }
 });
