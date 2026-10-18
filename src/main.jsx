@@ -2574,14 +2574,14 @@ function PollChart({
               })}
             </g>
           ))}
-          {latestIndividual && activeParties.filter(party => Number.isFinite(latestIndividual.results[party.id])).map(party => <circle key={`latest-poll-${party.id}`} className="latest-individual-poll" cx={x(latestIndividual.date)} cy={y(latestIndividual.results[party.id])} r={compactLayout ? 4 : 6} fill="var(--surface)" stroke={party.color} strokeWidth="2.5"><title>{party.name}: {latestIndividual.results[party.id]}% · {pollsters[latestIndividual.pollster]} · {latestIndividual.date}</title></circle>)}
+          {latestIndividual && activeParties.filter(party => Number.isFinite(latestIndividual.results[party.id])).map(party => <circle key={`latest-poll-${party.id}`} className="latest-individual-poll" data-party-id={party.id} data-value={latestIndividual.results[party.id]} data-date={latestIndividual.date} cx={x(latestIndividual.date)} cy={y(latestIndividual.results[party.id])} r={compactLayout ? 4 : 6} fill="var(--surface)" stroke={party.color} strokeWidth="2.5"><title>{party.name}: {latestIndividual.results[party.id]}% · {pollsters[latestIndividual.pollster]} · {latestIndividual.date}</title></circle>)}
           {!compactLayout && (trendVisible || averageSeriesVisible) && endLabels.map(({ party, point, first, value, delta, labelY }) => (
-            <g key={`end-label-${party.id}`} className="series-end-label">
+            <g key={`end-label-${party.id}`} className="series-end-label" data-party-id={party.id} data-start-date={first?.date} data-end-date={point.date} data-start-value={first?.results[party.id]} data-end-value={value}>
               <title>{party.name} · {first?.date} – {point.date}</title>
               <circle className="series-end-point" cx={x(point.date)} cy={y(value)} r="3.2" fill={party.color} />
               <line x1={width - margin.right + 5} x2={width - margin.right + 17} y1={labelY} y2={labelY} style={{ stroke: party.color }} />
               <text x={width - margin.right + 23} y={labelY + 4}>
-                {party.name} {value.toLocaleString(getNumberLocale(locale), { maximumFractionDigits: 1 })}%
+                <tspan className="series-end-value">{party.name} {value.toLocaleString(getNumberLocale(locale), { maximumFractionDigits: 1 })}%</tspan>
                 {Number.isFinite(delta) && <tspan className="series-period-delta" style={{fill:delta>0.04?"var(--positive)":delta<-.04?"var(--negative)":"var(--muted)"}} dx="7">{delta > 0.04 ? "+" : ""}{delta.toLocaleString(getNumberLocale(locale),{maximumFractionDigits:1})} {locale === "de" ? "Pp." : "pp"}</tspan>}
               </text>
             </g>
@@ -8784,7 +8784,7 @@ function AppRouter() {
   if (IS_EMBED_ENTRY && new URLSearchParams(location.search).get("studioDesign") === "1") return <Suspense fallback={<main role="status">Pollframe …</main>}><StudioCurrentEmbed /></Suspense>;
   if (routeQueryForLocation().get("view") === "election-st2026") return <Suspense fallback={<main role="status">Pollframe …</main>}><ElectionPage Header={IS_EMBED_ENTRY ? null : StudioSiteHeader} ShareTools={ElectionShareTools} embed={IS_EMBED_ENTRY}/></Suspense>;
   return !IS_EMBED_ENTRY && routeQueryForLocation().get("view") === "studio"
-    ? <Suspense fallback={<main className="embed-loading" role="status">Pollframe Studio …</main>}><GraphicStudio Header={StudioSiteHeader} PublishDialog={StudioPublishBridge} /></Suspense>
+    ? <Suspense fallback={<main className="embed-loading" aria-busy="true" aria-labelledby="studio-loading-heading"><h1 id="studio-loading-heading" className="sr-only">Pollframe Studio</h1><p role="status">Pollframe Studio …</p></main>}><GraphicStudio Header={StudioSiteHeader} PublishDialog={StudioPublishBridge} /></Suspense>
     : <RegionalApp />;
 }
 installModalScrollGuard();
