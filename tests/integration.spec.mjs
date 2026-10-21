@@ -921,9 +921,10 @@ test.describe("core routes", () => {
     await settle(page);
     await expect(page.getByRole("heading", { level: 1, name: "Deutschland im Überblick" })).toBeVisible();
     const approvalEntry = page.locator('a[href="/de/regierung/zufriedenheit"]').first();
-    await expect(approvalEntry.locator("dd").first()).not.toHaveText("–");
+    // Approval is currently withheld for rights, not silently loaded off-screen.
+    await expect(approvalEntry).toHaveCount(0);
     const approvalRequestsBeforeCountrySwitch = approvalRequestCount;
-    expect(approvalRequestsBeforeCountrySwitch).toBeGreaterThanOrEqual(1);
+    expect(approvalRequestsBeforeCountrySwitch).toBe(0);
     await page.getByRole("button", { name: "Land auswählen" }).click();
     await page.getByRole("link", { name: /Spanien.*Kongress/i }).click();
     await settle(page);
@@ -1226,7 +1227,7 @@ test.describe("core routes", () => {
     await expect(page.locator(".customize-panel")).toContainText("Trend + average points");
     await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
       "href",
-      "https://de.pollframe.workers.dev/de/bundestag/umfragen",
+      "https://pollframe.com/de/bundestag/umfragen?lang=en-GB",
     );
     await expectDocumentFits(page);
     expect(errors).toEqual([]);
@@ -1250,7 +1251,7 @@ test.describe("core routes", () => {
     await expect(page.getByLabel(/Betreff|Subject/i)).toBeVisible();
     await expect(page.getByLabel(/Nachricht|Message/i)).toBeVisible();
     await expect(page.getByText(/sendet und speichert nichts|does not send or store/i)).toBeVisible();
-    await expect(page.locator(`a[href="mailto:opinionpoll.redaktion@proton.me"]`)).not.toHaveCount(0);
+    await expect(page.locator(`a[href="mailto:william@pollframe.com"]`)).not.toHaveCount(0);
     await expectDocumentFits(page);
     await expectNoBrokenVisibleText(page);
 
@@ -1301,7 +1302,8 @@ test.describe("core routes", () => {
     await expect(page.getByText(/Derivative Pollframe|abgeleitete Pollframe/i)).toBeVisible();
     await expect(page.getByText(/Meta Platforms/).first()).toBeVisible();
     await expect(page.getByRole("heading", { name: "UK Election Data Vault" })).toBeVisible();
-    await expect(page.getByText(/Rechtestatus|Rights status/)).toBeVisible();
+    await expect(page.getByText(/Forschungsgruppe Wahlen.*Ipsos.*(nicht veröffentlicht|withheld)/)).toBeVisible();
+    await expect(page.getByRole("link", { name: /Wiederverwendungsbedingungen|Reuse conditions/ })).toHaveAttribute("href", "https://www.cis.es/es/condiciones-reutilizaci%C3%B3n-datos-del-cis");
     await expect(page.locator(".placeholder-warning")).toHaveCount(0);
     await expectDocumentFits(page);
     await expectNoBrokenVisibleText(page);
@@ -1311,7 +1313,7 @@ test.describe("core routes", () => {
     await expect(page.getByRole("heading", { name: /Redaktionelle Standards|Editorial standards/i, level: 1 })).toBeVisible();
     await expect(page.getByRole("heading", { name: /Ereignisse im historischen Kontext|Events as historical context/i })).toBeVisible();
     await expect(page.getByRole("heading", { name: /Öffentliches Änderungsprotokoll|Public change log/i })).toBeVisible();
-    await expect(page.locator('link[rel="canonical"]')).toHaveAttribute("href", "https://de.pollframe.workers.dev/editorial-standards");
+    await expect(page.locator('link[rel="canonical"]')).toHaveAttribute("href", "https://pollframe.com/editorial-standards");
     await expectDocumentFits(page);
     await expectNoBrokenVisibleText(page);
     expect(errors).toEqual([]);

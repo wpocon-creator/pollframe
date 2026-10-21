@@ -6368,7 +6368,9 @@ body > #root > footer nav .footer-action:hover {
 .uk-map-controls .select-control { min-width: 190px; }
 
 .uk-map-layout {
-  align-items: center;
+  /* Hover details may grow. Keep the map anchored so the target cannot
+     move between pointer entry and activation. */
+  align-items: start;
   display: grid;
   gap: clamp(1.25rem, 4vw, 3.5rem);
   grid-template-columns: minmax(0, 1fr) minmax(245px, 320px);

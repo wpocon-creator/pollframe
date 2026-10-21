@@ -35,9 +35,9 @@ export default defineConfig({
     reducedMotion: "reduce",
   },
   webServer: externalBaseUrl ? undefined : {
-    command: "npm run preview -- --port 4174",
+    command: "node scripts/run-browser-preview.mjs",
     url: "http://127.0.0.1:4174",
-    reuseExistingServer: true,
+    reuseExistingServer: false,
     timeout: 30_000,
   },
   projects: [

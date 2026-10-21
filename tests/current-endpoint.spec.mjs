@@ -8,7 +8,7 @@ const cases = [
 
 for (const [country, url] of cases) {
   test(`${country} latest individual poll marker matches the current card`, async ({ page }, testInfo) => {
-    test.skip(testInfo.project.name !== "chromium-desktop", "desktop end labels only");
+    test.skip(Boolean(testInfo.project.use.isMobile), "desktop end labels only");
     await page.goto(url);
     await expect(page.locator(".results-card .result-row").first()).toBeVisible();
     await expect(page.locator(".series-end-label text").first()).toBeVisible();
