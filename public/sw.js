@@ -1,4 +1,4 @@
-const VERSION = "pollframe-app-password-login-20261021";
+const VERSION = "pollframe-app-ui-fixes-20261021";
 const SHELL_CACHE = `${VERSION}-shell`;
 const RUNTIME_CACHE = `${VERSION}-runtime`;
 const DATA_CACHE = `${VERSION}-data`;
