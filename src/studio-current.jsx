@@ -257,7 +257,10 @@ export const CurrentDesign = React.memo(function CurrentDesign({
   const noteLines = state.editorNote
     ? wrapTitle(state.editorNote, font, noteSize)
     : [];
-  const footerExtra = noteLines.length * (noteSize * 1.45);
+  // Horizontal designs put tick labels below the plotting area. Reserve that
+  // band before notes instead of letting the first note collide with the axis.
+  const noteAxisGap = noteLines.length && ["news", "paper", "lollipop", "dotplot", "signal"].includes(design) ? 44 : 0;
+  const footerExtra = noteLines.length * (noteSize * 1.45) + noteAxisGap;
   const publicationY =
     91 +
     titleTopOffset +
@@ -958,7 +961,7 @@ export const CurrentDesign = React.memo(function CurrentDesign({
         {noteLines.map((line, i) =>
           text(
             textX(state.noteAlign, 42),
-            H - 90 - footerExtra + i * (noteSize * 1.45),
+            H - 90 - footerExtra + noteAxisGap + i * (noteSize * 1.45),
             line,
             noteSize,
             {
