@@ -41,6 +41,12 @@ export default function TextControls({
     subtitle: "subtitle",
     editorNote: "note",
   }[textPart];
+  const textBounds = {
+    headline: [24, 64, 100],
+    subtitle: [18, 30, 160],
+    editorNote: [16, 24, 180],
+  }[textPart] || [85, 135];
+  const weight = style.weight || (textPart === "headline" ? state.titleWeight : 400);
   return (
     <>
       {!contextual && (
@@ -64,13 +70,7 @@ export default function TextControls({
           <textarea
             rows="3"
             value={state[textPart]}
-            maxLength={
-              textPart === "headline"
-                ? 100
-                : textPart === "subtitle"
-                  ? 160
-                  : 180
-            }
+            maxLength={textBounds[2]}
             placeholder={
               textPart === "headline"
                 ? snapshot?.title ||
@@ -97,24 +97,8 @@ export default function TextControls({
         {l("Schriftgröße", "Text size", "Tamaño de texto")}
         <StudioRange
           session={session}
-          min={
-            editable
-              ? textPart === "headline"
-                ? 24
-                : textPart === "subtitle"
-                  ? 18
-                  : 16
-              : 85
-          }
-          max={
-            editable
-              ? textPart === "headline"
-                ? 64
-                : textPart === "subtitle"
-                  ? 30
-                  : 24
-              : 135
-          }
+          min={textBounds[0]}
+          max={textBounds[1]}
           value={
             editable
               ? state[prefix + "Size"]
@@ -142,17 +126,10 @@ export default function TextControls({
         </button>
         <button
           type="button"
-          aria-pressed={
-            (style.weight ||
-              (textPart === "headline" ? state.titleWeight : 400)) >= 700
-          }
+          aria-pressed={weight >= 700}
           onClick={() =>
             set({
-              weight:
-                (style.weight ||
-                  (textPart === "headline" ? state.titleWeight : 400)) >= 700
-                  ? 400
-                  : 700,
+              weight: weight >= 700 ? 400 : 700,
             })
           }
         >

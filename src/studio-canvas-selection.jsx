@@ -1,4 +1,5 @@
 import InlineText from "./studio-inline-text.jsx";
+import { openModalDialog } from "./modal-scroll-guard.js";
 import React, { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState } from "react";
 const EventCanvas = lazy(()=>import("./studio-event-canvas.jsx"));
 import { createPortal } from "react-dom";
@@ -482,7 +483,7 @@ export default function CanvasSelection({
   useEffect(() => {
     if(pending&&repeatPreference.current==='all'){finish(true);return;}
     if (pending && dialogRef.current && !dialogRef.current.open)
-      dialogRef.current.showModal();
+      openModalDialog(dialogRef.current);
   }, [pending]);
   const union = boxes.length
     ? {

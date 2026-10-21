@@ -120,19 +120,11 @@ function documentFor(item) {
   return doc;
 }
 export function searchTemplates(candidates, query) {
-  const ignored = new Set(
-    "eine einen ein der die das für fur mit und the a an for with and un una el la los las para con y grafik graphic graphics grafico grafica diagramm chart".split(
-      " ",
-    ),
-  );
-  const tokens = normalizeSearch(query)
-    .slice(0, 160)
-    .split(" ")
-    .filter((token) => token && !ignored.has(token))
-    .slice(0, 12);
+  const tokens = searchTokens(query);
   if (!tokens.length) return { items: candidates, fallback: false };
+  const normalizedQuery = normalizeSearch(query);
   const exactNames = candidates.filter((item) =>
-    item.name.some((name) => normalizeSearch(name) === normalizeSearch(query)),
+    item.name.some((name) => normalizeSearch(name) === normalizedQuery),
   );
   if (exactNames.length) return { items: exactNames, fallback: false };
   const topicWords = {
@@ -147,9 +139,8 @@ export function searchTemplates(candidates, query) {
     map: "map karte landkarte bundeslander mapa",
     tendencies: "change gains losses veranderung gewinne verluste delta cambio",
   };
-  const intentTokens = searchTokens(query);
   const intents = new Set(
-    intentTokens.map((t) => conceptFor(t, topicWords)).filter(Boolean),
+    tokens.map((t) => conceptFor(t, topicWords)).filter(Boolean),
   );
   // A subject + a timeline is one combined request, not two competing types.
   if (intents.has("approval") || intents.has("party"))
@@ -159,7 +150,7 @@ export function searchTemplates(candidates, query) {
     intents.add("approval-current");
   }
   const styles = new Set(
-    intentTokens.map((t) => conceptFor(t, SEARCH_STYLES)).filter(Boolean),
+    tokens.map((t) => conceptFor(t, SEARCH_STYLES)).filter(Boolean),
   );
   const topicCandidates = intents.size
     ? candidates.filter((t) => intents.has(t.topic))
@@ -201,9 +192,6 @@ export function searchTemplates(candidates, query) {
         if (best) matched++;
         return sum + best + (title.includes(token) ? 2 : 0);
       }, 0);
-      const exact = item.name.some(
-        (name) => normalizeSearch(name) === normalizeSearch(query),
-      );
       const concepts = searchDescription(item).concepts;
       const styleMatches = [...styles].filter((s) =>
         concepts.includes(s),
@@ -212,7 +200,7 @@ export function searchTemplates(candidates, query) {
         item,
         index,
         styleMatches,
-        score: exact ? 1000 : matched ? (score * matched) / tokens.length : 0,
+        score: matched ? (score * matched) / tokens.length : 0,
       };
     })
     .filter((row) => row.score > 0)

@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { openModalDialog } from "./modal-scroll-guard.js";
 
 // Native modal dialogs enter the browser's top layer, so transformed widgets,
 // sticky headers and scrolling ancestors cannot clip or reposition the info.
@@ -13,7 +14,7 @@ export function InfoPopover({ label = "Info", closeLabel = "Close", className = 
     const dialog = dialogRef.current;
     if (!dialog) return;
     if (detailsRef.current?.open) {
-      if (!dialog.open) dialog.showModal();
+      if (!dialog.open) openModalDialog(dialog);
       dialog.scrollTop = 0;
     } else if (dialog.open) dialog.close();
   };

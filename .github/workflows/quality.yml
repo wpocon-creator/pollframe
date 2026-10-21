@@ -77,7 +77,7 @@ jobs:
         if: ${{ !cancelled() && steps.production_build.outcome == 'success' }}
         run: |
           set -euo pipefail
-          npx playwright test tests/accessibility.spec.mjs tests/current-endpoint.spec.mjs tests/event-selection.spec.mjs tests/deferred-content.spec.mjs tests/map-activation.spec.mjs --project=chromium-desktop --project=firefox-desktop --project=webkit-desktop
+          npx playwright test tests/accessibility.spec.mjs tests/current-endpoint.spec.mjs tests/event-selection.spec.mjs tests/deferred-content.spec.mjs tests/map-activation.spec.mjs tests/modal-scroll.spec.mjs --project=chromium-desktop --project=firefox-desktop --project=webkit-desktop
       - name: Verify current-release navigation and legal pages
         env: { POLLFRAME_TEST_RUN: navigation }
         if: ${{ !cancelled() && steps.production_build.outcome == 'success' }}

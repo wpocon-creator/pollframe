@@ -3,14 +3,15 @@ import { createPortal } from "react-dom";
 import { StudioEditorControls } from "./studio-editor-controls.jsx";
 import { ContextToolbar } from "./studio-canvas-editor.jsx";
 import { elementStyles } from "./studio-elements.js";
+import { openModalDialog } from "./modal-scroll-guard.js";
 export default function SelectionDialog(props) {
   const { selection, l, onClose, state, update } = props,
     ref = useRef(null);
   const contextual = !["element", "none"].includes(selection.target);
   useEffect(() => {
     const before = document.activeElement;
-    ref.current.showModal();
-    return () => before?.focus?.();
+    openModalDialog(ref.current);
+    return () => before?.focus?.({ preventScroll: true });
   }, []);
   return createPortal(
     <dialog

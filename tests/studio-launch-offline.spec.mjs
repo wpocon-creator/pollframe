@@ -3,7 +3,10 @@ test('ordinary visits do not preload unvisited states; installed app still prepa
   test.setTimeout(120000);
   await page.goto('/?lang=en-GB');
   await page.evaluate(()=>navigator.serviceWorker.ready);
-  expect(await page.evaluate(async()=>Boolean(await caches.match('/data/berlin.json')))).toBe(false);
+  expect(await page.evaluate(async()=>{
+    const keys=(await Promise.all((await caches.keys()).map(async name=>(await caches.open(name)).keys()))).flat();
+    return keys.some(request=>new URL(request.url).pathname==='/data/berlin.json');
+  })).toBe(false);
   await page.addInitScript(()=>{
     const match=window.matchMedia.bind(window);
     window.matchMedia=q=>q==='(display-mode: standalone)'?{matches:true,addEventListener(){},removeEventListener(){}}:match(q);
@@ -13,9 +16,16 @@ test('ordinary visits do not preload unvisited states; installed app still prepa
   await page.waitForFunction(async()=>Boolean(await caches.match('/__pollframe-offline-ready__')),null,{timeout:60000});
   const cacheInfo=await page.evaluate(async()=>{
     const names=(await caches.keys()).filter(n=>n.startsWith('pollframe-app-'));
-    const responses=(await Promise.all(names.map(async n=>(await caches.open(n)).matchAll()))).flat();
+    // Match each stored request with its original headers. A public preload
+    // can carry Origin and Vary: Origin; a synthetic headerless Request need
+    // not match it, even though the cached response is present and usable.
+    const entries=(await Promise.all(names.map(async n=>{
+      const cache=await caches.open(n);return Promise.all((await cache.keys()).map(async request=>({path:new URL(request.url).pathname,response:await cache.match(request)})));
+    }))).flat();
+    const responses=entries.map(e=>e.response).filter(Boolean);
+    const has=path=>entries.some(e=>e.path===path&&e.response?.ok);
     return {bytes:(await Promise.all(responses.map(r=>r.clone().arrayBuffer().then(b=>b.byteLength)))).reduce((a,b)=>a+b,0),
-      berlin:Boolean(await caches.match('/data/berlin.json')),uk:Boolean(await caches.match('/data/uk-westminster.json')),es:Boolean(await caches.match('/data/spain-congress.json'))};
+      berlin:has('/data/berlin.json'),uk:has('/data/uk-westminster.json'),es:has('/data/spain-congress.json')};
   });
   expect(cacheInfo.berlin&&cacheInfo.uk&&cacheInfo.es).toBe(true);
   expect(cacheInfo.bytes).toBeGreaterThan(1000000);

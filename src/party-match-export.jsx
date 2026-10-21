@@ -10,6 +10,7 @@ import {
 } from "./party-match-design.js";
 import GraphicFileOptions from "./graphic-file-options.jsx";
 import { graphicFile } from "./graphic-file.js";
+import { openModalDialog } from "./modal-scroll-guard.js";
 
 export function MatchDialog({
   title,
@@ -22,7 +23,7 @@ export function MatchDialog({
   useEffect(() => {
     const dialog = ref.current;
     const trigger = returnFocus || document.activeElement;
-    dialog.showModal();
+    openModalDialog(dialog);
     return () => {
       dialog.close();
       if (trigger?.isConnected) trigger.focus({ preventScroll: true });

@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { STUDIO_FONTS } from "./studio-fonts.js";
 import { loadStudioFont } from "./studio-font-loader.js";
 import { importCustomFont, listCustomFonts } from "./studio-custom-fonts.js";
+import { openModalDialog } from "./modal-scroll-guard.js";
 function FontRow({ font, value, choose }) {
   const ref = useRef(null),
     [ready, setReady] = useState(!font[2]?.startsWith("PF "));
@@ -46,11 +47,11 @@ export default function FontLibrary({ value, onChange, onClose, l }) {
     [error, setError] = useState("");
   useEffect(() => {
     const before = document.activeElement;
-    ref.current.showModal();
+    openModalDialog(ref.current);
     listCustomFonts()
       .then(setCustom)
       .catch(() => {});
-    return () => before?.focus?.();
+    return () => before?.focus?.({ preventScroll: true });
   }, []);
   const all = [
     ...STUDIO_FONTS,

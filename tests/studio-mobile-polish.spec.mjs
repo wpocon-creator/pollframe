@@ -54,10 +54,12 @@ test('introduction stays fixed and compact; native modal locks background and re
   await page.goto(studio);const notice=page.locator('.studio-announcement');await expect(notice).toBeVisible();
   await page.waitForTimeout(650);const before=await notice.boundingBox();expect(before.height).toBeLessThan(105);
   await page.evaluate(()=>window.scrollTo(0,450));
+  await expect.poll(()=>page.evaluate(()=>scrollY)).toBe(450);
   expect(Math.abs((await notice.boundingBox()).y-before.y)).toBeLessThan(2);
   await notice.getByRole('button',{name:/Video ansehen/}).click();
   const modal=page.locator('dialog[open]');await expect(modal).toBeVisible();
   await expect(page.locator('html')).toHaveAttribute('data-modal-scroll-locked','true');
+  await expect(page.locator('html')).toHaveCSS('--modal-scroll-top','-450px');
   const top=await page.locator('body').evaluate(e=>e.getBoundingClientRect().top);
   if(browserName!=='webkit'){await page.mouse.move(5,800);await page.mouse.wheel(0,700);}
   await page.evaluate(()=>window.scrollBy(0,700));await page.waitForTimeout(120);
@@ -65,6 +67,8 @@ test('introduction stays fixed and compact; native modal locks background and re
   await page.screenshot({path:info.outputPath('mobile-dialog.png')});
   await modal.getByRole('button',{name:'Schließen',exact:true}).click();
   await expect(page.locator('html')).not.toHaveAttribute('data-modal-scroll-locked','true');
+  await expect.poll(()=>page.evaluate(()=>window.scrollY)).toBeCloseTo(450,0);
+  await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
   expect(await page.evaluate(()=>window.scrollY)).toBeCloseTo(450,0);
 });
 async function gesture(page,dx,dy,multi=false){

@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { customEvents } from "./studio-custom-events.js";
 import StudioDateInput from "./studio-date-input.jsx";
 import StudioSelect from "./studio-select.jsx";
+import { openModalDialog } from "./modal-scroll-guard.js";
 export default function EventDialog({
   event,
   state,
@@ -20,8 +21,8 @@ export default function EventDialog({
     [error, setError] = useState("");
   useEffect(() => {
     const before = document.activeElement;
-    ref.current.showModal();
-    return () => before?.focus?.();
+    openModalDialog(ref.current);
+    return () => before?.focus?.({ preventScroll: true });
   }, []);
   const save = (e) => {
     e.preventDefault();

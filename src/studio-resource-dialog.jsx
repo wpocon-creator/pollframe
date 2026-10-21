@@ -1,6 +1,7 @@
 import React, { useEffect, useId, useRef } from "react";
 import { createPortal } from "react-dom";
 import "./studio-resources.css";
+import { openModalDialog } from "./modal-scroll-guard.js";
 
 export default function StudioResourceDialog({
   title,
@@ -15,7 +16,7 @@ export default function StudioResourceDialog({
     id = useId();
   useEffect(() => {
     const previous = document.activeElement;
-    ref.current.showModal();
+    openModalDialog(ref.current);
     return () => previous?.focus?.({ preventScroll: true });
   }, []);
   return createPortal(
