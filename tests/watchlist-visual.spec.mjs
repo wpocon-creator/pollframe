@@ -382,8 +382,12 @@ test("Watchlist cancels safely on window loss and supports an immediate next dra
   await expect(page.locator("body > .watch-card-drag-shell")).toBeVisible();
   await page.mouse.move(destinationBox.x + destinationBox.width / 2, destinationBox.y + 10, { steps: 8 });
   await page.mouse.up();
+  await expect(page.locator("body > .watch-card-drag-shell")).toHaveCount(0);
+  await page.locator('[data-watch-id="de-berlin-spd"]').scrollIntoViewIfNeeded();
   sourceBox = await page.locator('[data-watch-id="de-berlin-spd"]').boundingBox();
-  await page.mouse.move(sourceBox.x + sourceBox.width * .6, sourceBox.y + sourceBox.height * .45);
+  const nextPoint = { x: sourceBox.x + sourceBox.width * .6, y: sourceBox.y + sourceBox.height * .45 };
+  expect(await page.evaluate(({x,y}) => document.elementFromPoint(x,y)?.closest('[data-watch-id]')?.dataset.watchId, nextPoint)).toBe('de-berlin-spd');
+  await page.mouse.move(nextPoint.x, nextPoint.y);
   await page.mouse.down();
   await expect(page.locator("body > .watch-card-drag-shell")).toBeVisible();
   await page.waitForTimeout(240);

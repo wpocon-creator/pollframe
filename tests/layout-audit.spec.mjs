@@ -31,7 +31,7 @@ async function auditVisibleLayout(page) {
   return page.evaluate(() => {
     const viewportWidth = document.documentElement.clientWidth;
     const viewportHeight = window.innerHeight;
-    const ignoredScroller = ".chart-wrap,.party-selector,.line-legend,.poll-table-scroll,.code-label,.static-embed-preview,.watchlist-strip,.approval-workbench>.approval-country-key";
+    const ignoredScroller = ".chart-wrap,.party-selector,.line-legend,.poll-table-scroll,.code-label,.static-embed-preview,.watchlist-strip,.approval-workbench>.approval-country-key,.studio-topic-tabs";
     const visible = (element) => {
       const rect = element.getBoundingClientRect();
       const style = getComputedStyle(element);
@@ -124,6 +124,21 @@ test.describe("global layout auditor", () => {
         await settle(page);
         const issues = await auditVisibleLayout(page);
         expect.soft(issues, `${item.label} (${item.route})`).toEqual([]);
+        if (item.label === "Studio gallery" && page.viewportSize().width < 600) {
+          // This strip intentionally scrolls within the viewport. Verify that
+          // the off-screen categories are actually reachable, rather than
+          // treating clipped scroll content as document overflow or hiding it.
+          const tabs = page.locator(".studio-topic-tabs");
+          await expect(tabs).toHaveCSS("overflow-x", "auto");
+          const last = tabs.getByRole("button").last();
+          await last.focus();
+          await expect(last).toBeFocused();
+          const reachable = await last.evaluate(el => {
+            const rect = el.getBoundingClientRect(), strip = el.parentElement.getBoundingClientRect();
+            return rect.left >= strip.left - 1 && rect.right <= strip.right + 1 && strip.right <= innerWidth + 1;
+          });
+          expect(reachable, "Last Studio category must scroll into reach without widening the page").toBe(true);
+        }
       });
     }
   });

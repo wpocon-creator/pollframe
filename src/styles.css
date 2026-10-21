@@ -8765,6 +8765,9 @@ dialog.graph-info-card a { overflow-wrap:anywhere; }
 .results-card .status-dot { white-space:normal; overflow-wrap:anywhere; }
 .results-card:not(.png-export-clone,.png-preview-clone) .party-name { overflow:visible; }
 .results-card:not(.png-export-clone,.png-preview-clone) .party-name .party-info-trigger { white-space:normal; overflow-wrap:anywhere; overflow:visible; line-height:1.2; margin-block:0; min-height:0; }
+@media (hover:none) and (pointer:coarse) {
+  .results-card:not(.png-export-clone,.png-preview-clone) .party-name .party-info-trigger { min-height:30px; }
+}
 .projection-heading { flex-wrap:wrap; gap:.75rem; }
 .projection-heading>.widget-info-heading { flex:1 1 16rem; }
 .projection-heading-side { flex:0 0 auto; }

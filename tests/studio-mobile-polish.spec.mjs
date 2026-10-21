@@ -1,25 +1,37 @@
 import {test,expect} from '@playwright/test';
 test.use({viewport:{width:390,height:844},hasTouch:true,serviceWorkers:'block'});
 const studio='/?view=studio&lang=de';
-test('mobile header keeps Studio beside the logo; installed app only uses bottom navigation',async({page})=>{
+test('full-width product switch stays below header controls; installed app retains its bottom Studio entry',async({page})=>{
   await page.goto(studio);
+  const navigation=page.locator('.product-sections-bar');
+  await expect(navigation).toBeVisible();
+  await expect(page.locator('.studio-gallery')).toBeVisible();
   for(const width of [320,390,430,768]){
     await page.setViewportSize({width,height:900});
-    const brand=await page.locator('.site-header .brand').boundingBox(),nav=await page.locator('.product-navigation').boundingBox();
-    expect(Math.abs((brand.y+brand.height/2)-(nav.y+nav.height/2))).toBeLessThan(9);
-    expect(nav.x).toBeGreaterThan(brand.x);
-    expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+    const controls=await page.locator('.site-header .header-inner').boundingBox(),nav=await navigation.boundingBox(),header=await page.locator('.site-header').boundingBox();
+    const contentWidth=await page.evaluate(()=>document.documentElement.clientWidth);
+    expect(nav.y).toBeGreaterThanOrEqual(controls.y+controls.height-1);
+    expect(nav.x).toBeCloseTo(header.x,0);
+    // Full header width, excluding the operating system's reserved scrollbar
+    // gutter (which need not be included in documentElement.clientWidth).
+    expect(nav.width).toBeCloseTo(header.width,0);
+    expect(nav.x).toBeGreaterThanOrEqual(0);
+    expect(nav.x+nav.width).toBeLessThanOrEqual(contentWidth);
+    const links=navigation.getByRole('link');await expect(links).toHaveCount(2);
+    expect((await links.nth(0).boundingBox()).width).toBeCloseTo((await links.nth(1).boundingBox()).width,0);
+    await expect(navigation.getByRole('link',{name:'Studio',exact:true})).toHaveAttribute('aria-current','page');
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(contentWidth);
   }
   await page.addInitScript(()=>{const match=window.matchMedia.bind(window);window.matchMedia=q=>q==='(display-mode: standalone)'?{matches:true,addEventListener(){},removeEventListener(){}}:match(q);});
   await page.reload();
-  await expect(page.locator('.product-navigation')).toBeVisible();
+  await expect(navigation).toBeVisible();
   await page.setViewportSize({width:390,height:844});
-  await expect(page.locator('.product-navigation')).toBeHidden();
+  await expect(navigation).toBeVisible();
   await expect(page.locator('.mobile-app-nav').getByRole('link',{name:'Studio',exact:true})).toBeVisible();
   for(const path of ['/?lang=de','/?region=bundestag&lang=de','/?view=watchlist&lang=de']){
     await page.goto(path);
     await expect(page.locator('html')).toHaveAttribute('data-standalone','true');
-    await expect(page.locator('.site-header .product-navigation')).toBeHidden();
+    await expect(navigation.getByRole('link',{name:'Pollframe',exact:true})).toHaveAttribute('aria-current','page');
     await expect(page.locator('.mobile-app-nav').getByRole('link',{name:'Studio',exact:true})).toBeVisible();
   }
 });

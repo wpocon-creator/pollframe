@@ -1238,7 +1238,7 @@ export function CurrentDesignPreview({
         <button
           className="secondary-button"
           disabled={
-            Boolean(localBackground) || state.font.startsWith("custom-")
+            !snapshot || busy || Boolean(localBackground) || state.font.startsWith("custom-")
           }
           title={
             state.font.startsWith("custom-")
@@ -1394,7 +1394,7 @@ export function CurrentDesignPreview({
           )}
         </Suspense>
       )}
-      {publish && PublishDialog && (
+      {publish && snapshot && PublishDialog && (
         <Suspense fallback={null}>
           <PublishDialog
             kind={publish}

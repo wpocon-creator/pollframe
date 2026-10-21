@@ -74,8 +74,18 @@ export default function StudioSelect({
         e.preventDefault();e.stopPropagation();
       }
     };
+    const documentScrollAtOpen = window.scrollY;
     const scrolled = (e) => {
       if (list.current?.contains(e.target)) return;
+      // A page scroll dismisses the floating list. An inspector/list scroll
+      // is different: keep its trigger anchored and its options reachable.
+      // Ignore an already-queued focus scroll that did not move the document
+      // since this menu opened.
+      if ((e.target === document || e.target === document.documentElement || e.target === window)
+        && Math.abs(window.scrollY - documentScrollAtOpen) > 1) {
+        setOpen(false);
+        return;
+      }
       // Focusing a near-bottom trigger can itself scroll an inspector. Closing
       // here used to erase the menu immediately after it opened (large text,
       // tablet and narrow editor columns). Keep it anchored while visible.

@@ -107,7 +107,7 @@ jobs:
       - name: Verify source-preserving designs and actual PNG/embed output in three engines
         env: { POLLFRAME_TEST_RUN: publication }
         if: ${{ !cancelled() && steps.production_build.outcome == 'success' }}
-        run: npx playwright test tests/studio-publication-launch.spec.mjs tests/source-rights-browser.spec.mjs tests/studio-font-export.spec.mjs tests/studio-source-overflow.spec.mjs --project=chromium-desktop --project=firefox-desktop --project=webkit-desktop --workers=2
+        run: npx playwright test tests/studio-publication-launch.spec.mjs tests/source-rights-browser.spec.mjs tests/studio-font-export.spec.mjs tests/studio-source-overflow.spec.mjs tests/studio-publish-loading.spec.mjs --project=chromium-desktop --project=firefox-desktop --project=webkit-desktop --workers=2
       - name: Exercise real event editing and data-frame integrity in three engines
         env: { POLLFRAME_TEST_RUN: events }
         if: ${{ !cancelled() && steps.production_build.outcome == 'success' }}
