@@ -10,10 +10,15 @@ const localChromium = process.env.POLLFRAME_CHROME_PATH || process.env.POLLFRAME
   } }
   : {};
 const externalBaseUrl = process.env.POLLFRAME_TEST_BASE_URL;
+// Independent gate steps continue after a failure, so keep each step's
+// screenshots, traces and report instead of letting the next CLI erase them.
+const evidenceRun = process.env.POLLFRAME_TEST_RUN;
+if (evidenceRun && !/^[a-z0-9-]{1,60}$/.test(evidenceRun)) throw Error("Invalid browser evidence run name");
+const evidenceRoot = evidenceRun ? `test-results/${evidenceRun}` : "test-results";
 
 export default defineConfig({
   testDir: "./tests",
-  outputDir: "./test-results/artifacts",
+  outputDir: `./${evidenceRoot}/artifacts`,
   timeout: 75_000,
   expect: { timeout: 10_000 },
   fullyParallel: true,
@@ -24,7 +29,7 @@ export default defineConfig({
   // fail immediately and a real CI regression fails again on its retry.
   retries: process.env.CI ? 1 : 0,
   workers: 2,
-  reporter: [["list"], ["html", { outputFolder: "test-results/report", open: "never" }]],
+  reporter: [["list"], ["html", { outputFolder: `${evidenceRoot}/report`, open: "never" }]],
   use: {
     baseURL: externalBaseUrl ?? "http://127.0.0.1:4174",
     actionTimeout: 15_000,

@@ -42,7 +42,7 @@ test('real catalogue: generate, pin, exclude, undo, reload and PNG retain the ac
   const overlaps=await svg.locator('.event-label-bg').evaluateAll(nodes=>nodes.flatMap((a,i)=>{const r=a.getBoundingClientRect();return nodes.slice(i+1).filter(b=>{const q=b.getBoundingClientRect();return Math.min(r.right,q.right)>Math.max(r.left,q.left)+1&&Math.min(r.bottom,q.bottom)>Math.max(r.top,q.top)+1;}).map(()=>true);}));
   expect(overlaps).toEqual([]);
   await page.getByRole('button',{name:'PNG herunterladen',exact:true}).click();
-  const png=page.getByRole('dialog',{name:'PNG exportieren'});
+  const png=page.getByRole('dialog',{name:'Exportieren',exact:true});
   await expect(png.locator('svg[data-labelled-events]')).toHaveAttribute('data-labelled-events',persistent);
   await page.screenshot({path:info.outputPath('real-events-export.png')});
 });
