@@ -1,9 +1,14 @@
 import React, { useEffect, useRef, useState } from "react";
+import {
+  recentSnapshots,
+  rememberSnapshot,
+} from "./studio-public-snapshot-cache.js";
 
 // Source calculators are shared with the live widgets, not reimplemented here.
 export function useExtraSnapshot(state, kind, enabled) {
   const frame = useRef(null),
-    cache = useRef(new Map());
+    cache = useRef(null);
+  if (!cache.current) cache.current = recentSnapshots(kind);
   const [result, setResult] = useState({}),
     [retry, setRetry] = useState(0);
   const params = new URLSearchParams({
@@ -39,6 +44,7 @@ export function useExtraSnapshot(state, kind, enabled) {
           if (cache.current.size >= 8)
             cache.current.delete(cache.current.keys().next().value);
           cache.current.set(key, data);
+          rememberSnapshot(kind, key, data);
           setResult({ key, data });
           return;
         } catch {}
@@ -97,9 +103,9 @@ export function useApprovalSnapshot(state, enabled, events = []) {
         approvalRequest = null;
         throw error;
       });
-    Promise.all([approvalRequest,import("./studio-approval-model.js")]).then(
-      ([data,model]) => {
-        if (active) setData({raw:data,create:model.approvalSnapshot});
+    Promise.all([approvalRequest, import("./studio-approval-model.js")]).then(
+      ([data, model]) => {
+        if (active) setData({ raw: data, create: model.approvalSnapshot });
       },
       () => {
         if (active) setError(true);

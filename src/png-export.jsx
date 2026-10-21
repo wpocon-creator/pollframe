@@ -5,6 +5,8 @@ import { trackAggregateEvent } from "./aggregateAnalytics.js";
 import { layoutPublishingColumns } from "./publishing-layout.js";
 import { StudioLink } from "./studio-link.jsx";
 import { publicationCredit } from './source-attribution.js';
+import GraphicFileOptions from "./graphic-file-options.jsx";
+import { graphicFile } from "./graphic-file.js";
 
 const PRESETS = {
   content: { width: 1600, height: null, pixelRatio: 2 },
@@ -600,8 +602,8 @@ export function PngPreview({ element, preset, profile, theme, setTheme, title, s
       const verticalInset = Number.parseFloat(styles.paddingTop) + Number.parseFloat(styles.paddingBottom);
       const gap = Number.parseFloat(styles.rowGap) || 0;
       const ratio = format.height ? format.width / format.height : 4 / 3;
-      const availableWidth = Math.max(120, live.clientWidth - horizontalInset);
-      const availableHeight = Math.max(110, live.clientHeight - verticalInset - (toolbar?.offsetHeight ?? 0) - gap);
+      const availableWidth = Math.max(24, live.clientWidth - horizontalInset);
+      const availableHeight = Math.max(24, live.clientHeight - verticalInset - (toolbar?.offsetHeight ?? 0) - gap);
       const width = Math.min(maxWidth, availableWidth, availableHeight * ratio);
       canvas.style.setProperty("width", `${Math.floor(width)}px`);
     };
@@ -672,44 +674,48 @@ export function PngExportModal({ open, onClose, elementRef, filename, title, sub
   const [preset, setPreset] = useState(config.recommended);
   const [theme, setTheme] = useState("light");
   const [status, setStatus] = useState("idle");
+  const [fileType, setFileType] = useState("png");
   const copy = copyFor(locale);
   const dialogRef = useExportDialog(open, onClose);
+  const saveLabel = fileType === "png" ? copy.save : locale === "de" ? "Datei sichern oder teilen" : locale === "es" ? "Guardar o compartir archivo" : "Save or share file";
   const nativeShareAvailable = typeof navigator.share === "function" && typeof File === "function";
   const touchShare = nativeShareAvailable && typeof matchMedia === "function" && matchMedia("(pointer: coarse)").matches;
-  useEffect(() => { if (open) { setPreset(config.recommended); setTheme(preferredExportTheme()); setStatus("idle"); trackAggregateEvent("png_dialog_opened"); } }, [open, profile, config.recommended]);
+  useEffect(() => { if (open) { setPreset(config.recommended); setTheme(preferredExportTheme()); setFileType("png"); setStatus("idle"); trackAggregateEvent("png_dialog_opened"); } }, [open, profile, config.recommended]);
   const singleFormat = Boolean(studio) || config.formats.length === 1;
   const note = copy[`${config.copyKey}Note`] ?? copy.chartNote;
   const exportPng = async (action) => {
     if (status === "working") return;
     setStatus("working");
     try {
-      const rendered = studio ? await studio.render() : await renderElementPng({ element: elementRef.current, filename, title, subtitle, locale, credit, preset, profile, theme });
+      const png = studio ? await studio.render() : await renderElementPng({ element: elementRef.current, filename, title, subtitle, locale, credit, preset, profile, theme });
+      const vector = fileType === "svg" && studio?.vector ? await studio.vector() : null;
+      const rendered = await graphicFile(png, fileType, vector);
       if (action === "share" && nativeShareAvailable) {
-        const file = new File([rendered.blob], rendered.filename, { type: "image/png" });
+        const file = new File([rendered.blob], rendered.filename, { type: rendered.blob.type });
         if (!navigator.canShare || navigator.canShare({ files: [file] })) {
           await navigator.share({ files: [file], title });
           setStatus("shared");
           studio?.onPublished?.();
-          trackAggregateEvent("png_export_shared");
+          if (fileType === "png") trackAggregateEvent("png_export_shared");
           return;
         }
       }
       triggerBlobDownload(rendered.blob, rendered.filename);
       setStatus("done");
       studio?.onPublished?.();
-      trackAggregateEvent("png_export_downloaded");
+      if (fileType === "png") trackAggregateEvent("png_export_downloaded");
     } catch (error) {
       if (error?.name === "AbortError") setStatus("idle");
       else { console.error("PNG export failed", error); setStatus("error"); }
     }
   };
-  const statusText = status === "working" ? copy.preparing : status === "done" ? copy.ready : status === "shared" ? copy.shared : status === "error" ? copy.failed : "";
+  const statusText = (status === "working" ? copy.preparing : status === "done" ? copy.ready : status === "shared" ? copy.shared : status === "error" ? copy.failed : "").replaceAll("PNG", fileType.toUpperCase());
   const modal = open ? (
     <div className="overlay modal-overlay png-options-overlay" onMouseDown={(event) => event.target === event.currentTarget && onClose()} data-export-ignore="true">
       <section ref={dialogRef} className={`embed-modal png-options-modal${singleFormat ? " is-single-format" : ""}`} role="dialog" aria-modal="true" aria-labelledby="png-options-title" tabIndex={-1}>
-        <div className="panel-header"><div><span className="section-label">{subtitle}</span><h2 id="png-options-title">{copy.title}</h2></div><button className="icon-button" type="button" onClick={onClose} aria-label={copy.close}><Icon name="close" /></button></div>
-        <p className="modal-intro">{singleFormat ? copy.singleIntro : copy.intro}</p>
-        <div className="png-dialog-layout">
+        <div className="panel-header"><div><span className="section-label">{subtitle}</span><h2 id="png-options-title">{locale === "de" ? "Exportieren" : locale === "es" ? "Exportar" : "Export"}</h2></div><GraphicFileOptions compact value={fileType} onChange={(type) => { setFileType(type); setStatus("idle"); }} locale={locale} vector={Boolean(studio?.vector)} disabled={status === "working"} /><button className="icon-button" type="button" onClick={onClose} aria-label={copy.close}><Icon name="close" /></button></div>
+        <p className={`modal-intro${fileType !== "png" ? " is-file-note" : ""}`}>{fileType === "svg" ? studio?.vector ? (locale === "de" ? "Vektorgrafik mit eingebetteten Schriften." : locale === "es" ? "Gráfica vectorial con fuentes incrustadas." : "Vector graphic with embedded typefaces.") : (locale === "de" ? "Bildbasiertes SVG, keine editierbaren Vektorlinien." : locale === "es" ? "SVG basado en imagen, sin trazados vectoriales editables." : "Image-based SVG, not editable vector paths.") : fileType === "pdf" ? (locale === "de" ? "Eine Seite passend zur Grafik, mit hochauflösendem Bild." : locale === "es" ? "Una página ajustada a la gráfica con imagen de alta resolución." : "One page fitted to the graphic, with a high-resolution image.") : singleFormat ? copy.singleIntro : copy.intro}</p>
+        <div className="png-dialog-layout" inert={status === "working"}>
           {!singleFormat && <div className="png-format-panel">
             <p className="png-profile-note">{note}</p>
             <div className="png-format-grid" role="radiogroup" aria-label={copy.title}>
@@ -718,12 +724,12 @@ export function PngExportModal({ open, onClose, elementRef, filename, title, sub
           </div>}
           {studio ? studio.preview : <PngPreview element={elementRef.current} preset={preset} profile={profile} theme={theme} setTheme={(value) => { setTheme(value); setStatus("idle"); }} title={title} subtitle={subtitle} locale={locale} credit={credit} copy={copy} />}
         </div>
-        {touchShare && <p className="png-share-help">{copy.systemHelp}</p>}
+        {touchShare && <p className="png-share-help">{fileType === "png" ? (locale === "de" ? "Im Systemmenü kannst du das Bild in Fotos sichern." : locale === "es" ? "Guarda la imagen en Fotos desde el menú del sistema." : "Use the system share sheet to save the image to Photos.") : locale === "de" ? "SVG und PDF kannst du in Dateien sichern oder mit einer passenden App öffnen." : locale === "es" ? "Guarda el SVG o PDF en Archivos o ábrelo con una aplicación compatible." : "Save SVG or PDF to Files, or open it in a compatible app."}</p>}
         <div className="png-options-actions">
           {!studio && <StudioLink profile={profile} locale={locale} element={elementRef.current} context={{theme}} />}
-          <button className="primary-button" type="button" disabled={status === "working"} onClick={() => exportPng(touchShare ? "share" : "download")}><Icon name={touchShare ? "share" : "download"} size={17}/>{touchShare ? copy.save : copy.download}</button>
-          {nativeShareAvailable && !touchShare && <button className="secondary-button" type="button" disabled={status === "working"} onClick={() => exportPng("share")}><Icon name="share" size={17}/>{copy.save}</button>}
-          {touchShare && <button className="secondary-button" type="button" disabled={status === "working"} onClick={() => exportPng("download")}><Icon name="download" size={17}/>{copy.download}</button>}
+          <button className="primary-button" type="button" disabled={status === "working"} onClick={() => exportPng(touchShare ? "share" : "download")}><Icon name={touchShare ? "share" : "download"} size={17}/>{touchShare ? saveLabel : copy.download.replace("PNG", fileType.toUpperCase())}</button>
+          {nativeShareAvailable && !touchShare && <button className="secondary-button" type="button" disabled={status === "working"} onClick={() => exportPng("share")}><Icon name="share" size={17}/>{saveLabel}</button>}
+          {touchShare && <button className="secondary-button" type="button" disabled={status === "working"} onClick={() => exportPng("download")}><Icon name="download" size={17}/>{copy.download.replace("PNG", fileType.toUpperCase())}</button>}
         </div>
         {statusText && <p className={`png-export-status is-${status}`} role="status">{statusText}</p>}
       </section>

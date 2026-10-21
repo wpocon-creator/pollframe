@@ -1,0 +1,33 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "pollframe-accounts-preview",
+  "account_id": "01c29a77a387ffb473bd403bf08ed0f5",
+  "main": "worker/browser-preview.js",
+  "compatibility_date": "2026-07-30",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": false,
+  "preview_urls": false,
+  "observability": {"enabled": false,"logs":{"enabled":false,"invocation_logs":false}},
+  "logpush": false,
+  "routes": [{"pattern":"test.pollframe.com","custom_domain":true}],
+  "triggers": {"crons":["47 3 * * *"]},
+  "vars": {
+    "BROWSER_PREVIEW_ENABLED":"true",
+    "ACCOUNTS_ENABLED":"true",
+    "PRIVATE_RESULTS_ENABLED":"true"
+  },
+  "d1_databases": [{
+    "binding":"ACCOUNTS_DB",
+    "database_name":"pollframe-accounts-staging",
+    "database_id":"27b47f20-c612-4f73-b3e4-7645345c2720",
+    "migrations_dir":"migrations/accounts"
+  }],
+  "ratelimits":[{"name":"SECURITY_BURST_LIMITER","namespace_id":"2010","simple":{"limit":120,"period":60}}],
+  "assets": {
+    "directory":"./dist-preview",
+    "binding":"ASSETS",
+    "run_worker_first":true,
+    "html_handling":"none",
+    "not_found_handling":"404-page"
+  }
+}

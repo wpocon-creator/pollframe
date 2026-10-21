@@ -44,6 +44,7 @@ export const ACCOUNT_COPY = {
   "Öffentliche Konten sind noch nicht freigeschaltet. Deine Designs bleiben weiterhin lokal verfügbar.": ["Public accounts are not enabled yet. Your designs remain available locally.", "Las cuentas públicas aún no están habilitadas. Tus diseños siguen disponibles en este dispositivo."],
   "Der Kontodienst ist gerade nicht erreichbar. Bitte später erneut versuchen.": ["The account service is unavailable. Please try again later.", "El servicio de cuentas no está disponible. Inténtalo de nuevo más tarde."],
   "Zu viele Versuche. Bitte eine Minute warten.": ["Too many attempts. Please wait a minute.", "Demasiados intentos. Espera un minuto."],
+  "Zu viele Versuche. Bitte später erneut versuchen.": ["Too many attempts. Please try again later.", "Demasiados intentos. Inténtalo de nuevo más tarde."],
   "Anfrage fehlgeschlagen.": ["Request failed.", "No se pudo completar la solicitud."],
   "Das hat nicht geklappt.": ["That did not work. Please try again.", "No se pudo completar la operación. Inténtalo de nuevo."],
   "Der Kontodienst antwortet nicht rechtzeitig. Bitte noch einmal versuchen.": ["The account service took too long to respond. Please try again.", "El servicio de cuentas ha tardado demasiado en responder. Inténtalo de nuevo."],

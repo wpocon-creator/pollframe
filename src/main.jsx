@@ -1,4 +1,8 @@
 import React, { Suspense, lazy, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { captureAccountRecovery, pendingAccountRecovery } from "./account-recovery.js";
+import { ACCOUNT_UI_ENABLED } from "./account-feature.js";
+import { WAHLFRAME_UI_ENABLED } from "./wahlframe-feature.js";
+if (ACCOUNT_UI_ENABLED) captureAccountRecovery(location.search);
 import { createPortal } from "react-dom";
 import { createRoot } from "react-dom/client";
 import { pollCalculationReceipt } from "./poll-calculation-receipt.js";
@@ -14,13 +18,17 @@ import { trackAggregateEvent, trackAggregateEventOnce } from "./aggregateAnalyti
 import { analyticsExcluded } from '../public/analytics-preference.js';
 import { observeUsage } from './usage-quality.js';
 const FeedbackNotice = lazy(() => import('./feedback-notice.jsx'));
+// Explicit build flag; the server independently checks storage/mail readiness.
+const LocalAccountEntry = ACCOUNT_UI_ENABLED ? lazy(() => import('./account-entry.jsx')) : null;
+const AccountLanding = ACCOUNT_UI_ENABLED ? lazy(() => import('./account-landing.jsx')) : null;
 import NoticeStats from './notice-stats.jsx';
 import { requestWasAborted } from "./network.js";
-import { SITE_ORIGIN, publicShareOrigin } from "./site-origin.js";
+import { SITE_ORIGIN, TEST_SITE_ORIGIN, publicShareOrigin } from "./site-origin.js";
 import { localizedCanonical, languageAlternates } from "./seo-locale.js";
 import { PngExportButton } from "./png-export-button.jsx";
 import { pollReuseDetails, publicationCredit } from './source-attribution.js';
 import { StudioLink } from "./studio-link.jsx";
+import ProductSections from './product-sections.jsx';
 import { EventMarkerGlyph } from "./event-marker-glyph.jsx";
 import { eventLabelMetrics } from "./event-marker-layout.js";
 import { iframeMarkup } from './embed-markup.js';
@@ -231,6 +239,10 @@ function setMetaByProperty(property, content) {
 }
 
 function setCanonicalUrl(path) {
+  if (location.origin === TEST_SITE_ORIGIN) {
+    document.head.querySelector('link[rel="canonical"]')?.remove();
+    return;
+  }
   let element = document.head.querySelector('link[rel="canonical"]');
   if (!element) {
     element = document.createElement("link");
@@ -247,6 +259,7 @@ function updatePageMetadata({
   locale,
   indexable = true,
 }) {
+  if (location.origin === TEST_SITE_ORIGIN) indexable = false;
   const canonicalUrl = localizedCanonical(canonicalPath, locale);
   const openGraphLocale = LOCALE_META[locale]?.openGraph ?? "en_GB";
   document.title = title;
@@ -2013,25 +2026,6 @@ function DateRangeSlider({ locale, min, max, start, end, onStart, onEnd }) {
   );
 }
 
-function SpainRegionalPollingChart({ regional, t, locale, partyInfoProps }) {
-  const parties = [...regional.parties]
-    .sort((a, b) => (regional.current?.results?.[b.id] ?? 0) - (regional.current?.results?.[a.id] ?? 0))
-    .slice(0, 6);
-  const institutes = [...new Set(regional.polls.map(poll => poll.pollster))];
-  const start = regional.polls[0].date;
-  const end = regional.polls.at(-1).date;
-  return <PollChart
-    t={{ ...t, chartTitle: regional.names[locale] ?? regional.names.en }} locale={locale}
-    selectedParties={parties.map(party => party.id)} selectedPollsters={institutes}
-    selectedEventCategories={[]} mode="polls" range="custom" individualPolls
-    polls={regional.polls} pollsters={Object.fromEntries(institutes.map(name => [name, name]))}
-    latestDate={end} partyDefinitions={parties} events={[]} eventCategories={[]} electionResults={{}}
-    termStart={start} archiveStart={start} customStartDate={start} customEndDate={end}
-    maxConnectionGapDays={120}
-    partyInfoProps={partyInfoProps}
-  />;
-}
-
 function PollChart({
   t,
   locale,
@@ -2056,8 +2050,6 @@ function PollChart({
   customEndDate,
   interactiveEventDots = true,
   embedLayout = false,
-  individualPolls = false,
-  partyInfoProps = () => ({}),
 }) {
   const [compactLayout, setCompactLayout] = useState(() => window.matchMedia("(max-width: 680px)").matches);
   const width = compactLayout ? 420 : 1320;
@@ -2153,14 +2145,14 @@ function PollChart({
     [visiblePolls],
   );
   const averagePoints = useMemo(
-    () => individualPolls ? visiblePolls.map(poll => ({ ...poll, pollsterCount: 1 })) : makeAverageSeries(polls, selectedPollsters, averageDates, partyIds),
-    [individualPolls, visiblePolls, polls, selectedPollsters, averageDates, partyIds],
+    () => makeAverageSeries(polls, selectedPollsters, averageDates, partyIds),
+    [polls, selectedPollsters, averageDates, partyIds],
   );
   const endpointSnapshot = useMemo(
     () => latestPollAtOrBefore(polls, selectedPollsters, endDate, partyIds),
     [polls, selectedPollsters, endDate, partyIds],
   );
-  const latestIndividual = !individualPolls && endpointSnapshot.date >= startDate && !endpointSnapshot.synthetic ? endpointSnapshot : null;
+  const latestIndividual = endpointSnapshot.date >= startDate && !endpointSnapshot.synthetic ? endpointSnapshot : null;
 
   const activeParties = useMemo(
     () => partyDefinitions.filter((party) => selectedPartySet.has(party.id)),
@@ -2380,7 +2372,7 @@ function PollChart({
         ...nearest,
         date: nearestPoint.date,
         x: chartX,
-        pollster: individualPolls ? pollsters[nearestPoint.pollster] || nearestPoint.pollster : t.basedOn(nearestPoint.pollsterCount),
+        pollster: t.basedOn(nearestPoint.pollsterCount),
       },
     };
     setCursor((current) => (
@@ -2430,7 +2422,7 @@ function PollChart({
       <div className="line-legend" aria-label={t.parties}>
         <strong>{t.lineLegend}:</strong>
         {activeParties.map((party) => (
-          <PartyInfoButton key={party.id} party={party} includeDot {...partyInfoProps(party)} />
+          <PartyInfoButton key={party.id} party={party} includeDot />
         ))}
         <span className="axis-range-note">{t.axisRange(yAxis.min, yAxis.max)}</span>
       </div>
@@ -2574,14 +2566,14 @@ function PollChart({
               })}
             </g>
           ))}
-          {latestIndividual && activeParties.filter(party => Number.isFinite(latestIndividual.results[party.id])).map(party => <circle key={`latest-poll-${party.id}`} className="latest-individual-poll" data-party-id={party.id} data-value={latestIndividual.results[party.id]} data-date={latestIndividual.date} cx={x(latestIndividual.date)} cy={y(latestIndividual.results[party.id])} r={compactLayout ? 4 : 6} fill="var(--surface)" stroke={party.color} strokeWidth="2.5"><title>{party.name}: {latestIndividual.results[party.id]}% · {pollsters[latestIndividual.pollster]} · {latestIndividual.date}</title></circle>)}
+          {latestIndividual && activeParties.filter(party => Number.isFinite(latestIndividual.results[party.id])).map(party => <circle key={`latest-poll-${party.id}`} className="latest-individual-poll" cx={x(latestIndividual.date)} cy={y(latestIndividual.results[party.id])} r={compactLayout ? 4 : 6} fill="var(--surface)" stroke={party.color} strokeWidth="2.5"><title>{party.name}: {latestIndividual.results[party.id]}% · {pollsters[latestIndividual.pollster]} · {latestIndividual.date}</title></circle>)}
           {!compactLayout && (trendVisible || averageSeriesVisible) && endLabels.map(({ party, point, first, value, delta, labelY }) => (
-            <g key={`end-label-${party.id}`} className="series-end-label" data-party-id={party.id} data-start-date={first?.date} data-end-date={point.date} data-start-value={first?.results[party.id]} data-end-value={value}>
+            <g key={`end-label-${party.id}`} className="series-end-label">
               <title>{party.name} · {first?.date} – {point.date}</title>
               <circle className="series-end-point" cx={x(point.date)} cy={y(value)} r="3.2" fill={party.color} />
               <line x1={width - margin.right + 5} x2={width - margin.right + 17} y1={labelY} y2={labelY} style={{ stroke: party.color }} />
               <text x={width - margin.right + 23} y={labelY + 4}>
-                <tspan className="series-end-value">{party.name} {value.toLocaleString(getNumberLocale(locale), { maximumFractionDigits: 1 })}%</tspan>
+                {party.name} {value.toLocaleString(getNumberLocale(locale), { maximumFractionDigits: 1 })}%
                 {Number.isFinite(delta) && <tspan className="series-period-delta" style={{fill:delta>0.04?"var(--positive)":delta<-.04?"var(--negative)":"var(--muted)"}} dx="7">{delta > 0.04 ? "+" : ""}{delta.toLocaleString(getNumberLocale(locale),{maximumFractionDigits:1})} {locale === "de" ? "Pp." : "pp"}</tspan>}
               </text>
             </g>
@@ -4638,7 +4630,12 @@ function HeaderCountryMenu({ locale, country }) {
 }
 
 function SiteHeader({ t, locale = "de", onSettings, onInfo, pwa, homeHref = "/", homeLabel = "Pollframe Deutschland-Übersicht", countryCode, showReport = true }) {
-  const inStudio = routeQueryForLocation().get("view") === "studio";
+  const inStudio = ["studio","party-match-studio"].includes(routeQueryForLocation().get("view"));
+  const studioQuery=routeQueryForLocation();
+  const returnPath=studioQuery.get('back');
+  const safeReturn=typeof returnPath==='string' && returnPath.startsWith('/') && !returnPath.startsWith('//') && !returnPath.includes('\\') && returnPath.length<2400 && !/[\u0000-\u001f]/.test(returnPath) && !returnPath.startsWith('/studio') && !/[?&]view=(?:studio|party-match-studio)(?:&|$)/.test(returnPath) ? returnPath : '/';
+  const pollframeTarget=new URL(inStudio?safeReturn:homeHref,location.origin);pollframeTarget.searchParams.set('lang',locale);
+  const studioTarget=`/studio?lang=${locale}&back=${encodeURIComponent(inStudio ? safeReturn : `${location.pathname}${location.search}${location.hash}`)}`;
   const headerCountry = countryCode ?? (homeHref.includes("country=uk") ? "uk" : homeHref.includes("country=es") ? "es" : "de");
   const reportLabel = t.reportBug ?? (locale === "de" ? "Problem melden" : locale === "es" ? "Informar" : "Report issue");
   const installApp = async () => {
@@ -4653,10 +4650,6 @@ function SiteHeader({ t, locale = "de", onSettings, onInfo, pwa, homeHref = "/",
           <BrandMark />
           <span>POLLFRAME</span>
         </a>
-        <nav className="product-navigation" aria-label={locale === "de" ? "Pollframe-Bereiche" : locale === "es" ? "Secciones de Pollframe" : "Pollframe sections"}>
-          <a href={inStudio ? `/?lang=${locale}` : homeHref} aria-current={!inStudio ? "page" : undefined}>{locale === "de" ? "Umfragen" : locale === "es" ? "Encuestas" : "Polls"}</a>
-          <a href={`/studio?lang=${locale}&back=${encodeURIComponent(inStudio ? routeQueryForLocation().get("back") || "/" : `${location.pathname}${location.search}${location.hash}`)}`} aria-current={inStudio ? "page" : undefined}>Studio</a>
-        </nav>
         <div className="header-actions">
           {!inStudio && <HeaderCountryMenu locale={locale} country={headerCountry} />}
           {pwa && !pwa.installed && (
@@ -4677,8 +4670,10 @@ function SiteHeader({ t, locale = "de", onSettings, onInfo, pwa, homeHref = "/",
           <button className="header-button" onClick={onSettings} aria-label={t.settings}>
             <Icon name="settings" /><span>{t.settings}</span>
           </button>
+          {LocalAccountEntry && <Suspense fallback={null}><LocalAccountEntry locale={locale} /></Suspense>}
         </div>
       </div>
+      <ProductSections inStudio={inStudio} locale={locale} pollframeHref={`${pollframeTarget.pathname}${pollframeTarget.search}${pollframeTarget.hash}`} studioHref={studioTarget} navigate={navigateInApp} prefetch={prefetchStudioRoute}/>
       {!pwa?.online && (
         <div className="app-status app-status-offline" role="status"><Icon name="wifiOff" size={17} /><span>{t.offlineStatus}</span></div>
       )}
@@ -5545,6 +5540,7 @@ function GermanyCountryOverview({ locale, summary, mapOnly = false }) {
         <OverviewInfoWidget accent="parliament" href={publicRegionPath("bundestag")} eyebrow={l("Nationale Ebene", "nationalLevel")} title={l("Aktuelle Sonntagsfrage zur Bundestagswahl", "federalElection")} text={l("Neueste Umfrage, langfristiger Trend, Institute, Ereignisse und Sitzmodell.", "federalWidget")} stats={[[l("Umfragen", "pollsLabel"), federal?.pollCount?.toLocaleString(getNumberLocale(locale)) ?? "–"], [l("Seit", "sinceLabel"), federal?.firstDate ? new Date(parseDate(federal.firstDate)).getUTCFullYear() : "–"], [l("Zuletzt", "latestLabel"), federal ? <>{formatDate(federal.latestDate, locale, { year: true })}<small className="data-age-label">{formatDataAge(federal.latestDate, locale)}</small></> : "–"]]}><FederalHistoryPreview data={summary?.federalPolling} locale={locale}/></OverviewInfoWidget>
         <OverviewInfoWidget accent="opinion" href={publicViewPath("map")} eyebrow={l("Vergleich der Länder", "stateComparison")} title={l("Deutschland im Überblick", "germanyOverview")} text={l("Parteistärken und Bewegungen auf einer anpassbaren Karte über alle 16 Länder vergleichen.", "stateWidget")} stats={[[l("Länder", "statesLabel"), "16"], [l("Ansichten", "viewsLabel"), "3"], [l("Teilen", "sharingLabel"), locale === "es" ? "Insertar" : "Embed"]]} />
         <Suspense fallback={null}><ElectionResult locale={locale} /></Suspense>
+{WAHLFRAME_UI_ENABLED && <OverviewInfoWidget accent="opinion" stats={[]} href={`/?view=party-match&lang=${locale}`} eyebrow={locale === 'de' ? 'Programme 2025' : locale === 'es' ? 'Programas de 2025' : '2025 programmes'} title={locale === 'de' ? 'Welche Parteien teilen deine Positionen?' : locale === 'es' ? '¿Qué partidos comparten tus posturas?' : 'Which parties share your views?'} text={locale === 'de' ? '8, 16 oder 30 Fragen. Vergleiche Positionen, ändere Antworten und prüfe die Quellen.' : locale === 'es' ? '8, 16 o 30 preguntas. Compara posturas, modifica respuestas y consulta las fuentes.' : '8, 16 or 30 questions. Compare positions, edit answers and inspect the sources.'} />}
       </section>
       {states.length > 0 && <StateCoverageMap states={states} locale={locale} mapGeometry={mapGeometry} />}
       <p className="germany-country-note">{l("Länderkarte und jede Länderansicht verwenden ausschließlich vorhandene Werte; Datenlücken bleiben an den einzelnen Punkten sichtbar.", "mapDataNote")}</p>
@@ -6633,6 +6629,7 @@ function OverviewPage({ t, locale, summary, embedMode = false, mapPage = false }
   );
 }
 
+const LocalPartyMatchLegal = WAHLFRAME_UI_ENABLED ? lazy(() => import('./party-match-legal.jsx')) : null;
 function LegalPage({ locale }) {
   const isGerman = locale === "de";
   const l = (de, en, es) => locale === "de" ? de : locale === "es" ? es : en;
@@ -6659,6 +6656,7 @@ function LegalPage({ locale }) {
         <h2>{l("Verantwortlich für journalistisch-redaktionelle Inhalte", "Responsible for journalistic and editorial content", "Responsable del contenido periodístico y editorial")}</h2>
         <p>{l("Gemäß § 18 Abs. 2 MStV", "Under section 18(2) MStV", "Conforme al artículo 18, apartado 2, del MStV")}:<br />Katharina O&apos;Connor, {l("Anschrift wie oben.", "address as above.", "con la dirección indicada arriba.")}</p>
       </section>
+      {LocalPartyMatchLegal && <Suspense fallback={null}><LocalPartyMatchLegal locale={locale} /></Suspense>}
     </main>
   );
 }
@@ -8439,7 +8437,7 @@ function RegionalApp() {
       <>
         <SiteHeader t={t} locale={locale} pwa={pwa} onSettings={() => setSettingsOpen(true)} homeHref={homeHref} homeLabel={homeLabel} countryCode="es" />
         {spainSummary ? (spainRegionPage
-          ? <SpainRegionPage locale={locale} regions={spainSummary.regions} area={spainRegionArea} formatDate={formatDate} renderTrend={(regional, partyInfoProps) => <SpainRegionalPollingChart regional={regional} t={t} locale={locale} partyInfoProps={partyInfoProps} />} />
+          ? <SpainRegionPage locale={locale} regions={spainSummary.regions} area={spainRegionArea} formatDate={formatDate} />
           : spainIssuesPage
             ? <SpainIssuesPage locale={locale} summary={spainSummary} formatDate={formatDate} numberLocale={getNumberLocale(locale)} />
             : <SpainCountryOverview locale={locale} summary={spainSummary} formatDate={formatDate} numberLocale={getNumberLocale(locale)} />) : <div className="embed-loading">{loadError ? t.error : t.loading}</div>}
@@ -8752,7 +8750,13 @@ function RegionalApp() {
 
 const StudioPublishDialog = lazy(() => import("./studio-publish-dialog.jsx"));
 function StudioPublishBridge(props) {return <StudioPublishDialog {...props} ShareModal={WidgetShareModal} translations={copy}/>;}
-const GraphicStudio = lazy(() => import("./graphic-studio.jsx"));
+let studioModule;
+function loadStudioRoute(){return studioModule ||= import('./graphic-studio.jsx').catch(error=>{studioModule=null;throw error;});}
+function prefetchStudioRoute(){if(navigator.connection?.saveData || /(^|-)2g$/.test(navigator.connection?.effectiveType||''))return;loadStudioRoute().catch(()=>{});}
+const GraphicStudio = lazy(loadStudioRoute);
+// Separately flagged product route; personal views exclude visit analytics.
+const PartyMatch = WAHLFRAME_UI_ENABLED ? lazy(() => import('./party-match.jsx')) : null;
+const PartyMatchStudio = WAHLFRAME_UI_ENABLED ? lazy(() => import('./party-match-studio.jsx')) : null;
 const ElectionPage = lazy(() => import("./election-page.jsx"));
 const StudioCurrentEmbed = lazy(() => import("./studio-current-embed.jsx"));
 function ElectionShareTools({ kind, elementRef, title, locale, options }) {
@@ -8776,15 +8780,26 @@ function StudioSiteHeader({ locale, setLocale }) {
 }
 function AppRouter() {
   const [, update] = useState(0);
+  // Recovery is an account task, not a catalogue task. Keep its header/dialog
+  // stable and avoid rendering dozens of Studio thumbnails behind the form.
+  const [accountLanding, setAccountLanding] = useState(() => ACCOUNT_UI_ENABLED && !IS_EMBED_ENTRY && Boolean(pendingAccountRecovery()));
   useEffect(() => {
     const navigate = () => update((version) => version + 1);
+    const closed = () => setAccountLanding(false);
     window.addEventListener("popstate", navigate);
-    return () => window.removeEventListener("popstate", navigate);
+    window.addEventListener("pollframe-account-dialog-closed", closed);
+    return () => {
+      window.removeEventListener("popstate", navigate);
+      window.removeEventListener("pollframe-account-dialog-closed", closed);
+    };
   }, []);
+  if (accountLanding) return <Suspense fallback={<main role="status">Pollframe …</main>}><AccountLanding Header={StudioSiteHeader}/></Suspense>;
   if (IS_EMBED_ENTRY && new URLSearchParams(location.search).get("studioDesign") === "1") return <Suspense fallback={<main role="status">Pollframe …</main>}><StudioCurrentEmbed /></Suspense>;
+  if (WAHLFRAME_UI_ENABLED && !IS_EMBED_ENTRY && routeQueryForLocation().get('view') === 'party-match') return <Suspense fallback={<main role="status">Pollframe …</main>}><PartyMatch Header={StudioSiteHeader} /></Suspense>;
+  if (WAHLFRAME_UI_ENABLED && !IS_EMBED_ENTRY && routeQueryForLocation().get('view') === 'party-match-studio') return <Suspense fallback={<main role="status">Pollframe Studio …</main>}><PartyMatchStudio Header={StudioSiteHeader} /></Suspense>;
   if (routeQueryForLocation().get("view") === "election-st2026") return <Suspense fallback={<main role="status">Pollframe …</main>}><ElectionPage Header={IS_EMBED_ENTRY ? null : StudioSiteHeader} ShareTools={ElectionShareTools} embed={IS_EMBED_ENTRY}/></Suspense>;
   return !IS_EMBED_ENTRY && routeQueryForLocation().get("view") === "studio"
-    ? <Suspense fallback={<main className="embed-loading" aria-busy="true" aria-labelledby="studio-loading-heading"><h1 id="studio-loading-heading" className="sr-only">Pollframe Studio</h1><p role="status">Pollframe Studio …</p></main>}><GraphicStudio Header={StudioSiteHeader} PublishDialog={StudioPublishBridge} /></Suspense>
+    ? <Suspense fallback={<main className="embed-loading" role="status">Pollframe Studio …</main>}><GraphicStudio Header={StudioSiteHeader} PublishDialog={StudioPublishBridge} /></Suspense>
     : <RegionalApp />;
 }
 installModalScrollGuard();

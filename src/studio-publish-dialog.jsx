@@ -89,6 +89,7 @@ export default function StudioPublishDialog({
         studio={{
           onPublished,
           render: () => download({ renderOnly: true }),
+          vector: async () => { const { serializeStudioSvg } = await import("./studio-font-loader.js"); return serializeStudioSvg(svgRef.current, state.font); },
           preview: (
             <StudioPngPreview
               state={state}

@@ -56,7 +56,7 @@ test('login brute force is limited even with forged forwarded-IP headers',async(
   const lab=await createAccountLab();
   try {
     let response;
-    for(let i=0;i<6;i++) response=await lab.handle(new Request('http://127.0.0.1:4173/api/auth/sign-in/email',{method:'POST',headers:{origin:'http://127.0.0.1:4173','content-type':'application/json','x-forwarded-for':`192.0.2.${i}`,'x-lab-peer':`192.0.2.${i}`},body:JSON.stringify({email:'missing@example.test',password:'A very long wrong password'})}));
+    for(let i=0;i<11;i++) response=await lab.handle(new Request('http://127.0.0.1:4173/api/auth/sign-in/email',{method:'POST',headers:{origin:'http://127.0.0.1:4173','content-type':'application/json','x-forwarded-for':`192.0.2.${i}`,'x-lab-peer':`192.0.2.${i}`},body:JSON.stringify({email:'missing@example.test',password:'A very long wrong password'})}));
     assert.equal(response.status,429);
   }finally{lab.close();}
 });

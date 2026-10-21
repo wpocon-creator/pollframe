@@ -137,7 +137,8 @@ for (const line of headers.split("\n")) {
   requireCondition(line.length <= 2_000, "_headers contains a line above Cloudflare's 2,000-character limit");
 }
 
-const workflows = `${workflow}\n${qualityWorkflow}`;
+const securityWorkflow = await read(".github/workflows/security-daily.yml");
+const workflows = `${workflow}\n${qualityWorkflow}\n${securityWorkflow}`;
 const actionReferences = [...workflows.matchAll(/\buses:\s*[^@\s]+@([^\s#]+)/g)];
 requireCondition(actionReferences.length > 0, "workflow contains no pinned action references");
 for (const reference of actionReferences) {
@@ -146,6 +147,7 @@ for (const reference of actionReferences) {
 requireCondition(workflows.includes("npm ci --ignore-scripts"), "workflow install scripts are not disabled");
 requireCondition(workflows.includes("npm audit --audit-level=low"), "workflow dependency audit is missing");
 requireCondition(workflows.includes("set -euo pipefail"), "workflow shell hardening is missing");
+requireCondition(securityWorkflow.includes("schedule:") && securityWorkflow.includes("scripts/security-monitor.mjs") && securityWorkflow.includes("scripts/security-alert.mjs"), "daily release security monitoring and alerts are missing");
 requireCondition(qualityWorkflow.includes("tests/accessibility.spec.mjs") && qualityWorkflow.includes("tests/integration.spec.mjs") && qualityWorkflow.includes("tests/mobile-layout.spec.mjs") && qualityWorkflow.includes("tests/layout-audit.spec.mjs"), "pull requests do not run accessibility, core, mobile and global-layout regression gates");
 requireCondition(qualityWorkflow.includes("chromium firefox webkit"), "quality gate does not install all supported browser engines");
 requireCondition(workflow.includes("npm run data:review"), "scheduled updates do not pause on unapproved large data movements");

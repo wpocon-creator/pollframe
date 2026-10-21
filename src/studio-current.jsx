@@ -38,6 +38,7 @@ import { useStudioFont, serializeStudioSvg } from "./studio-font-loader.js";
 import { studioFont, textX, textAnchor } from "./studio-fonts.js";
 import { studioEmbedParams, studioText } from "./studio-model.js";
 import { StudioLoadBoundary } from "./studio-load-boundary.jsx";
+import {recentSnapshots,rememberSnapshot} from './studio-public-snapshot-cache.js';
 import { wrapText } from "./studio-text-layout.js";
 const StudioEditorControls = lazy(() =>
   import("./studio-editor-controls.jsx").then((module) => ({
@@ -68,7 +69,8 @@ const wrapTitle = (value, font, size, weight = 700) =>
 // Changing visual templates never triggers another fetch or recalculation.
 export function useCurrentSnapshot(state, enabled) {
   const frame = useRef(null);
-  const cache = useRef(new Map());
+  const cache = useRef(null);
+  if(!cache.current) cache.current=recentSnapshots('current');
   const [result, setResult] = useState({ key: "", data: null, error: false });
   const [retry, setRetry] = useState(0);
   const params = studioEmbedParams(
@@ -81,6 +83,7 @@ export function useCurrentSnapshot(state, enabled) {
   params.set("lang", state.lang);
   for (const field of ["range", "mode", "events", "parties", "from", "to"])
     params.delete(field);
+  params.sort();
   const key = params.toString();
   useEffect(() => {
     if (!enabled || cache.current.has(key)) return;
@@ -98,6 +101,7 @@ export function useCurrentSnapshot(state, enabled) {
           if (!data.date || !Array.isArray(data.rows))
             throw new Error("snapshot");
           cache.current.set(key, data);
+          rememberSnapshot('current',key,data);
           if (cache.current.size > 8) cache.current.delete(cache.current.keys().next().value);
           setResult({ key, data, error: false });
           return;
@@ -1106,12 +1110,12 @@ export function CurrentDesignPreview({
           "Guardado en Mis diseños.",
         ),
       );
-    } catch {
+    } catch (error) {
       setStatus(
-        l(
-          "Speichern fehlgeschlagen. Prüfe den freien Browser-Speicher.",
-          "Could not save. Check available browser storage.",
-          "No se pudo guardar. Comprueba el espacio del navegador.",
+        error.code==='ACCOUNT_REQUIRED' ? error.message : l(
+          "Speichern fehlgeschlagen. Prüfe deine Anmeldung und Verbindung.",
+          "Could not save. Check your sign-in and connection.",
+          "No se pudo guardar. Comprueba tu sesión y conexión.",
         ),
       );
     } finally {

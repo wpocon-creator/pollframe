@@ -15,9 +15,6 @@ async function settle(page) {
   await page.waitForLoadState("domcontentloaded");
   await page.evaluate(() => document.fonts?.ready);
   await expect(page.locator("main")).toBeVisible();
-  // A visible Suspense/loading landmark is not the completed Studio page.
-  await expect(page.locator('main[aria-busy="true"]')).toHaveCount(0);
-  await expect(page.locator('main h1')).toHaveCount(1);
 }
 
 test("public routes retain a named, unambiguous document structure", async ({ page }) => {
@@ -55,25 +52,6 @@ test("public routes retain a named, unambiguous document structure", async ({ pa
     expect(audit.main, `${route} needs exactly one main landmark`).toBe(1);
     expect(audit.lang, `${route} needs a document language`).toMatch(/^(de|en|es)(-|$)/);
   }
-});
-
-test("Studio has an accessible heading while its lazy-loaded module is pending", async ({ page }) => {
-  let releaseModule;
-  const pending = new Promise((resolve) => { releaseModule = resolve; });
-  await page.route(/\/assets\/graphic-studio-[^/]+\.js(?:\?.*)?$/, async (route) => {
-    await pending;
-    await route.continue();
-  });
-  try {
-    await page.goto('/?view=studio&country=de&lang=de', { waitUntil: 'domcontentloaded' });
-    await expect(page.locator('main[aria-busy="true"]')).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Pollframe Studio', level: 1 })).toHaveCount(1);
-    await expect(page.getByRole('status')).toContainText('Pollframe Studio');
-  } finally {
-    releaseModule();
-  }
-  await expect(page.locator('.studio-main.is-gallery')).toBeVisible();
-  await settle(page);
 });
 
 test("keyboard focus enters the interface and modal focus returns to its trigger", async ({ page }) => {

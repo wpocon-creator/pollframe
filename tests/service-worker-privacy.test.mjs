@@ -13,6 +13,23 @@ function fixture(header="public, max-age=60") {
   vm.runInContext(source,context);
   return {context,listeners,puts,deletes};
 }
+test("activation removes older release caches even when the release prefix changed", async () => {
+  const f = fixture();
+  const current = Array.from(vm.runInContext('[SHELL_CACHE, RUNTIME_CACHE, DATA_CACHE]', f.context));
+  const old = [
+    "pollframe-app-v40-shell",
+    "pollframe-data-release-20261010-runtime",
+    "pollframe-accounts-wahlframe-20261020-shell",
+    "pollframe-feedback-mail-20261020-data",
+  ];
+  f.context.caches.keys = async () => [...old, ...current, "other-app-shell", "pollframe-preferences"];
+  f.context.self.registration = {};
+  f.context.self.clients = { claim: async () => {} };
+  let completed;
+  f.listeners.activate({ waitUntil: promise => { completed = promise; } });
+  await completed;
+  assert.deepEqual(f.deletes.sort(), old.sort());
+});
 test("private/no-store pages never enter offline caches, ordinary public pages still do",async()=>{
   for(const header of ["private, no-store","no-store","private, max-age=30","public, max-age=60"]){
     const f=fixture(header);f.context.request=new Request("https://pollframe.test/");

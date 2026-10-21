@@ -1,0 +1,110 @@
+[
+  {
+    "kind": "marble",
+    "map": "color",
+    "asset": "marble_01",
+    "source": "https://polyhaven.com/a/marble_01",
+    "download": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/marble_01/marble_01_diff_1k.jpg",
+    "license": "CC0-1.0",
+    "originalMd5": "04325ced5018eb8a2e598a4ef69cb176",
+    "sha256": "ad65e22a1543515faea60ff48720ff0dce3570cd2189c1950fa9ee1d061559c3",
+    "bytes": 335936,
+    "changes": "1024px WebP; neutral luminance for party-colour tint"
+  },
+  {
+    "kind": "marble",
+    "map": "normal",
+    "asset": "marble_01",
+    "source": "https://polyhaven.com/a/marble_01",
+    "download": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/marble_01/marble_01_nor_gl_1k.jpg",
+    "license": "CC0-1.0",
+    "originalMd5": "fa073d722cde733c1bd6cc6e8897c8e3",
+    "sha256": "28d52cb2de758b0ca4a5386a3b0099cc147d2cf6d1b06a9125940cb133d4ae2c",
+    "bytes": 28216,
+    "changes": "1024px WebP; original channels preserved"
+  },
+  {
+    "kind": "marble",
+    "map": "arm",
+    "asset": "marble_01",
+    "source": "https://polyhaven.com/a/marble_01",
+    "download": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/marble_01/marble_01_arm_1k.jpg",
+    "license": "CC0-1.0",
+    "originalMd5": "51017a4e4f320c3b58763c66727d89c1",
+    "sha256": "ac6314d03c082b651b5da67aaf17f423c6b4a6c38b589835c636e087a46d1a79",
+    "bytes": 30754,
+    "changes": "1024px WebP; original channels preserved"
+  },
+  {
+    "kind": "rock",
+    "map": "color",
+    "asset": "rock_01",
+    "source": "https://polyhaven.com/a/rock_01",
+    "download": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/rock_01/rock_01_diff_1k.jpg",
+    "license": "CC0-1.0",
+    "originalMd5": "5897cd4496982b03cad0c3e2358486c0",
+    "sha256": "ceee352a46de58162f9b8822e9f5d4c56af0b24809491d30465522b2b5dee4cd",
+    "bytes": 479650,
+    "changes": "1024px WebP; neutral luminance for party-colour tint"
+  },
+  {
+    "kind": "rock",
+    "map": "normal",
+    "asset": "rock_01",
+    "source": "https://polyhaven.com/a/rock_01",
+    "download": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/rock_01/rock_01_nor_gl_1k.jpg",
+    "license": "CC0-1.0",
+    "originalMd5": "d5a1d0797aaeb1ac3520504911058903",
+    "sha256": "90f6fd52377e3fee799aa090c964b19af38aaebd3c79abea1f44c83bd4ce1f24",
+    "bytes": 474568,
+    "changes": "1024px WebP; original channels preserved"
+  },
+  {
+    "kind": "rock",
+    "map": "arm",
+    "asset": "rock_01",
+    "source": "https://polyhaven.com/a/rock_01",
+    "download": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/rock_01/rock_01_arm_1k.jpg",
+    "license": "CC0-1.0",
+    "originalMd5": "bcf75b16af394d77466ac8e4d695ad12",
+    "sha256": "8f42c79fd895a5eddab08065876de8f640b7e23d8e22d778e047369c1222d186",
+    "bytes": 199936,
+    "changes": "1024px WebP; original channels preserved"
+  },
+  {
+    "kind": "metal",
+    "map": "color",
+    "asset": "metal_plate",
+    "source": "https://polyhaven.com/a/metal_plate",
+    "download": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/metal_plate/metal_plate_diff_1k.jpg",
+    "license": "CC0-1.0",
+    "originalMd5": "bd9daf4c04046ca392a38b8df955ed26",
+    "sha256": "145142a5adcee57ccc36ba0da164a24d3fe6862c341b53e227227c8dd35fdb3f",
+    "bytes": 299010,
+    "changes": "1024px WebP; neutral luminance for party-colour tint"
+  },
+  {
+    "kind": "metal",
+    "map": "normal",
+    "asset": "metal_plate",
+    "source": "https://polyhaven.com/a/metal_plate",
+    "download": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/metal_plate/metal_plate_nor_gl_1k.jpg",
+    "license": "CC0-1.0",
+    "originalMd5": "d379e66130ad6ccff217ac9b13de935d",
+    "sha256": "31031763ebb1503a07e15283b552eee6fc9866dcd06632ec48f7aa02c75aa733",
+    "bytes": 315776,
+    "changes": "1024px WebP; original channels preserved"
+  },
+  {
+    "kind": "metal",
+    "map": "arm",
+    "asset": "metal_plate",
+    "source": "https://polyhaven.com/a/metal_plate",
+    "download": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/metal_plate/metal_plate_arm_1k.jpg",
+    "license": "CC0-1.0",
+    "originalMd5": "13f064ffa4863a4170d902f675eb022e",
+    "sha256": "9859aadd79d830f08478339569638e12742bcbc432816727c0fd9dcdba713c45",
+    "bytes": 324338,
+    "changes": "1024px WebP; original channels preserved"
+  }
+]

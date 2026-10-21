@@ -87,7 +87,7 @@ async function auditPngDialog(page, expectedFormats) {
       clientWidth: root.clientWidth,
       visibleActions,
       overlap: actions && formats ? Math.max(0, Math.min(actions.bottom, formats.bottom) - Math.max(actions.top, formats.top)) : 0,
-      preview: preview ? { width: preview.width, height: preview.height } : null,
+      preview: preview ? { width: preview.width, height: preview.height, bottom:preview.bottom, containerBottom:root.querySelector('.png-live-preview').getBoundingClientRect().bottom } : null,
       documentOverflow: document.documentElement.scrollWidth - viewport.width,
     };
   });
@@ -98,7 +98,8 @@ async function auditPngDialog(page, expectedFormats) {
   expect(geometry.visibleActions).toBe(true);
   expect(geometry.overlap).toBeLessThanOrEqual(1);
   expect(geometry.preview?.width).toBeGreaterThan(100);
-  expect(geometry.preview?.height).toBeGreaterThan(100);
+  expect(geometry.preview?.height).toBeGreaterThan(await page.evaluate(() => innerWidth <= 380 ? 40 : 100));
+  expect(geometry.preview?.bottom, 'the full preview, including its sources, must fit inside its frame').toBeLessThanOrEqual(geometry.preview?.containerBottom + 1);
   return modal;
 }
 

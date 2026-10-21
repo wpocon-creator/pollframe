@@ -1,4 +1,8 @@
-import React from "react";
+import React, {lazy, Suspense} from "react";
+import { ACCOUNT_UI_ENABLED } from "./account-feature.js";
+import { WAHLFRAME_UI_ENABLED } from './wahlframe-feature.js';
+const AccountPrivacy = ACCOUNT_UI_ENABLED ? lazy(() => import("./account-privacy.jsx")) : null;
+const PartyMatchLegal = WAHLFRAME_UI_ENABLED ? lazy(() => import('./party-match-legal.jsx')) : null;
 
 // Spanish version of the existing notice. Provider names, addresses, links,
 // retention periods and legal references are preserved, not paraphrased away.
@@ -8,7 +12,8 @@ export default function SpanishPrivacyPage({email}) {
     <p className="section-label">Información legal</p>
     <h1>Política de privacidad</h1>
     <p>Puedes <a href="?page=datenschutz&lang=es&analytics=off">excluir este navegador de nuestras estadísticas de visitas</a> o <a href="?page=datenschutz&lang=es&analytics=on">volver a incluirlo</a>. Para ello, Pollframe guarda únicamente una preferencia de activación o desactivación en este dispositivo. No es un identificador y no se envía a nuestros contadores. Al borrar los datos del sitio se elimina la preferencia. Las estadísticas técnicas de solicitudes de Cloudflare no se ven afectadas.</p>
-    <p className="privacy-updated">Actualización: 28 de septiembre de 2026</p>
+    <p className="privacy-updated">Actualización: 19 de octubre de 2026</p>
+    {PartyMatchLegal && <Suspense fallback={null}><PartyMatchLegal locale="es" privacy /></Suspense>}
     <section><h2>1. Responsable del tratamiento</h2>
       <address>Katharina O&apos;Connor<br/>Kaiserallee 2b<br/>23570 Lübeck<br/>Alemania</address>
       <p>Correo electrónico: <a href={`mailto:${email}`}>{email}</a></p>
@@ -23,7 +28,7 @@ export default function SpanishPrivacyPage({email}) {
       <p>Studio guarda en este dispositivo los diseños, estilos reutilizables, archivos importados y hasta 40 identificadores de plantillas abiertas recientemente. Esta lista permite ordenar por «Vistos recientemente» y no se envía a nuestra analítica. Los borradores locales no constituyen una copia de seguridad de una cuenta entre dispositivos.</p>
       <p>Pollframe guarda en el almacenamiento local del navegador los ajustes que eliges —idioma, apariencia y tamaño del texto— y la última instantánea de encuestas mostrada. La lista de seguimiento solo se ofrece al abrir Pollframe como aplicación instalada. Sus entradas contienen únicamente los parlamentos y partidos elegidos y los últimos valores de comparación; no se envían a Pollframe ni se sincronizan entre dispositivos. Una referencia limitada a la sesión mantiene estables los cambios mientras la aplicación sigue abierta y caduca al terminar esa sesión del navegador o tras 24 horas. Un trabajador de servicio y la caché del navegador conservan los archivos de la aplicación y los resúmenes básicos necesarios para funcionar sin conexión. La aplicación instalada también prepara para uso sin conexión los archivos de encuestas nacionales de Alemania, Reino Unido y España, las series de los estados alemanes, los datos regionales españoles, los resultados de circunscripciones británicas. En un navegador normal, los conjuntos detallados se guardan en caché solo después de usarlos.</p>
       <p>Si activas las alertas del dispositivo, el navegador solicita permiso para las notificaciones. Pollframe comprueba los cambios de la lista de seguimiento mientras la aplicación está abierta. Los cambios ya mostrados se marcan localmente como vistos y no generan una alerta posterior del sistema. Un registro local conservado durante un máximo de 14 días evita alertas duplicadas al reiniciar la aplicación. Actualmente no hay notificaciones push en segundo plano cuando la aplicación está cerrada. No se guarda ninguna suscripción push ni dirección de entrega de notificaciones en un servidor de Pollframe.</p>
-      <p>Estos archivos permanecen en tu dispositivo hasta que se sustituyen automáticamente o eliminas la aplicación o los datos del sitio de Pollframe. La biblioteca guardada no se sube ni se utiliza para identificarte. Al abrir o compartir enlaces configurados de Studio, los ajustes y textos propios incluidos en la URL se transmiten a Pollframe y, al compartirlos, al destinatario. No incluyas información confidencial. Los archivos locales de imágenes y fuentes importados no se incluyen en esas URL.</p>
+      <p>Estos archivos permanecen en tu dispositivo hasta que se sustituyen automáticamente o eliminas la aplicación o los datos del sitio de Pollframe. La biblioteca local no se sube automáticamente ni se utiliza para identificar visitantes. Las subidas expresas a una cuenta, cuando estén disponibles, se explican en la sección de cuentas. Al abrir o compartir enlaces configurados de Studio, los ajustes y textos propios incluidos en la URL se transmiten a Pollframe y, al compartirlos, al destinatario. No incluyas información confidencial. Los archivos locales de imágenes y fuentes importados no se incluyen en esas URL.</p>
     </section>
     <section><h2>4. Cookies, medición de audiencia y publicidad</h2>
       <p>Para cada aviso informativo (introducción a Studio o invitación a enviar comentarios), contamos por separado las visualizaciones, los cierres explícitos y los clics en el enlace como totales diarios, sin vincularlos a una persona. Los indicadores locales y un límite de tiempo evitan avisos repetidos o simultáneos; estos valores funcionales nunca se envían a la analítica. La exclusión de analítica también se aplica a estos contadores.</p>
@@ -52,8 +57,9 @@ export default function SpanishPrivacyPage({email}) {
     <section><h2>9. Tus derechos</h2>
       <p>Cuando se cumplen los requisitos legales, tienes derecho de acceso, rectificación, supresión, limitación del tratamiento y portabilidad, así como a oponerte al tratamiento basado en intereses legítimos. También puedes presentar una reclamación ante una autoridad de protección de datos. Para ejercer tus derechos, escribe al correo indicado arriba.</p>
     </section>
-    <section><h2>10. Cambios</h2>
-      <p>Esta política se actualizará antes de introducir publicidad, cuentas de usuario, pagos, servicios adicionales de analítica u otros servicios que traten datos adicionales.</p>
+    {AccountPrivacy && <Suspense fallback={null}><AccountPrivacy locale="es" /></Suspense>}
+    <section><h2>{ACCOUNT_UI_ENABLED ? "11" : "10"}. Cambios</h2>
+      <p>Esta política se actualizará antes de introducir publicidad, pagos, servicios adicionales de analítica u otros servicios que traten datos adicionales.</p>
     </section>
   </main>;
 }

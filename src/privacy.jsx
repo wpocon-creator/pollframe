@@ -1,5 +1,9 @@
 import React, { lazy, Suspense } from "react";
+import { ACCOUNT_UI_ENABLED } from "./account-feature.js";
+import { WAHLFRAME_UI_ENABLED } from './wahlframe-feature.js';
+const AccountPrivacy = ACCOUNT_UI_ENABLED ? lazy(() => import("./account-privacy.jsx")) : null;
 const SpanishPrivacyPage = lazy(() => import("./privacy-es.jsx"));
+const PartyMatchLegal = WAHLFRAME_UI_ENABLED ? lazy(() => import('./party-match-legal.jsx')) : null;
 export default function PrivacyPage({ locale, email: CONTACT_EMAIL }) {
   const isGerman = locale === "de";
   if (locale === "es") return <Suspense fallback={<main role="status">Cargando…</main>}><SpanishPrivacyPage email={CONTACT_EMAIL}/></Suspense>;
@@ -10,7 +14,8 @@ export default function PrivacyPage({ locale, email: CONTACT_EMAIL }) {
         <p className="section-label">Legal</p>
         <h1>Privacy notice</h1>
         <p>You can <a href="?page=datenschutz&lang=en-GB&analytics=off">exclude this browser from our visit statistics</a> or <a href="?page=datenschutz&lang=en-GB&analytics=on">include it again</a>. Pollframe saves only an on/off preference locally; it is not an identifier and is not sent to our counters. Clearing website data removes the preference. Cloudflare's technical request statistics are unaffected.</p>
-        <p className="privacy-updated">Last updated: 28 September 2026</p>
+        <p className="privacy-updated">Last updated: 19 October 2026</p>
+        {PartyMatchLegal && <Suspense fallback={null}><PartyMatchLegal locale={locale} privacy /></Suspense>}
 
         <section>
           <h2>1. Controller</h2>
@@ -36,7 +41,7 @@ export default function PrivacyPage({ locale, email: CONTACT_EMAIL }) {
           <p>Studio also stores saved designs, reusable styles, imported files and up to 40 recently opened template IDs on this device. The recent-template list supports the “Recently viewed” sort order; it is not sent to our analytics. These local drafts are not a cross-device account backup. The explanatory video is served by Pollframe itself without a third-party video player.</p>
           <p>Pollframe stores settings you actively select—language, appearance and text size—and the latest polling snapshot shown to you in your browser’s local storage. The Watchlist is offered only when Pollframe is opened as an installed app. Its entries contain only selected parliaments and parties plus the last comparison values; they are not sent to Pollframe or synchronised between devices. A session-only baseline keeps changes stable while the app remains open and expires when that browser session ends or after 24 hours. A service worker and browser cache retain the application files and core summaries needed for offline fallback. When Pollframe is opened as an installed app, it also prepares the German, UK and Spanish national polling archives, German state series, Spanish regional data, UK constituency results for offline use. An ordinary browser caches detailed datasets only after they are used.</p>
           <p>If you actively enable device alerts, your browser asks for notification permission. Pollframe checks Watchlist changes while the app is running. Changes already displayed are marked as seen locally and do not produce a delayed system alert. A local record retained for up to 14 days prevents duplicate alerts across app restarts. There is currently no background push delivery when the app is closed. No push subscription or notification endpoint is stored on a Pollframe server.</p>
-          <p>These files remain on your device until they are replaced automatically or you remove the app or Pollframe’s website data. The saved library is not uploaded or used to identify you. Opening or sharing configured Studio links transmits the settings and any custom text contained in the URL to Pollframe and, when shared, the recipient. Do not include confidential information. Imported local image and font files are not included in those URLs.</p>
+          <p>These files remain on your device until they are replaced automatically or you remove the app or Pollframe’s website data. The local library is not uploaded automatically or used to identify visitors. Explicit account uploads, where available, are described in the account section below. Opening or sharing configured Studio links transmits the settings and any custom text contained in the URL to Pollframe and, when shared, the recipient. Do not include confidential information. Imported local image and font files are not included in those URLs.</p>
         </section>
 
         <section>
@@ -78,9 +83,10 @@ export default function PrivacyPage({ locale, email: CONTACT_EMAIL }) {
           <p>Subject to the legal requirements, you may request access, correction, deletion, restriction of processing and data portability, and you may object to processing based on legitimate interests. You may also lodge a complaint with a data-protection supervisory authority. Use the email address above to exercise these rights.</p>
         </section>
 
+        {AccountPrivacy && <Suspense fallback={null}><AccountPrivacy locale={locale} /></Suspense>}
         <section>
-          <h2>10. Changes</h2>
-          <p>This notice will be updated before introducing advertising, user accounts, payments, additional analytics services or other services that process additional data.</p>
+          <h2>{ACCOUNT_UI_ENABLED ? "11" : "10"}. Changes</h2>
+          <p>This notice will be updated before introducing advertising, payments, additional analytics services or other services that process additional data.</p>
         </section>
       </main>
     );
@@ -92,7 +98,8 @@ export default function PrivacyPage({ locale, email: CONTACT_EMAIL }) {
       <p className="section-label">Rechtliches</p>
       <h1>Datenschutzerklärung</h1>
       <p>Du kannst diesen Browser <a href="?page=datenschutz&analytics=off">von unserer Besuchsstatistik ausschließen</a> oder <a href="?page=datenschutz&analytics=on">wieder mitzählen lassen</a>. Dafür speichert Pollframe ausschließlich eine Ein-/Aus-Einstellung lokal; sie ist keine Kennung und wird nicht an unsere Zähler übertragen. Beim Löschen der Website-Daten entfällt die Einstellung. Cloudflares technische Anfragestatistik bleibt davon unberührt.</p>
-      <p className="privacy-updated">Stand: 28. September 2026</p>
+      <p className="privacy-updated">Stand: 19. Oktober 2026</p>
+      {PartyMatchLegal && <Suspense fallback={null}><PartyMatchLegal locale={locale} privacy /></Suspense>}
 
       <section>
         <h2>1. Verantwortlicher</h2>
@@ -118,7 +125,7 @@ export default function PrivacyPage({ locale, email: CONTACT_EMAIL }) {
         <p>Studio speichert außerdem gespeicherte Designs, wiederverwendbare Stile, importierte Dateien und bis zu 40 zuletzt geöffnete Vorlagen-IDs auf diesem Gerät. Die Vorlagenliste ermöglicht die Sortierung „Kürzlich angesehen“ und wird nicht an unsere Statistikzähler übermittelt. Diese lokalen Entwürfe sind keine geräteübergreifende Kontosicherung. Das Erklärvideo wird von Pollframe selbst ohne externen Videoplayer ausgeliefert.</p>
         <p>Pollframe speichert von dir gewählte Einstellungen – Sprache, Darstellung und Textgröße – sowie den zuletzt angezeigten Umfragestand im lokalen Speicher deines Browsers. Die Watchlist wird nur angeboten, wenn Pollframe als installierte App geöffnet ist. Ihre Einträge enthalten nur ausgewählte Parlamente und Parteien sowie die letzten Vergleichswerte; sie werden nicht an Pollframe übertragen und nicht zwischen Geräten synchronisiert. Ein nur für die laufende Sitzung gespeicherter Ausgangsstand hält Änderungen während der geöffneten App stabil und verfällt beim Ende der Browsersitzung oder spätestens nach 24 Stunden. Ein Service Worker und der Browser-Cache speichern die Anwendungsdateien und kompakten Übersichten für die Offline-Reserve. Wenn Pollframe als installierte App geöffnet wird, bereitet es zusätzlich die nationalen Umfragearchive für Deutschland, das Vereinigte Königreich und Spanien, die deutschen Länderreihen, spanische Regionaldaten, britische Wahlkreisergebnisse für die Offline-Nutzung vor. Im normalen Browser werden ausführliche Datensätze erst gespeichert, nachdem sie verwendet wurden.</p>
         <p>Wenn du Gerätehinweise aktiv einschaltest, fragt dein Browser nach der Benachrichtigungsberechtigung. Pollframe prüft Watchlist-Veränderungen, solange die App läuft. Bereits angezeigte Veränderungen werden lokal als gesehen vermerkt und lösen keinen verspäteten Systemhinweis aus. Ein lokaler Vermerk für bis zu 14 Tage verhindert doppelte Hinweise nach einem App-Neustart. Bei geschlossener App gibt es derzeit keine Push-Zustellung im Hintergrund. Auf einem Pollframe-Server wird weder ein Push-Abonnement noch ein Benachrichtigungs-Endpunkt gespeichert.</p>
-        <p>Diese Dateien bleiben auf deinem Gerät, bis sie automatisch ersetzt werden oder du die App beziehungsweise die Websitedaten von Pollframe entfernst. Die gespeicherte Bibliothek wird nicht hochgeladen oder zu deiner Identifizierung verwendet. Beim Öffnen oder Teilen konfigurierter Studio-Links werden die Einstellungen und eigene Texte in der URL an Pollframe und beim Teilen an Empfänger übermittelt. Trage dort keine vertraulichen Informationen ein. Lokal importierte Bild- und Schriftdateien sind nicht in diesen URLs enthalten.</p>
+        <p>Diese Dateien bleiben auf deinem Gerät, bis sie automatisch ersetzt werden oder du die App beziehungsweise die Websitedaten von Pollframe entfernst. Die lokale Bibliothek wird nicht automatisch hochgeladen oder zur Identifizierung von Besuchern verwendet. Ausdrückliche Konto-Uploads, soweit verfügbar, beschreibt der Kontoabschnitt unten. Beim Öffnen oder Teilen konfigurierter Studio-Links werden die Einstellungen und eigene Texte in der URL an Pollframe und beim Teilen an Empfänger übermittelt. Trage dort keine vertraulichen Informationen ein. Lokal importierte Bild- und Schriftdateien sind nicht in diesen URLs enthalten.</p>
       </section>
 
       <section>
@@ -161,9 +168,10 @@ export default function PrivacyPage({ locale, email: CONTACT_EMAIL }) {
         <p>Unter den gesetzlichen Voraussetzungen hast du Rechte auf Auskunft, Berichtigung, Löschung, Einschränkung der Verarbeitung und Datenübertragbarkeit sowie ein Widerspruchsrecht gegen Verarbeitungen auf Grundlage berechtigter Interessen. Du kannst dich außerdem bei einer Datenschutzaufsichtsbehörde beschweren. Zur Ausübung deiner Rechte genügt eine Nachricht an die oben genannte E-Mail-Adresse.</p>
       </section>
 
+      {AccountPrivacy && <Suspense fallback={null}><AccountPrivacy locale={locale} /></Suspense>}
       <section>
-        <h2>10. Änderungen</h2>
-        <p>Diese Erklärung wird vor der Einführung von Werbung, Benutzerkonten, Zahlungen, weiteren Analysediensten oder anderen Diensten aktualisiert, durch die zusätzliche Daten verarbeitet werden.</p>
+        <h2>{ACCOUNT_UI_ENABLED ? "11" : "10"}. Änderungen</h2>
+        <p>Diese Erklärung wird vor der Einführung von Werbung, Zahlungen, weiteren Analysediensten oder anderen Diensten aktualisiert, durch die zusätzliche Daten verarbeitet werden.</p>
       </section>
     </main>
   );

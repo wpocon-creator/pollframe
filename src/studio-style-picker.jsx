@@ -8,15 +8,21 @@ export default function StylePicker({ state, template, l, update, onClose }) {
     [error, setError] = useState(false);
   useEffect(() => {
     let active = true;
-    listStyles()
-      .then((rows) => {
-        if (active) setItems(rows);
-      })
-      .catch(() => {
-        if (active) setError(true);
-      });
+    const refresh = () => {
+      setItems([]);
+      listStyles()
+        .then((rows) => {
+          if (active) setItems(rows);
+        })
+        .catch(() => {
+          if (active) setError(true);
+        });
+    };
+    refresh();
+    window.addEventListener("pollframe-account-changed", refresh);
     return () => {
       active = false;
+      window.removeEventListener("pollframe-account-changed", refresh);
     };
   }, []);
   return (

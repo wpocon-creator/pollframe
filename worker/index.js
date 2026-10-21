@@ -619,6 +619,13 @@ const application = {
 };
 
 export default {
+  async scheduled(_event, env, ctx) {
+    if (env.ACCOUNTS_ENABLED !== "true" || !env.ACCOUNTS_DB) return;
+    ctx.waitUntil((async () => {
+      const {cleanupAccounts} = await import("../server/account-maintenance.mjs");
+      await cleanupAccounts(env.ACCOUNTS_DB);
+    })());
+  },
   async fetch(request, env) {
     try {
       const url = new URL(request.url);
@@ -637,8 +644,8 @@ export default {
         if (!success) return secureResponse(new Response(JSON.stringify({ error: "Too many requests. Try again later." }), { status: 429, headers: { ...JSON_HEADERS, "retry-after": "60" } }), request);
       }
       if (path.startsWith("/api/auth/") || path.startsWith("/api/account/")) {
-        // Public accounts are deliberately not launched. Reject probes before
-        // loading the authentication library or touching storage/mail services.
+        // Keep the server-side emergency gate independent of frontend builds.
+        // Disabled APIs do not touch account storage or mail services.
         if (env.ACCOUNTS_ENABLED !== "true") return secureResponse(json({ error: "Not found" }, 404), request);
         const {handleAccounts} = await import("./accounts.js");
         return secureResponse(await handleAccounts(request,env),request);

@@ -1,0 +1,73 @@
+.studio-select {
+  display: inline-flex;
+  min-width: 0;
+  width: 100%;
+}
+.studio-select > button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid var(--line, #d9dde3);
+  border-radius: 12px;
+  padding: 10px 12px;
+  color: var(--ink, var(--text, #17202d));
+  background: var(--surface, #fff);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.studio-select > button > span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.studio-select > button > span:last-child {
+  flex: none;
+}
+.studio-select-list {
+  position: fixed;
+  z-index: 2147483600;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 1px solid var(--line, #d9dde3);
+  border-radius: 14px;
+  padding: 5px;
+  color: var(--ink, var(--text, #17202d));
+  background: var(--surface, #fff);
+  box-shadow: 0 12px 40px #0003;
+  font: 500 14px/1.4 system-ui;
+}
+.studio-select-list > button {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-height: 44px;
+  background: transparent;
+  color: inherit;
+  border: 0;
+  border-radius: 6px;
+  padding: 8px 10px;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+.studio-select-list > button[data-active="true"],
+.studio-select-list > button:hover {
+  background: color-mix(in srgb, currentColor 8%, transparent);
+}
+.studio-select-list > button[aria-selected="true"] {
+  color: var(--accent, #3263d8);
+  font-weight: 650;
+}
+[data-theme="dark"] .studio-select > button,
+[data-theme="dark"] .studio-select-list {
+  background: #22272e;
+  color: #f0f3f7;
+  border-color: #455061;
+}

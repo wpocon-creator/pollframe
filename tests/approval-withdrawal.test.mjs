@@ -63,9 +63,8 @@ test("published UI, sitemap and app cache cannot advertise or restore the withdr
   assert.ok(!app.includes('id: "approval", icon:'));
   assert.ok(!app.includes("has permitted Pollframe"));
   const sw = await read("public/sw.js");
-  // Cache versions advance with releases; the withdrawal must survive every
-  // version rather than requiring one obsolete literal release identifier.
-  assert.match(sw, /const VERSION = "pollframe-app-[a-z0-9-]+";/);
-  assert.match(sw, /pollframe-data-release-/);
+  assert.match(sw, /const VERSION = "pollframe-app-[a-z0-9-]+"/);
+  assert.match(sw, /!\[SHELL_CACHE, RUNTIME_CACHE, DATA_CACHE\]\.includes\(key\)/);
+  assert.match(sw, /const DATA_CACHE = `\$\{VERSION\}-data`/);
   assert.match(sw, /withheld-pending-permission/);
 });

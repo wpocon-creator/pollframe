@@ -1,4 +1,5 @@
 export const SITE_ORIGIN = "https://pollframe.com";
+export const TEST_SITE_ORIGIN = "https://test.pollframe.com";
 export const LEGACY_SITE_ORIGIN = "https://de.pollframe.workers.dev";
 
 // Keep local previews local, but make newly copied links use the public domain,

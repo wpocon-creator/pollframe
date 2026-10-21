@@ -1,5 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { routeQueryForLocation } from './public-routes.js';
+import { ACCOUNT_UI_ENABLED } from './account-feature.js';
+import { WAHLFRAME_UI_ENABLED } from './wahlframe-feature.js';
 import { studioPublicPath } from './studio-public-routes.js';
 import { localizedCanonical } from './seo-locale.js';
 import { analyticsExcluded } from "../public/analytics-preference.js";
@@ -18,6 +20,7 @@ const StudioAssistant = STUDIO_ASSISTANT_ENABLED
   ? React.lazy(() => import("./studio-assistant.jsx"))
   : null;
 const Library = React.lazy(() => import("./studio-library.jsx"));
+const PrivateGallery = WAHLFRAME_UI_ENABLED ? React.lazy(()=>import('./party-match-library.jsx')) : null;
 import {
   STUDIO_TEMPLATES,
   isPausedStudioRequest,
@@ -122,7 +125,7 @@ export default function GraphicStudio({ Header, PublishDialog }) {
     [],
   );
   const [searchFocused, setSearchFocused] = useState(false);
-  const [library, setLibrary] = useState(false),
+  const [library, setLibrary] = useState(initial.current.get('library')==='styles'),
     [savedDesign, setSavedDesign] = useState(null),
     [sort, setSort] = useState("recommended"),
     [popularity, setPopularity] = useState({});
@@ -263,6 +266,7 @@ export default function GraphicStudio({ Header, PublishDialog }) {
     if(found.regions.length && !found.regions.includes(state.region))update(studioRegionPatch(found.regions[0]));
   };
   const templates = searchResult.items;
+  const privateSearch = WAHLFRAME_UI_ENABLED && /\b(meine ergebnisse|my results|mis resultados|wahlframe|parteifinder|meine umfragen|my polls)\b/i.test(query);
   useEffect(() => {
     if (editing) return;
     const frame = requestAnimationFrame(() => {
@@ -315,7 +319,7 @@ export default function GraphicStudio({ Header, PublishDialog }) {
     document.documentElement.dataset.embed = "false";
     document
       .querySelector('meta[name="robots"]')
-      ?.setAttribute("content", state.workspace === 'edit' || library ? "noindex, follow" : "index, follow");
+      ?.setAttribute("content", location.hostname === 'test.pollframe.com' ? 'noindex, nofollow' : state.workspace === 'edit' || library ? "noindex, follow" : "index, follow");
     document.querySelector('link[rel="canonical"]')?.setAttribute('href', localizedCanonical(studioPublicPath(editing ? state.template : null), state.lang));
   }, [state.lang, state.template, state.workspace, editing, library]);
   const lastUrlWrite = useRef(0);
@@ -323,7 +327,9 @@ export default function GraphicStudio({ Header, PublishDialog }) {
     if (pausedRequest) return; // Do not silently rewrite an approval bookmark as a poll.
     const params = new URLSearchParams({ view: "studio", back });
     if (contextProfile) params.set("profile", contextProfile);
-    if (query) params.set("q", query);
+    // A private-result search may contain a personal name or political views.
+    // Keep it in this tab, never in the URL, history, logs or source referrers.
+    if (query && topic!=='personal' && !privateSearch) params.set("q", query);
     params.set("topic", topic);
     for (const [key, value] of Object.entries(state))
       if (value !== null && value !== "") params.set(key, value);
@@ -585,7 +591,7 @@ export default function GraphicStudio({ Header, PublishDialog }) {
             </p>
           )}
           <main
-            className={`studio-main ${editing ? "is-editing" : "is-gallery"} ${editing && state.workspace === "edit" ? "is-full-editor" : ""}`}
+            className={`studio-main ${editing ? "is-editing" : "is-gallery"} ${editing && state.workspace === "edit" ? "is-full-editor" : ""} ${!editing&&(topic==='personal'||privateSearch)?'is-personal-gallery':''}`}
           >
             {!editing && (
               <section className="studio-intro">
@@ -628,7 +634,7 @@ export default function GraphicStudio({ Header, PublishDialog }) {
               className="studio-global-controls"
               hidden={editing && state.workspace === "edit"}
             >
-              {!editing && <label>
+              {!editing && topic!=='personal' && !privateSearch && <label>
                 {l('Datensatz','Dataset','Conjunto de datos')}
                 <StudioSelect aria-label={l('Datensatz','Dataset','Conjunto de datos')} value={state.region} onChange={e=>{setQuery(searchStudioRegions(query).query);update(studioRegionPatch(e.target.value));}}>
                   {STUDIO_DATASETS.map(r=><option key={r[0]} value={r[0]}>{studioRegionName(r[0],state.lang)}</option>)}
@@ -703,7 +709,7 @@ export default function GraphicStudio({ Header, PublishDialog }) {
                       )}
                     </span>
                   </label>
-                  {searchFocused && query.trim() && (
+                  {searchFocused && query.trim() && topic!=='personal' && !privateSearch && (
                     <div
                       className="studio-search-suggestions"
                       onPointerDown={(event) => event.preventDefault()}
@@ -758,7 +764,7 @@ export default function GraphicStudio({ Header, PublishDialog }) {
                     {l("Meine Designs", "My designs", "Mis diseños")}
                   </button>
                 </div>
-                {!library && (
+                {!library && topic!=='personal' && !privateSearch && (
                   <label>
                     {l("Sortierung", "Sort by", "Ordenar")}
                     <StudioSelect
@@ -799,6 +805,7 @@ export default function GraphicStudio({ Header, PublishDialog }) {
             {!editing && library ? (
               <React.Suspense fallback={null}>
                 <Library
+                  initialStyleId={initial.current.get('style')}
                   renderTemplate={(template,patch)=>{
                     const data=dataFor(template),Design=designFor(template);
                     return <StudioThumbnail topic={template.topic} onVisible={revealTopic} loading={l('Lädt…','Loading…','Cargando…')}>{()=>data?<React.Suspense fallback={null}><Design snapshot={data} state={normalizeStudioState({...state,...patch,template:template.id})} template={template}/></React.Suspense>:<span>{l('Daten werden geladen…','Loading data…','Cargando datos…')}</span>}</StudioThumbnail>;
@@ -850,6 +857,7 @@ export default function GraphicStudio({ Header, PublishDialog }) {
                   className="studio-topic-tabs"
                   aria-label={l("Grafiktyp", "Graphic type", "Tipo de gráfica")}
                 >
+                  {PrivateGallery && <button key="personal" aria-pressed={topic==='personal'} onClick={()=>setTopic('personal')}>{l('Meine Ergebnisse','My results','Mis resultados')}</button>}
                   {Object.entries(topicLabels)
                     .filter(([id]) => id === "all" || STUDIO_TEMPLATES.some(t => t.topic === id))
                     .filter(([id]) => !contextProfile || id === topic)
@@ -863,6 +871,7 @@ export default function GraphicStudio({ Header, PublishDialog }) {
                       </button>
                     ))}
                 </nav>
+                {PrivateGallery && (topic==='personal'||privateSearch) ? <React.Suspense fallback={null}><PrivateGallery locale={state.lang} query={query} gallery/></React.Suspense> : <>
                 <div className="studio-gallery-meta">
                   <strong>{studioRegionName(state.region,state.lang)}</strong>
                   {regionSearch.regions.length>1 && regionSearch.regions.map(region=><button type="button" className="secondary-button" key={region} aria-pressed={state.region===region} onClick={()=>update(studioRegionPatch(region))}>{studioRegionName(region,state.lang)}</button>)}
@@ -973,16 +982,17 @@ export default function GraphicStudio({ Header, PublishDialog }) {
                     </button>
                   </div>
                 )}
+                </>}
               </>
             )}
             <footer className="studio-footer">
               <span>
                 Pollframe Studio ·{" "}
-                {l(
-                  "Gespeicherte Designs bleiben in diesem Browser",
-                  "Saved designs stay in this browser",
-                  "Los diseños guardados permanecen en este navegador",
-                )}
+                {ACCOUNT_UI_ENABLED ? l(
+                  "Designs und Styles sicher im Konto speichern",
+                  "Save designs and styles securely in your account",
+                  "Guarda diseños y estilos de forma segura en tu cuenta",
+                ) : l("Quellen und Methodik bleiben erhalten", "Sources and methodology retained", "Se conservan las fuentes y la metodología")}
               </span>
               <span>
                 {l(

@@ -60,7 +60,7 @@ test("a hanging regional source times out, falls back, and cannot block the rest
   let primaryCalls = 0;
   // AbortSignal.timeout deliberately uses an unref'ed timer. Keep this test's
   // event loop alive long enough to model an actually hung network request.
-  const keepAlive = setTimeout(() => {}, 100);
+  const keepAlive = setInterval(() => {}, 1000);
   const text = await fetchTextWithRetry("https://primary.invalid", {
     attempts: 2,
     fallbackUrl: "https://fallback.invalid",
@@ -71,7 +71,7 @@ test("a hanging regional source times out, falls back, and cannot block the rest
       primaryCalls += 1;
       return new Promise((_, reject) => signal.addEventListener("abort", () => reject(signal.reason), { once: true }));
     },
-  }).finally(() => clearTimeout(keepAlive));
+  }).finally(() => clearInterval(keepAlive));
   assert.equal(primaryCalls, 2);
   assert.equal(text, "last validated source");
 });

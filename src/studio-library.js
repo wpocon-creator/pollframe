@@ -1,4 +1,12 @@
 import { normalizeStudioState, isPausedStudioRequest } from "./studio-model.js";
+import {
+  accountDocuments,
+  saveAccountDocument,
+  accountRequest,
+  requireAccount,
+  accountGeneration,
+} from "./account-client.js";
+import { localDesignAssets } from "./account-local-assets.js";
 const db = () =>
   new Promise((resolve, reject) => {
     const req = indexedDB.open("pollframe-studio-designs", 1);
@@ -28,7 +36,8 @@ async function transaction(mode, run) {
   });
 }
 export async function saveDesign(name, state, backgroundImage, thumbnail, id) {
-  if (isPausedStudioRequest(state)) throw Error("Approval designs are temporarily unavailable");
+  if (isPausedStudioRequest(state))
+    throw Error("Approval designs are temporarily unavailable");
   const record = {
     id: id || crypto.randomUUID(),
     name: String(name).trim().slice(0, 80) || "Design",
@@ -49,18 +58,45 @@ export async function saveDesign(name, state, backgroundImage, thumbnail, id) {
       !/^data:image\/(png|jpeg|webp|svg\+xml);base64,/.test(record.thumbnail))
   )
     throw Error("thumbnail");
-  await transaction("readwrite", (store) => store.put(record));
+  const saved = await saveAccountDocument(
+    "design",
+    record.name,
+    record.state,
+    record.id,
+  );
+  record.updatedAt = saved.updatedAt;
+  if (record.backgroundImage || record.thumbnail)
+    await localDesignAssets(saved.owner, record.id, {
+      backgroundImage: record.backgroundImage,
+      thumbnail: record.thumbnail,
+    }).catch(() => {});
   window.dispatchEvent(new Event("studio-library-change"));
   return record;
 }
 export async function getDesign(id) {
-  return transaction("readonly", (store) => store.get(id));
+  return (await listDesigns()).find((item) => item.id === id);
 }
 export async function listDesigns() {
-  const items = await transaction("readonly", (store) => store.getAll());
-  return items.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  const epoch = accountGeneration();
+  const items = await Promise.all(
+    (await accountDocuments("design")).map(async (item) => ({
+      ...item,
+      state: item.payload,
+      backgroundImage: "",
+      thumbnail: "",
+      ...(await localDesignAssets(item.owner, item.id).catch(() => null)),
+    })),
+  );
+  return epoch === accountGeneration() ? items : [];
 }
 export async function deleteDesign(id) {
-  await transaction("readwrite", (store) => store.delete(id));
+  await requireAccount();
+  await accountRequest(
+    `/api/account/documents/${encodeURIComponent(id)}`,
+    null,
+    "DELETE",
+  );
   window.dispatchEvent(new Event("studio-library-change"));
 }
+export const listLegacyDesigns = () =>
+  transaction("readonly", (store) => store.getAll());

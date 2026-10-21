@@ -6,6 +6,9 @@
   "compatibility_flags": ["nodejs_compat"],
   "workers_dev": true,
   "preview_urls": false,
+  "observability": { "enabled": false, "logs": { "enabled": false, "invocation_logs": false } },
+  "logpush": false,
+  "triggers": { "crons": ["17 3 * * *"] },
   "ratelimits": [
     {
       "name": "SECURITY_BURST_LIMITER",
@@ -14,8 +17,18 @@
     }
   ],
   "vars": {
+    "ACCOUNTS_ENABLED": "true",
+    "PRIVATE_RESULTS_ENABLED": "true",
     "WEB_ANALYTICS_TOKEN": "3c576ccf9ab3417b8a6a33bb8b22bb07"
   },
+  "d1_databases": [
+    {
+      "binding": "ACCOUNTS_DB",
+      "database_name": "pollframe-accounts",
+      "database_id": "24b888dc-f834-487d-b4d9-2fc9a61f9a48",
+      "migrations_dir": "migrations/accounts"
+    }
+  ],
   "routes": [
     { "pattern": "pollframe.com", "custom_domain": true },
     { "pattern": "www.pollframe.com", "custom_domain": true }

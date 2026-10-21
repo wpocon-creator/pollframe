@@ -1,4 +1,4 @@
-const VERSION = "pollframe-app-spain-update-fix-20261006";
+const VERSION = "pollframe-app-password-login-20261021";
 const SHELL_CACHE = `${VERSION}-shell`;
 const RUNTIME_CACHE = `${VERSION}-runtime`;
 const DATA_CACHE = `${VERSION}-data`;
@@ -137,7 +137,7 @@ self.addEventListener("install", (event) => {
 self.addEventListener("activate", (event) => {
   event.waitUntil(Promise.all([
     caches.keys().then((keys) => Promise.all(
-      keys.filter((key) => (key.startsWith("pollframe-app-") || key.startsWith("pollframe-data-release-")) && ![SHELL_CACHE, RUNTIME_CACHE, DATA_CACHE].includes(key))
+      keys.filter((key) => /^pollframe-.+-(shell|runtime|data)$/.test(key) && ![SHELL_CACHE, RUNTIME_CACHE, DATA_CACHE].includes(key))
         .map((key) => caches.delete(key)),
     )),
     self.registration.navigationPreload?.enable().catch(() => {}),

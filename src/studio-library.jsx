@@ -1,15 +1,30 @@
 import "./studio-workspace.css";
+import { WAHLFRAME_UI_ENABLED } from './wahlframe-feature.js';
 import React, { lazy, Suspense, useEffect, useState } from "react";
 import { listDesigns, deleteDesign, saveDesign } from "./studio-library.js";
 import { listStyles, deleteStyle, saveStyle } from "./studio-style-library.js";
 import { parseStyle } from "./studio-editor-files.js";
 const StyleActions = lazy(() => import("./studio-style-actions.jsx"));
+const PrivateResults = WAHLFRAME_UI_ENABLED
+  ? lazy(() => import("./party-match-library.jsx"))
+  : null;
 import StyleWizard from "./studio-style-wizard.jsx";
 import { CurrentDesign } from "./studio-current.jsx";
-import { normalizeStudioState, STUDIO_TEMPLATES, isPausedStudioRequest } from "./studio-model.js";
-export default function Library({ open, l, state, snapshot, renderTemplate }) {
+import {
+  normalizeStudioState,
+  STUDIO_TEMPLATES,
+  isPausedStudioRequest,
+} from "./studio-model.js";
+export default function Library({
+  open,
+  l,
+  state,
+  snapshot,
+  renderTemplate,
+  initialStyleId,
+}) {
   const [styleAction, setStyleAction] = useState(null);
-  const [tab, setTab] = useState("designs"),
+  const [tab, setTab] = useState(initialStyleId ? "styles" : "designs"),
     [styles, setStyles] = useState([]),
     [styleEdit, setStyleEdit] = useState(null);
   const stylePreview = (style) =>
@@ -53,10 +68,27 @@ export default function Library({ open, l, state, snapshot, renderTemplate }) {
           if (active) setError(true);
         });
     refresh();
+    if (initialStyleId)
+      listStyles()
+        .then((items) => {
+          if (active)
+            setStyleEdit(
+              items.find((item) => item.id === initialStyleId) || null,
+            );
+        })
+        .catch(() => {});
     window.addEventListener("studio-styles-change", refresh);
+    const accountChange = () => {
+      setStyles([]);
+      setStyleAction(null);
+      setStyleEdit(null);
+      refresh();
+    };
+    window.addEventListener("pollframe-account-changed", accountChange);
     return () => {
       active = false;
       window.removeEventListener("studio-styles-change", refresh);
+      window.removeEventListener("pollframe-account-changed", accountChange);
     };
   }, []);
   const [items, setItems] = useState([]),
@@ -66,14 +98,21 @@ export default function Library({ open, l, state, snapshot, renderTemplate }) {
     const refresh = () =>
       listDesigns()
         .then((v) => {
-          if (active) setItems(v.filter(item => !isPausedStudioRequest(item.state)));
+          if (active)
+            setItems(v.filter((item) => !isPausedStudioRequest(item.state)));
         })
         .catch(() => setError(true));
     refresh();
     window.addEventListener("studio-library-change", refresh);
+    const accountChange = () => {
+      setItems([]);
+      refresh();
+    };
+    window.addEventListener("pollframe-account-changed", accountChange);
     return () => {
       active = false;
       window.removeEventListener("studio-library-change", refresh);
+      window.removeEventListener("pollframe-account-changed", accountChange);
     };
   }, []);
   return (
@@ -99,9 +138,9 @@ export default function Library({ open, l, state, snapshot, renderTemplate }) {
       {error && tab === "styles" && (
         <p role="alert">
           {l(
-            "Die Stile konnten nicht geladen oder gespeichert werden. Prüfe, ob dieser Browser lokalen Speicher erlaubt.",
-            "Styles could not be loaded or saved. Check that this browser allows local storage.",
-            "No se pudieron cargar o guardar los estilos. Comprueba que el navegador permite almacenamiento local.",
+            "Zum Speichern brauchst du ein Konto und eine Verbindung. Bitte melde dich an und versuche es erneut.",
+            "Saving requires an account and a connection. Please sign in and try again.",
+            "Necesitas una cuenta y conexión para guardar. Accede e inténtalo de nuevo.",
           )}
         </p>
       )}
@@ -152,9 +191,9 @@ export default function Library({ open, l, state, snapshot, renderTemplate }) {
           </div>
           <p>
             {l(
-              "Ein Stil ist deine Gestaltung für verschiedene Grafiken. Die Vorschau zeigt die aktuelle Bundestagsumfrage. Lokal in diesem Browser gespeichert.",
-              "A style is your visual identity across charts. Previews show current Bundestag polling. Saved locally in this browser.",
-              "Un estilo define el aspecto de varias gráficas. Las vistas previas muestran la encuesta actual del Bundestag. Guardado localmente en este navegador.",
+              "Ein Stil ist deine Gestaltung für verschiedene Grafiken. Die Vorschau zeigt die aktuelle Bundestagsumfrage. Gespeicherte Stile gehören zu deinem Konto.",
+              "A style is your visual identity across charts. Previews show current Bundestag polling. Saved styles belong to your account.",
+              "Un estilo define el aspecto de varias gráficas. Las vistas previas muestran la encuesta actual del Bundestag. Los estilos guardados pertenecen a tu cuenta.",
             )}
           </p>
           <div className="studio-library-grid">
@@ -215,11 +254,16 @@ export default function Library({ open, l, state, snapshot, renderTemplate }) {
         </>
       ) : (
         <>
+          {PrivateResults && (
+            <Suspense fallback={null}>
+              <PrivateResults locale={state.lang} />
+            </Suspense>
+          )}
           <p>
             {l(
-              "Nur in diesem Browser gespeichert. Beim Löschen der Browserdaten gehen diese Entwürfe verloren. Sichere wichtige Designs als Datei. Die Vorlage verwendet beim Öffnen aktuelle Daten.",
-              "Saved only in this browser. Clearing browser data removes these drafts. Back up important designs as files. Opening a design uses current data.",
-              "Guardado solo en este navegador. Borrar los datos del navegador elimina estos borradores. Guarda los diseños importantes como archivos. Al abrir se usan datos actuales.",
+              "Mit deinem Konto auf deinen Geräten verfügbar. Importierte Bild- und Schriftdateien bleiben auf dem jeweiligen Gerät. Umfragevorlagen verwenden beim Öffnen aktuelle Daten.",
+              "Available across your devices through your account. Imported images and font files stay on the respective device. Polling templates use current data when opened.",
+              "Disponible en tus dispositivos mediante tu cuenta. Las imágenes y fuentes importadas permanecen en cada dispositivo. Las plantillas usan datos actuales al abrirse.",
             )}
           </p>
           {error && (

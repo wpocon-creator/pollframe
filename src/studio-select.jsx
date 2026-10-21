@@ -1,5 +1,6 @@
 import React, { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import './studio-select.css';
 
 // Same control on every device. The floating list cannot be clipped by an
 // inspector's scrolling container; Escape and outside clicks never select.
@@ -73,7 +74,15 @@ export default function StudioSelect({
         e.preventDefault();e.stopPropagation();
       }
     };
-    const scrolled=e=>{if(!list.current?.contains(e.target))setOpen(false);};
+    const scrolled = (e) => {
+      if (list.current?.contains(e.target)) return;
+      // Focusing a near-bottom trigger can itself scroll an inspector. Closing
+      // here used to erase the menu immediately after it opened (large text,
+      // tablet and narrow editor columns). Keep it anchored while visible.
+      const r = anchor.current?.getBoundingClientRect();
+      if (!r || r.bottom < 0 || r.top > innerHeight) setOpen(false);
+      else place();
+    };
     document.addEventListener("click", close, true);
     document.addEventListener("pointerdown", outsidePress, true);
     window.addEventListener("resize", place);

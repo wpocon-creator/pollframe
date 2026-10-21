@@ -1,8 +1,12 @@
 // An opt-out preference, not an identifier. No IP address or user ID is stored.
 export function analyticsExcluded() {
+  if (location.hostname === 'test.pollframe.com') return true;
   // Never load analytics on account recovery/verification pages. This check
   // runs before the asynchronous account dialog removes the sensitive token.
   const accountQuery = new URLSearchParams(location.search);
+  // Political answers/results are an intentionally unmeasured local workflow.
+  if (["party-match", "party-match-studio"].includes(accountQuery.get("view"))) return true;
+  if(accountQuery.get('view')==='studio'&&accountQuery.get('topic')==='personal')return true;
   if (["token", "account", "code", "key"].some(key => accountQuery.has(key)) || /^\/(?:api|pf-ops|account|auth)(?:\/|$)/i.test(location.pathname)) return true;
   const choice = new URLSearchParams(location.search).get("analytics");
   try {

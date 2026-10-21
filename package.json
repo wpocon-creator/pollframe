@@ -5,11 +5,13 @@
   "type": "module",
   "scripts": {
     "dev:accounts": "node scripts/run-account-lab.mjs",
-    "prebuild": "node scripts/repair-source-notices.mjs && node scripts/validate-source-rights.mjs && node scripts/validate-poll-data.mjs && node scripts/generate-seo-assets.mjs",
+    "test:accounts:release": "node scripts/test-account-release.mjs",
+    "accounts:preflight": "node scripts/check-account-launch.mjs",
+    "prebuild": "node scripts/build-password-dictionaries.mjs && node scripts/repair-source-notices.mjs && node scripts/validate-source-rights.mjs && node scripts/validate-poll-data.mjs && node scripts/generate-seo-assets.mjs",
     "dev": "vite",
-    "build": "vite build",
+    "build": "node scripts/build-public.mjs",
     "postbuild": "node scripts/validate-security.mjs && node scripts/validate-performance.mjs && node scripts/validate-aggregate-analytics.mjs && node --test tests/seo-routes.test.mjs tests/domain-migration.test.mjs tests/seo-content.test.mjs tests/studio-seo.test.mjs",
-    "deploy": "npm run build && wrangler deploy",
+    "deploy": "node scripts/check-release-source.mjs && npm run build && node scripts/check-release-source.mjs && wrangler deploy",
     "preview": "vite preview --host 127.0.0.1",
     "preview:worker": "wrangler dev --local --host localhost --ip 127.0.0.1 --port 4177",
     "check": "npm run build",
@@ -65,29 +67,36 @@
     "@fontsource-variable/raleway": "5.3.0",
     "@fontsource-variable/roboto": "5.3.0",
     "@fontsource-variable/roboto-slab": "5.3.0",
-    "@fontsource-variable/source-serif-4": "5.3.0",
+    "@fontsource-variable/source-serif-4": "5.3.1",
     "@fontsource-variable/space-grotesk": "5.3.0",
     "@fontsource-variable/urbanist": "5.3.0",
     "@fontsource-variable/work-sans": "5.3.0",
     "@react-map/united-kingdom": "1.0.9",
     "@svg-maps/germany": "2.0.0",
+    "@zxcvbn-ts/core": "3.0.4",
+    "@zxcvbn-ts/language-common": "4.1.3",
+    "@zxcvbn-ts/language-de": "4.1.1",
+    "@zxcvbn-ts/language-en": "4.1.1",
+    "@zxcvbn-ts/language-es-es": "4.1.2",
+    "better-auth": "1.7.12",
     "html-to-image": "1.11.13",
+    "qrcode": "1.5.4",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "three": "0.185.1"
   },
   "devDependencies": {
     "@playwright/test": "1.62.0",
-    "better-auth": "1.7.5",
     "cheerio": "1.0.0",
     "fflate": "0.8.3",
     "pdfjs-dist": "5.4.624",
     "undici": "7.29.1",
-    "vite": "6.4.3",
-    "wrangler": "4.151.1"
+    "vite": "6.4.5",
+    "wrangler": "4.151.3"
   },
   "overrides": {
     "undici": "7.29.1",
+    "source-map-js": "1.2.2",
     "nanoid": "3.3.18"
   }
 }

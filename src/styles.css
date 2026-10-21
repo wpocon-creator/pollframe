@@ -335,11 +335,7 @@ html { scrollbar-gutter: stable; }
 .region-election-leader b { grid-column: 3; grid-row: 1 / 3; font-size: 1.25rem; }
 .spain-region-history { margin-top: 1rem; }
 .spain-region-history.is-recent { border-color: color-mix(in srgb, var(--accent) 18%, var(--line)); }
-.spain-region-history>header { display: grid; grid-template-columns: minmax(0, 1fr); gap: .5rem; }
-.spain-region-history>header .current-widget-meta { grid-row: 1; align-items: center; }
-.spain-region-history>header .current-widget-meta .data-age-label { max-width: none; text-align: center; }
-.spain-region-history>header .widget-info-heading { grid-row: 2; }
-.spain-region-history>header .widget-info-heading>div { flex: 1; }
+.spain-region-history>header { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
 .region-trend { overflow: hidden; }
 .region-trend svg { display: block; width: 100%; height: auto; min-height: 230px; }
 .region-trend svg line { stroke: var(--line); stroke-dasharray: 3 5; }
@@ -447,7 +443,9 @@ html { scrollbar-gutter: stable; }
   .spain-region-hero { padding: 1.15rem; border-radius: 16px; }
   .spain-region-snapshot>article,.spain-region-history,.spain-region-quality { padding: .9rem; border-radius: 15px; }
   .region-results>div { grid-template-columns: minmax(5.8rem, .85fr) minmax(3.5rem, 1fr) 3rem; gap: .4rem; }
-  .spain-region-history>header .widget-info-heading>div>p { display: none; }
+  .region-trend { margin-inline: -.55rem; overflow-x: auto; }
+  .region-trend svg { width: 34rem; max-width: none; min-height: 220px; }
+  .region-trend>div { padding-inline: .55rem; }
   .spain-region-source { display: grid; }
 }
 
@@ -2097,6 +2095,7 @@ body:has(.graph-info-popover[open]) { overflow: hidden; }
   min-width: 0;
   max-width: 860px;
   padding-block: 65px 100px;
+  overflow-wrap: anywhere;
 }
 
 .breadcrumb {
@@ -2907,8 +2906,8 @@ dialog[open],[aria-modal="true"] {overscroll-behavior:contain;}
 }
 
 .info-button {
-  border-color: transparent;
-  background: transparent;
+  border-color: var(--line);
+  background: var(--surface);
 }
 
 .app-header-button {
@@ -6905,8 +6904,6 @@ body > #root > footer nav .footer-action:hover {
 .spain-approval-entry { grid-column: 1 / -1; }
 .current-widget-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 7px; flex: 0 0 auto; }
 .current-widget-meta .data-age-label { max-width: 190px; text-align: right; line-height: 1.3; }
-.spain-region-history .line-legend { flex-wrap: wrap; margin-inline: 0; padding-inline: 0; overflow: visible; }
-.spain-region-history .line-legend .party-info-trigger { flex: 0 0 auto; }
 @media (max-width: 620px) { .current-widget-meta { align-items: flex-start; } .current-widget-meta .data-age-label { text-align: left; } }
 .approval-share-modal { position: fixed; inset: 0; z-index: 250; display: grid; place-items: center; padding: 22px; }
 .approval-modal-backdrop { position: absolute; inset: 0; border: 0; background: rgba(12, 15, 18, .62); backdrop-filter: blur(4px); }
@@ -7716,9 +7713,10 @@ body > #root > footer nav .footer-action:hover {
     border-radius:0;
     overflow:hidden;
   }
-  .png-options-modal>.modal-intro { display:block; font-size:.68rem; line-height:1.4; }
-  .png-dialog-layout { min-height:0; grid-template-columns:1fr; grid-template-rows:minmax(135px,1fr) auto; gap:8px; overflow:auto; }
-  .png-live-preview { grid-row:1; min-height:135px; padding:8px; }
+  .png-options-modal>.modal-intro { display:none; }
+  .png-options-modal > .panel-header h2 { font-size:1.15rem; line-height:1.2; }
+  .png-dialog-layout { min-height:0; grid-template-columns:1fr; grid-template-rows:minmax(120px,1fr) auto; gap:8px; overflow:auto; }
+  .png-live-preview { grid-row:1; min-height:120px; padding:8px; }
   .png-preview-theme { gap:3px; }
   .png-preview-theme>span { font-size:.5rem; }
   .png-preview-theme button { min-height:26px; min-width:2.85rem; font-size:.52rem; }
@@ -7726,7 +7724,7 @@ body > #root > footer nav .footer-action:hover {
   .png-profile-note { display:none; }
   .png-options-modal .png-format-grid { grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px; }
   .png-options-modal .png-format-grid>button {
-    min-height:88px;
+    min-height:80px;
     padding:7px 5px;
     grid-template-columns:1fr;
     grid-template-rows:34px auto;
@@ -7738,6 +7736,8 @@ body > #root > footer nav .footer-action:hover {
   .png-options-modal .png-format-grid strong { display:grid; place-items:center; gap:2px; font-size:.62rem; }
   .png-options-modal .png-format-grid strong em { font-size:.42rem; }
   .png-options-modal .png-format-grid small { font-size:.49rem; line-height:1.15; }
+  .png-options-modal .png-format-grid small,
+  .png-options-modal .png-format-grid strong em { display:none; }
   .png-options-modal .png-format-shape.is-content { width:29px; height:33px; }
   .png-options-modal .png-format-shape.is-landscape { width:39px; height:22px; }
   .png-options-modal .png-format-shape.is-square { width:29px; height:29px; }
@@ -7748,7 +7748,7 @@ body > #root > footer nav .footer-action:hover {
 }
 
 @media (max-width:380px) {
-  .png-options-modal>.png-options-actions { grid-template-columns:1fr; }
+  .png-options-modal>.png-options-actions { grid-template-columns:repeat(2,minmax(0,1fr)); }
   .png-options-modal>.png-options-actions>button { min-height:40px; }
 }
 
@@ -8774,3 +8774,16 @@ dialog.graph-info-card a { overflow-wrap:anywhere; }
 @media (max-width:700px), (max-height:560px) and (pointer:coarse) {
   .side-panel { width:100%; height:100dvh; padding:max(22px,env(safe-area-inset-top)) max(17px,env(safe-area-inset-right)) max(22px,env(safe-area-inset-bottom)) max(17px,env(safe-area-inset-left)); overscroll-behavior:contain; }
 }
+.graphic-file-options { margin:10px 0; padding:0; border:0; color:var(--ink); }
+.graphic-file-options legend { font-size:.85rem; font-weight:650; margin-bottom:6px; }
+.graphic-file-options > div { display:flex; flex-wrap:wrap; gap:8px; }
+.graphic-file-options button { min-height:38px; padding:6px 18px; border:1px solid var(--line); border-radius:9px; font:inherit; font-size:.85rem; color:inherit; background:var(--surface); cursor:pointer; }
+.graphic-file-options button[aria-pressed=true] { color:var(--accent); border-color:var(--accent); background:color-mix(in srgb,var(--accent) 9%,var(--surface)); }
+.graphic-file-options small { display:block; margin-top:6px; font-size:.75rem; color:var(--muted); }
+.graphic-file-compact { margin-left:auto; flex-shrink:0; }
+.graphic-file-compact .studio-select > button { width:96px; min-height:40px; padding:7px; font:inherit; font-size:.75rem; font-weight:650; color:var(--ink); background:var(--surface); border:1px solid var(--line); border-radius:9px; }
+.png-options-modal > .panel-header { gap:10px; }
+.png-options-modal > .panel-header > div { min-width:0; }
+.png-options-modal > .panel-header h2 { overflow-wrap:anywhere; }
+.png-options-actions:has(>.primary-button:last-child)>.primary-button { grid-column:1/-1; }
+.site-header:has(.product-sections-bar) .header-inner { display:flex; justify-content:space-between; }

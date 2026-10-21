@@ -1,0 +1,102 @@
+.product-sections-bar {
+  isolation: isolate;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  position: relative;
+  width: 100%;
+  border-block: 1px solid var(--line);
+  background: color-mix(in srgb, var(--surface) 96%, var(--accent));
+}
+.product-sections-bar a {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  min-height: 47px;
+  padding: 9px 18px 11px;
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 15px;
+  line-height: 1.2;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  transition:
+    color 0.15s,
+    background-color 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.product-sections-bar a + a::before {
+  content: "";
+  position: absolute;
+  inset-inline-start: -1px;
+  top: 8px;
+  bottom: 8px;
+  width: 2px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--ink) 35%, var(--line));
+  pointer-events: none;
+}
+.product-sections-bar a::after {
+  content: "";
+  position: absolute;
+  bottom: -1px;
+  inset-inline: calc(50% - 54px);
+  height: 3px;
+  border-radius: 3px 3px 0 0;
+  background: var(--accent);
+  opacity: 0;
+  transform: scaleX(0.55);
+  transition:
+    transform 0.18s ease,
+    opacity 0.18s ease;
+}
+.product-sections-bar a:hover,
+.product-sections-bar a:focus-visible {
+  color: var(--ink);
+  background: color-mix(in srgb, var(--accent) 6%, var(--surface));
+}
+.product-sections-bar a:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -4px;
+}
+.product-sections-bar a:hover::after {
+  opacity: 0.28;
+  transform: scaleX(0.8);
+}
+.product-sections-bar a[aria-current] {
+  color: var(--ink);
+  background: color-mix(in srgb, var(--surface) 94%, var(--accent));
+}
+.product-sections-bar a[aria-current] svg {
+  color: var(--accent);
+}
+.product-sections-bar a[aria-current]::after {
+  opacity: 1;
+  transform: scaleX(1);
+}
+.product-studio-label {
+  font-weight: 750;
+  letter-spacing: -0.04em;
+}
+@media (max-width: 600px) {
+  .product-sections-bar a {
+    min-height: 44px;
+    padding-block: 9px 10px;
+    font-size: 14px;
+    gap: 7px;
+  }
+  .product-sections-bar a::after {
+    inset-inline: calc(50% - 44px);
+  }
+  .product-sections-bar svg {
+    width: 16px;
+    height: 16px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .product-sections-bar a,
+  .product-sections-bar a::after {
+    transition: none;
+  }
+}

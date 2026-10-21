@@ -1,0 +1,6 @@
+/* Loaded by the test Worker only, never included by production documents. */
+.pf-preview-notice{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:.4rem 1rem;padding:.6rem 1rem;background:#e9efff;color:#18376c;font:500 13px/1.45 Inter,system-ui,sans-serif;text-align:center;border-bottom:1px solid #c9d6f6}
+.pf-preview-notice strong{font-weight:800;letter-spacing:.035em}
+.pf-preview-notice a{color:inherit;text-decoration:underline;text-underline-offset:3px;font-weight:700}
+[data-theme="dark"] .pf-preview-notice{background:#17243d;color:#d7e3ff;border-color:#344b75}
+@media(max-width:600px){.pf-preview-notice{font-size:11px;padding:.4rem .6rem;gap:.2rem .7rem}.pf-preview-notice span{flex-basis:100%}}

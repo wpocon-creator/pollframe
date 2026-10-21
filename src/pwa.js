@@ -71,6 +71,9 @@ export function usePwaLifecycle({ disabled = false } = {}) {
     const wentOnline = () => {
       setOnline(true);
       setUsedCachedData(false);
+      // Reconnecting used to remove the offline label without reloading the
+      // cached poll values. Refetch the active page and Watchlist immediately.
+      setDataRefreshVersion((version) => version + 1);
       registrationRef.current?.update().catch(() => {});
     };
     const wentOffline = () => setOnline(false);
