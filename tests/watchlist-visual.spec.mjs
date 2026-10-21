@@ -2,6 +2,20 @@ import { expect, test } from "@playwright/test";
 
 const phoneProjects = new Set(["pixel-5", "galaxy-s9", "iphone-13-chromium"]);
 
+async function reachableTouchDrag(page) {
+  const source = page.locator(".watch-card").nth(1);
+  await source.scrollIntoViewIfNeeded();
+  const box = await source.boundingBox();
+  const destination = await page.locator(".watch-card").first().boundingBox();
+  const headerBottom = await page.locator(".site-header").evaluate(el => el.getBoundingClientRect().bottom);
+  const start = { x: box.x + box.width * .62, y: box.y + box.height * .54 };
+  const finish = { x: destination.x + destination.width / 2, y: Math.max(headerBottom + 12, destination.y + 10) };
+  for (const [point, id] of [[start, await source.getAttribute("data-watch-id")], [finish, await page.locator(".watch-card").first().getAttribute("data-watch-id")]]) {
+    expect(await page.evaluate(({x,y}) => document.elementFromPoint(x,y)?.closest("[data-watch-id]")?.dataset.watchId, point), "Touch coordinates must hit the intended visible widget, not app navigation").toBe(id);
+  }
+  return { start, finish };
+}
+
 const deItems = [
   { id: "de-overview", country: "de", regionSlug: "bundestag", type: "snapshot", partyIds: [], label: "Bundestag · aktueller Stand", layout: "wide", createdAt: "2026-08-07T10:00:00.000Z", lastSnapshot: { date: "2026-08-01", leaders: [{ id: "7", value: 27 }, { id: "1", value: 21 }, { id: "4", value: 12 }, { id: "5", value: 12 }] } },
   { id: "de-green", country: "de", regionSlug: "bundestag", type: "party", partyIds: ["4"], label: "Grüne · Bundestag", layout: "square", createdAt: "2026-08-07T10:01:00.000Z", lastSnapshot: { date: "2026-08-01", value: 12 } },
@@ -123,8 +137,7 @@ test("Watchlist touch drag follows the finger and commits on touch release", asy
 
   // A quick touch and a finger that starts scrolling before the hold delay must
   // never unlock or reorder a widget.
-  let sourceBox = await page.locator(".watch-card").nth(1).boundingBox();
-  let start = { x: sourceBox.x + sourceBox.width * .62, y: sourceBox.y + sourceBox.height * .54 };
+  let { start } = await reachableTouchDrag(page);
   await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ ...start, id: 1, radiusX: 6, radiusY: 6, force: .5 }] });
   await page.waitForTimeout(70);
   await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
@@ -135,11 +148,10 @@ test("Watchlist touch drag follows the finger and commits on touch release", asy
   await expect(page.locator("body > .watch-card-drag-shell")).toHaveCount(0);
   expect(await page.locator(".watchlist-grid > .watch-card").evaluateAll((cards) => cards.map((card) => card.dataset.watchId))).toEqual(originalOrder);
 
-  sourceBox = await page.locator(".watch-card").nth(1).boundingBox();
   const sourceCard = page.locator(".watch-card").nth(1);
-  const destinationBox = await page.locator(".watch-card").first().boundingBox();
-  start = { x: sourceBox.x + sourceBox.width * .62, y: sourceBox.y + sourceBox.height * .54 };
-  const finish = { x: destinationBox.x + destinationBox.width / 2, y: destinationBox.y + 10 };
+  const reachable = await reachableTouchDrag(page);
+  start = reachable.start;
+  const finish = reachable.finish;
   await page.evaluate(() => { window.__watchHaptics.length = 0; });
   await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ ...start, id: 1, radiusX: 6, radiusY: 6, force: .5 }] });
   await expect(sourceCard).toHaveClass(/is-drag-pressing/);
@@ -454,10 +466,7 @@ test("captures installed Watchlist layouts for visual review", async ({ page, co
   await page.getByRole("button", { name: /Bearbeiten|Edit/i }).click();
   await expect(page.locator(".watch-card-editbar")).toHaveCount(deItems.length);
   const beforeOrder = await page.locator(".watchlist-grid > .watch-card").evaluateAll((cards) => cards.map((card) => card.dataset.watchId));
-  const sourceBox = await page.locator(".watch-card").nth(1).boundingBox();
-  const destinationBox = await page.locator(".watch-card").first().boundingBox();
-  const dragStart = { x: sourceBox.x + sourceBox.width * .62, y: sourceBox.y + sourceBox.height * .54 };
-  const dragFinish = { x: destinationBox.x + destinationBox.width / 2, y: destinationBox.y + 8 };
+  const { start: dragStart, finish: dragFinish } = await reachableTouchDrag(page);
   const cdp = await context.newCDPSession(page);
   await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ ...dragStart, id: 1, radiusX: 6, radiusY: 6, force: .5 }] });
   await expect(page.locator("body > .watch-card-drag-shell > .watch-card-drag-ghost")).toBeVisible();

@@ -78,6 +78,7 @@ jobs:
           npx playwright test tests/integration.spec.mjs --grep 'shared chart URLs|an explicit language|an explicitly selected|state and autonomous-community maps|legal, contact, privacy' --project=chromium-desktop --project=firefox-desktop --project=webkit-desktop
           npx playwright test tests/map-activation.spec.mjs --project=pixel-5 --project=iphone-13 --project=ipad-mini
           npx playwright test tests/mobile-layout.spec.mjs tests/watchlist-visual.spec.mjs --grep-invert approval --project=pixel-5 --project=iphone-13 --project=ipad-mini --project=phone-landscape
+          npx playwright test tests/watchlist-visual.spec.mjs --project=chromium-desktop --project=iphone-13-chromium
           npx playwright test tests/layout-audit.spec.mjs --project=chromium-desktop --project=iphone-13-chromium
       - name: Verify source-preserving designs and actual PNG/embed output in three engines
         run: npx playwright test tests/studio-publication-launch.spec.mjs tests/source-rights-browser.spec.mjs tests/studio-font-export.spec.mjs tests/studio-source-overflow.spec.mjs --project=chromium-desktop --project=firefox-desktop --project=webkit-desktop --workers=2

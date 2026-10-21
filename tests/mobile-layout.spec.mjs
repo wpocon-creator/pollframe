@@ -27,8 +27,13 @@ async function expectMobileHeaderIconsCentred(page) {
       return style.display !== "none" && style.visibility !== "hidden" && rect.width > 0 && rect.height > 0;
     });
     return {
-      label: button.getAttribute("aria-label"),
+      label: button.getAttribute("aria-label") || button.textContent.trim(),
+      textEntry: button.matches(".account-entry"),
       button: { x: buttonRect.x, y: buttonRect.y, width: buttonRect.width, height: buttonRect.height },
+      text: button.matches(".account-entry") ? (() => {
+        const rect = button.querySelector("span").getBoundingClientRect();
+        return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
+      })() : null,
       icons: visibleIcons.map((icon) => {
         const rect = icon.getBoundingClientRect();
         return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
@@ -38,6 +43,16 @@ async function expectMobileHeaderIconsCentred(page) {
 
   expect(measurements.length).toBeGreaterThan(1);
   for (const item of measurements) {
+    // The published sign-in entry is intentionally text, not an icon. Check
+    // its real label and geometry, rather than requiring an imaginary SVG.
+    if (item.textEntry) {
+      expect(item.label).toMatch(/Anmelden|Sign in|Iniciar sesi[oó]n/i);
+      expect(item.text.width).toBeGreaterThan(0);
+      expect(item.text.x).toBeGreaterThanOrEqual(item.button.x);
+      expect(item.text.x + item.text.width).toBeLessThanOrEqual(item.button.x + item.button.width + 1);
+      expect(Math.abs((item.button.y + item.button.height / 2) - (item.text.y + item.text.height / 2))).toBeLessThanOrEqual(1);
+      continue;
+    }
     expect(item.icons, `${item.label}: exactly one mobile icon must be visible`).toHaveLength(1);
     const icon = item.icons[0];
     const horizontalDifference = Math.abs((item.button.x + item.button.width / 2) - (icon.x + icon.width / 2));
@@ -212,7 +227,7 @@ test.describe("mobile layout geometry", () => {
 
     const tendencyCard = page.locator(".tendency-card").first();
     await tendencyCard.scrollIntoViewIfNeeded();
-    await tendencyCard.click();
+    await tendencyCard.locator(".tendency-card-main").click();
     await page.waitForTimeout(200);
     const partyModal = page.locator(".party-modal");
     await expectInsideViewport(partyModal, page, "party detail dialog");
