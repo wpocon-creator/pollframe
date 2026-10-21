@@ -5,6 +5,7 @@ import { pathToFileURL } from "node:url";
 import { resolve } from "node:path";
 import { readFile } from "node:fs/promises";
 import { sourceDigest } from "./release-provenance.mjs";
+import { RESULT_CONSENT_VERSION } from "../src/account-storage-policy.js";
 
 export function assertBrowserBuildCurrent(manifest, digest) {
   if (manifest?.schema !== 1 || manifest.sourceDigest !== digest)
@@ -14,7 +15,10 @@ export function assertBrowserBuildCurrent(manifest, digest) {
 export function anonymousBrowserResponse(path, method) {
   if (method !== "GET") return null;
   if (path === "/api/auth/get-session") return nullSession;
-  if (path === "/api/account/capabilities") return { enabled: true, localOnly: true, privateResults: false };
+  if (path === "/api/account/capabilities") return {
+    enabled: true, localOnly: false, emailDelivery: "verified-domain", subscriptions: false,
+    privateResults: true, privateResultsConsent: RESULT_CONSENT_VERSION,
+  };
   if (path === "/api/elections/sachsen-anhalt-2026") return { result: null };
   return undefined;
 }
