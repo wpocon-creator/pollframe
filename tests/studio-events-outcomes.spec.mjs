@@ -32,7 +32,17 @@ test('real catalogue: generate, pin, exclude, undo, reload and PNG retain the ac
   await expect(page.locator('dialog[open]')).toHaveCount(1);
   expect(reloads).toEqual([]);
   const lane=row.getByRole('combobox',{name:/Ebene für/});
-  await lane.click();await cat.getByRole('option',{name:'Ebene 3',exact:true}).click();
+  await lane.click();
+  const option=cat.getByRole('option',{name:'Ebene 3',exact:true});
+  await expect(option).toBeVisible();
+  const fit=await option.evaluate(el=>{
+    const r=el.getBoundingClientRect(),d=el.closest('dialog').getBoundingClientRect();
+    return {inside:r.left>=d.left&&r.right<=d.right&&r.top>=d.top&&r.bottom<=d.bottom,
+      hit:document.elementFromPoint(r.x+r.width/2,r.y+r.height/2)?.closest('[role=option]')===el};
+  });
+  expect(fit).toEqual({inside:true,hit:true});
+  await option.click();
+  await expect(lane).toContainText('Ebene 3');
   await expect(svg.locator('[data-event-id=ukraine]')).toHaveAttribute('data-event-lane','2');
   await cat.getByRole('button',{name:'Fertig',exact:true}).click();
   await tools.getByRole('button',{name:'Anordnung erzeugen',exact:true}).click();

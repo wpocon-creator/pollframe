@@ -1,6 +1,7 @@
 import React, { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import './studio-select.css';
+import { studioSelectPosition } from "./studio-select-position.js";
 
 // Same control on every device. The floating list cannot be clipped by an
 // inspector's scrolling container; Escape and outside clicks never select.
@@ -36,24 +37,18 @@ export default function StudioSelect({
     const place = () => {
       const r = anchor.current.getBoundingClientRect();
       const viewport = window.visualViewport;
-      const topEdge = (viewport?.offsetTop || 0) + 12;
-      const bottomEdge =
-        (viewport?.offsetTop || 0) + (viewport?.height || innerHeight) - 12;
-      const below = Math.max(0, bottomEdge - r.bottom - 6);
-      const above = Math.max(0, r.top - topEdge - 6);
-      const desired = Math.min(288, options.length * 44 + 12);
-      // Short menus belong beside their trigger, not 320 px above it.
-      const down = below >= Math.min(desired, 160) || below >= above;
-      const h = Math.min(desired, down ? below : above);
-      setPos({
-        left: Math.max(
-          12,
-          Math.min(r.left, innerWidth - Math.max(r.width, 176) - 12),
-        ),
-        top: down ? r.bottom + 6 : Math.max(topEdge, r.top - h - 6),
-        width: Math.min(Math.max(r.width, 176), innerWidth - 24),
-        maxHeight: h,
-      });
+      const dialog = anchor.current.closest("dialog[open]");
+      let host = null;
+      if (dialog) {
+        const box = dialog.getBoundingClientRect(), style = getComputedStyle(dialog);
+        const localOrigin = [style.transform, style.translate, style.scale, style.rotate, style.perspective, style.filter]
+          .some(value => value && value !== "none") || /paint|layout|strict|content/.test(style.contain);
+        host = { left: box.left, right: box.right, top: box.top, bottom: box.bottom,
+          originLeft: localOrigin ? box.left + dialog.clientLeft : 0,
+          originTop: localOrigin ? box.top + dialog.clientTop : 0 };
+      }
+      setPos(studioSelectPosition(r, { top: viewport?.offsetTop || 0,
+        height: viewport?.height || innerHeight, width: innerWidth }, options.length, host));
     };
     place();
     const close = (e) => {
