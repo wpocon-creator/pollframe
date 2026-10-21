@@ -17,7 +17,10 @@ for (const [country, url] of cases) {
       const value = row.querySelector("strong")?.textContent?.trim();
       return [party, value];
     })));
-    const endpoints = await page.locator(".series-end-label text").allTextContents();
+    const endpoints = await page.locator(".series-end-label text").evaluateAll(labels => labels.map(label => [...label.childNodes].filter(node => node.nodeType === Node.TEXT_NODE).map(node => node.textContent).join("")));
+    // Period-change tspans are intentionally separate from the endpoint value.
+    for (const delta of await page.locator(".series-period-delta").allTextContents())
+      expect(delta.trim()).toMatch(/^[+-]?[0-9]+(?:[.,][0-9]+)? (?:Pp\.|pp)$/);
     let compared = 0;
     for (const label of endpoints) {
       const match = label.trim().match(/^(.*) ([0-9]+(?:[.,][0-9]+)?)%$/);

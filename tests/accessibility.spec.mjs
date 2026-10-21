@@ -15,6 +15,7 @@ async function settle(page) {
   await page.waitForLoadState("domcontentloaded");
   await page.evaluate(() => document.fonts?.ready);
   await expect(page.locator("main")).toBeVisible();
+  await expect(page.locator("main h1")).toHaveCount(1);
 }
 
 test("public routes retain a named, unambiguous document structure", async ({ page }) => {

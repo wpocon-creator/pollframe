@@ -20,6 +20,10 @@ supersedes the historical September review below.
   checks fail, updates it only when findings change, and closes it on recovery.
   It uses free GitHub notifications, not Resend or paid services. Personal
   GitHub notification preferences determine actual email delivery.
+  Findings are visible in the job summary and maintenance issue. The workflow
+  may complete successfully when a failure was reported successfully; it does
+  not generate repeat failed-Actions emails for an unchanged finding. Alert
+  delivery errors still fail the workflow.
 - Missing advisory responses or unverifiable release identity fail the check;
   they are never reported as zero vulnerabilities. This is daily monitoring,
   not continuous intrusion detection or a guaranteed response service.

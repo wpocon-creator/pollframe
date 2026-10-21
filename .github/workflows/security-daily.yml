@@ -22,8 +22,12 @@ jobs:
     name: Audit repository and published release
     runs-on: ubuntu-latest
     timeout-minutes: 12
+    # A handled finding creates/updates the issue rather than generating a new
+    # failed-Actions email every day. A broken alert-delivery job still fails.
+    continue-on-error: true
     outputs:
       report: ${{ steps.monitor.outputs.report }}
+      result: ${{ steps.result.outputs.result }}
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
@@ -34,6 +38,7 @@ jobs:
           node-version: 22
           cache: npm
       - name: Install pinned dependencies without install scripts
+        id: install
         run: npm ci --ignore-scripts
       - name: Verify live security headers, private boundaries and both dependency locks
         id: monitor
@@ -42,10 +47,26 @@ jobs:
           POLLFRAME_SECURITY_TEST_ALERT: ${{ inputs.test_alert }}
         run: node scripts/security-monitor.mjs
       - name: Test security controls with isolated data only
+        id: tests
         if: ${{ !cancelled() }}
         run: |
           set -euo pipefail
           node --test tests/security-maintenance.test.mjs tests/worker-security.test.mjs tests/accounts-production.test.mjs tests/account-worker-runtime.test.mjs tests/account-throttle.test.mjs tests/account-mail.test.mjs tests/account-two-factor.test.mjs tests/email-first-production.test.mjs tests/service-worker-privacy.test.mjs
+      - name: Record health independently of notification delivery
+        id: result
+        if: always()
+        env:
+          INSTALL_RESULT: ${{ steps.install.outcome }}
+          MONITOR_RESULT: ${{ steps.monitor.outcome }}
+          TEST_RESULT: ${{ steps.tests.outcome }}
+        run: |
+          if [ "$INSTALL_RESULT" = success ] && [ "$MONITOR_RESULT" = success ] && [ "$TEST_RESULT" = success ]; then
+            echo 'result=success' >> "$GITHUB_OUTPUT"
+            echo 'Daily security checks: passing.' >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo 'result=failure' >> "$GITHUB_OUTPUT"
+            echo 'Daily security checks need attention. The alert job maintains the issue; a successful notification is not a clean security result.' >> "$GITHUB_STEP_SUMMARY"
+          fi
 
   alert:
     name: Notify only on changed failures or recovery
@@ -66,6 +87,6 @@ jobs:
       - name: Maintain one alert, without daily duplicate comments
         env:
           GH_TOKEN: ${{ github.token }}
-          CHECK_RESULT: ${{ needs.inspect.result }}
+          CHECK_RESULT: ${{ needs.inspect.outputs.result }}
           SECURITY_REPORT: ${{ needs.inspect.outputs.report }}
         run: node scripts/security-alert.mjs
