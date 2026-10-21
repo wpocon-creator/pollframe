@@ -199,10 +199,10 @@ test.describe("installable Pollframe app", () => {
     await page.evaluate(() => navigator.serviceWorker.ready);
     if (!await page.evaluate(() => Boolean(navigator.serviceWorker.controller))) await page.reload();
     await page.waitForFunction(() => Boolean(navigator.serviceWorker.controller));
-    await page.waitForFunction(async () => {
+    await expect.poll(() => page.evaluate(async () => {
       const cached = await caches.match("/__pollframe-offline-ready__");
       return Boolean(cached);
-    }, null, { timeout: 30_000 });
+    }), { timeout: 30_000 }).toBe(true);
     const offlineBytes = await page.evaluate(async () => {
       const names = (await caches.keys()).filter((name) => /^pollframe-app-v\d+-/.test(name));
       const responses = (await Promise.all(names.map(async (name) => (await caches.open(name)).matchAll()))).flat();

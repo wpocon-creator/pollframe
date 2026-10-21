@@ -1,4 +1,5 @@
 import {test,expect} from '@playwright/test';
+import {readFile} from 'node:fs/promises';
 test('ordinary visits do not preload unvisited states; installed app still prepares them offline',async({page,context})=>{
   test.setTimeout(120000);
   await page.goto('/?lang=en-GB');
@@ -13,21 +14,25 @@ test('ordinary visits do not preload unvisited states; installed app still prepa
   });
   await page.reload();
   await page.waitForFunction(()=>Boolean(navigator.serviceWorker.controller));
-  await page.waitForFunction(async()=>Boolean(await caches.match('/__pollframe-offline-ready__')),null,{timeout:60000});
+  // waitForFunction treats a returned Promise as truthy before it resolves.
+  // Poll the resolved value on the test side, not an async browser predicate.
+  await expect.poll(()=>page.evaluate(async()=>Boolean(await caches.match('/__pollframe-offline-ready__'))),{timeout:60000}).toBe(true);
   const cacheInfo=await page.evaluate(async()=>{
     const names=(await caches.keys()).filter(n=>n.startsWith('pollframe-app-'));
-    // Match each stored request with its original headers. A public preload
-    // can carry Origin and Vary: Origin; a synthetic headerless Request need
-    // not match it, even though the cached response is present and usable.
-    const entries=(await Promise.all(names.map(async n=>{
-      const cache=await caches.open(n);return Promise.all((await cache.keys()).map(async request=>({path:new URL(request.url).pathname,response:await cache.match(request)})));
-    }))).flat();
-    const responses=entries.map(e=>e.response).filter(Boolean);
-    const has=path=>entries.some(e=>e.path===path&&e.response?.ok);
+    // Inventory storage without manufacturing requests. Browser-controlled
+    // Vary headers (notably Accept-Encoding) are not all exposed by keys().
+    // Actual usability is independently verified through offline navigations
+    // below, including the rendered values, not inferred from this inventory.
+    const cachesInfo=await Promise.all(names.map(async n=>{
+      const cache=await caches.open(n);return {keys:await cache.keys(),responses:await cache.matchAll()};
+    }));
+    const responses=cachesInfo.flatMap(c=>c.responses);
+    const paths=cachesInfo.flatMap(c=>c.keys.map(request=>new URL(request.url).pathname));
+    const has=path=>paths.includes(path);
     return {bytes:(await Promise.all(responses.map(r=>r.clone().arrayBuffer().then(b=>b.byteLength)))).reduce((a,b)=>a+b,0),
       berlin:has('/data/berlin.json'),uk:has('/data/uk-westminster.json'),es:has('/data/spain-congress.json')};
   });
-  expect(cacheInfo.berlin&&cacheInfo.uk&&cacheInfo.es).toBe(true);
+  expect(cacheInfo).toMatchObject({berlin:true,uk:true,es:true});
   expect(cacheInfo.bytes).toBeGreaterThan(1000000);
   console.log('Actual offline cache bytes:',cacheInfo.bytes);
   await context.setOffline(true);
@@ -35,6 +40,12 @@ test('ordinary visits do not preload unvisited states; installed app still prepa
     await page.goto('/?region='+region+'&lang=en-GB',{waitUntil:'domcontentloaded'});
     await expect(page.locator('.results-card .result-row').first()).toBeVisible();
     expect(await page.locator('.results-card .result-row').count()).toBeGreaterThan(3);
+    const expected=JSON.parse(await readFile(new URL(`../dist/data/${region}.json`,import.meta.url),'utf8'));
+    expect(await page.evaluate(async region=>{
+      const response=await fetch(`/data/${region}.json`);
+      if(!response.ok)throw Error(`Offline data returned ${response.status}`);
+      return response.json();
+    },region)).toEqual(expected);
   }
   await context.setOffline(false);
 });
