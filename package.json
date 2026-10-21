@@ -86,7 +86,7 @@
     "three": "0.185.1"
   },
   "devDependencies": {
-    "@playwright/test": "1.62.0",
+    "@playwright/test": "1.64.1",
     "cheerio": "1.0.0",
     "fflate": "0.8.3",
     "pdfjs-dist": "5.4.624",
