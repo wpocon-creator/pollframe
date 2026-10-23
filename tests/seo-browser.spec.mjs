@@ -21,6 +21,28 @@ test.describe("server-readable SEO and real routing", () => {
     } finally { await context.close(); }
   });
 
+  test("the state directory can be followed without JavaScript, including on narrow screens", async ({ browser }, testInfo) => {
+    const context = await browser.newContext({ javaScriptEnabled: false, viewport: testInfo.project.use.viewport });
+    const page = await context.newPage();
+    try {
+      await page.goto(`${process.env.POLLFRAME_TEST_BASE_URL}/countries?lang=es`);
+      const directory = page.getByRole("navigation", { name: "Encuestas por estado federado", exact: true });
+      await expect(directory).toBeVisible();
+      await expect(directory.getByRole("link")).toHaveCount(16);
+      await expect(directory.getByRole("link", { name: "Berlin", exact: true })).toHaveAttribute("href", "https://pollframe.com/de/landtagswahl/berlin/umfragen?lang=es");
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
+      await page.screenshot({ path: testInfo.outputPath("state-directory-no-javascript.png"), fullPage: true });
+      // Resolve onto the isolated test Worker instead of accidentally testing
+      // the old production version when following an absolute canonical link.
+      const target = new URL(await directory.getByRole("link", { name: "Berlin", exact: true }).getAttribute("href"));
+      const response = await page.goto(`${process.env.POLLFRAME_TEST_BASE_URL}${target.pathname}${target.search}`);
+      expect(response.status()).toBe(200);
+      await expect(page.getByRole("heading", { level: 1 })).toContainText("Berl");
+      await expect(page.locator("time")).toHaveAttribute("datetime", /^\d{4}-\d{2}-\d{2}$/);
+      expect(await page.locator("tbody tr").count()).toBeGreaterThan(3);
+    } finally { await context.close(); }
+  });
+
   test("missing pages are 404, favicon is an image, and the old dashboard entry still opens", async ({ page, request }) => {
     for (const path of ["/not-a-real-pollframe-page", "/uk/missing", "/de/landtagswahl/nowhere/umfragen", "/missing-image.png"]) {
       expect((await request.get(path)).status()).toBe(404);

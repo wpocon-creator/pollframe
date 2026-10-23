@@ -49,6 +49,30 @@ test("unrendered HTML contains the original latest poll, dates, sample, party va
   }
 });
 
+test("all state polling pages have direct, localized HTML links from the overview, map and country directory", async () => {
+  const regions = JSON.parse(await readFile(new URL("../public/regions.json", import.meta.url), "utf8")).regions;
+  const states = regions.filter(region => region.slug !== "bundestag");
+  assert.equal(states.length, 16);
+  for (const path of ["/", "/countries", "/de/bundeslaender/karte"]) {
+    for (const locale of ["de", "en-GB", "en-US", "es"]) {
+      const response = await worker.fetch(new Request(`https://pollframe.com${path}?lang=${locale}`), env);
+      assert.equal(response.status, 200);
+      const $ = load(await response.text());
+      const links = $("#seo-initial-content nav a").toArray();
+      for (const state of states) {
+        const target = localizedCanonical(`/de/landtagswahl/${state.slug}/umfragen`, locale);
+        assert.equal(links.filter(link => $(link).attr("href") === target).length, 1, `${path} / ${locale} must link directly to ${state.slug}`);
+      }
+      assert.equal($("nav[aria-label] h2").length, 1);
+      assert.doesNotMatch($("main").text(), /<script>/);
+    }
+  }
+  for (const path of ["/uk", "/es", "/studio", "/de/landtagswahl/berlin/umfragen"]) {
+    const response = await worker.fetch(new Request(`https://pollframe.com${path}`), env);
+    assert.equal(load(await response.text())("nav[aria-label] h2").length, 0, "unrelated pages must not gain a German state directory");
+  }
+});
+
 test("the projection selects original polls rather than synthetic averages and keeps source metadata", async () => {
   assert.equal(Object.keys(data.snapshots).length, 19);
   for (const [slug, snapshot] of Object.entries(data.snapshots)) {

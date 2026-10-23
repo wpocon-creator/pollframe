@@ -1,6 +1,7 @@
 import { SITE_ORIGIN } from "../src/site-origin.js";
 import { studioPublicCatalog, studioTemplateAtPath } from '../src/studio-public-routes.js';
 import { defaultPageLocale, languageAlternates, localizedCanonical } from "../src/seo-locale.js";
+import { publicRegionPath } from "../src/public-routes.js";
 
 export const escapeHtml = (value) => String(value).replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[character]));
 const copy = {
@@ -93,6 +94,10 @@ export function routeContent(path, locale, stateNames) {
   return { lang: locale, heading, title: `${heading} · Pollframe`, description, paragraphs: [description], c,
     snapshot: ["overview", "polls", "state"].includes(kind) ? state ?? ["bundestag", "uk-westminster", "spain-congress"][index] : null,
     links: [[c.overviewNames[0], "/"], [c.overviewNames[1], "/uk"], [c.overviewNames[2], "/es"], [c.sources[0], "/sources"], ['Pollframe Studio', '/studio']],
+    // State pages must be reachable without rendering the interactive map.
+    // A sitemap alone tells a crawler about URLs, not their place in the site.
+    stateLinks: path === "/" || kind === "map" || kind === "countries"
+      ? Object.entries(stateNames).map(([slug, name]) => [name, publicRegionPath(slug)]) : null,
   };
 }
 
@@ -122,7 +127,9 @@ export function snapshotHtml(snapshot, route) {
 
 export function seoFallback(route, path, snapshot) {
   const templates = route.templates ? `<ul>${route.templates.map(([label,href]) => `<li><a href="${escapeHtml(localizedCanonical(href,route.lang))}">${escapeHtml(label)}</a></li>`).join('')}</ul>` : '';
+  const stateHeading = ({ de: "Umfragen nach Bundesland", es: "Encuestas por estado federado" })[route.lang] ?? "Polls by German state";
+  const states = route.stateLinks?.length ? `<nav aria-label="${escapeHtml(stateHeading)}"><h2>${escapeHtml(stateHeading)}</h2><ul>${route.stateLinks.map(([label, href]) => `<li><a href="${escapeHtml(localizedCanonical(href, route.lang))}">${escapeHtml(label)}</a></li>`).join("")}</ul></nav>` : "";
   const links = route.links.map(([label, href]) => `<a href="${escapeHtml(localizedCanonical(href, route.lang))}">${escapeHtml(label)}</a>`).join(" · ");
   const languages = languageAlternates(path).map(({ locale, href }) => `<a href="${escapeHtml(href)}" hreflang="${locale}" lang="${locale}">${({ de: "Deutsch", "en-GB": "English (UK)", "en-US": "English (US)", es: "Español" })[locale]}</a>`).join(" · ");
-  return `<main class="legal-page" id="seo-initial-content"><a class="breadcrumb" href="${SITE_ORIGIN}/">Pollframe</a><h1>${escapeHtml(route.heading)}</h1><p>${escapeHtml(route.description)}</p>${templates}${snapshotHtml(snapshot, route)}<nav aria-label="${escapeHtml(route.c.navigation)}">${links}</nav><p>${escapeHtml(route.c.languages)}: ${languages}</p></main>`;
+  return `<main class="legal-page" id="seo-initial-content"><a class="breadcrumb" href="${SITE_ORIGIN}/">Pollframe</a><h1>${escapeHtml(route.heading)}</h1><p>${escapeHtml(route.description)}</p>${templates}${snapshotHtml(snapshot, route)}${states}<nav aria-label="${escapeHtml(route.c.navigation)}">${links}</nav><p>${escapeHtml(route.c.languages)}: ${languages}</p></main>`;
 }
