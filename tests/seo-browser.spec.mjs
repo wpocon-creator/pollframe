@@ -4,7 +4,7 @@ test.describe("server-readable SEO and real routing", () => {
   test.skip(!process.env.POLLFRAME_TEST_BASE_URL, "requires a Worker URL, not Vite's development SPA fallback");
 
   test("polls, language links and attribution work with JavaScript disabled", async ({ browser }, testInfo) => {
-    const context = await browser.newContext({ javaScriptEnabled: false, viewport: testInfo.project.use.viewport });
+    const context = await browser.newContext({ javaScriptEnabled: false, viewport: testInfo.project.use.viewport, ignoreHTTPSErrors: testInfo.project.use.ignoreHTTPSErrors === true });
     const page = await context.newPage();
     try {
       for (const [path, locale] of [["/de/bundestag/umfragen", "de"], ["/uk", "de"], ["/es/encuestas", "en-US"], ["/de/landtagswahl/berlin/umfragen", "es"]]) {
@@ -22,7 +22,7 @@ test.describe("server-readable SEO and real routing", () => {
   });
 
   test("the state directory can be followed without JavaScript, including on narrow screens", async ({ browser }, testInfo) => {
-    const context = await browser.newContext({ javaScriptEnabled: false, viewport: testInfo.project.use.viewport });
+    const context = await browser.newContext({ javaScriptEnabled: false, viewport: testInfo.project.use.viewport, ignoreHTTPSErrors: testInfo.project.use.ignoreHTTPSErrors === true });
     const page = await context.newPage();
     try {
       await page.goto(`${process.env.POLLFRAME_TEST_BASE_URL}/countries?lang=es`);
