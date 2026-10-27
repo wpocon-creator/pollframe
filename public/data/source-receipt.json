@@ -198,8 +198,8 @@
         "sourceUrl": "https://dawum.de/API/",
         "license": "ODC-ODbL",
         "licenseUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
-        "databaseUpdated": "2026-10-21T13:29:52+02:00",
-        "generatedAt": "2026-10-21T13:49:51.428Z",
+        "databaseUpdated": "2026-10-27T07:24:05+01:00",
+        "generatedAt": "2026-10-27T14:33:11.991Z",
         "derivativeDatabaseNotice": "Derived from the dawum.de election polling database. This derivative Pollframe database is made available under the Open Database License (ODbL) 1.0.",
         "changes": "DAWUM records from 2017; fields normalised and split by parliament. GMS, Civey and pollytix are selectable where available. Existing default institute selections retained. Pollframe calculates averages separately. Ipsos remains excluded pending permission.",
         "currentWindowDays": 45,
@@ -215,7 +215,7 @@
         "sourceUrl": "https://electiondatavault.co.uk/data/",
         "license": "Free commercial reuse",
         "licenseUrl": "https://electiondatavault.co.uk/about/",
-        "generatedAt": "2026-10-27T05:08:45.364Z",
+        "generatedAt": "2026-10-27T14:33:15.169Z",
         "supplementarySource": {
           "name": "Wikipedia contributors",
           "url": "https://en.wikipedia.org/wiki/Opinion_polling_for_the_next_United_Kingdom_general_election",
@@ -234,7 +234,7 @@
         "license": "Open Parliament Licence",
         "licenseUrl": "https://www.parliament.uk/site-information/copyright/open-parliament-licence/",
         "electionDate": "2024-07-04",
-        "generatedAt": "2026-10-27T05:08:45.364Z"
+        "generatedAt": "2026-10-27T14:33:15.169Z"
       }
     },
     {
@@ -475,7 +475,7 @@
       "file": "/data/spain-regions.json",
       "rightsSource": "wikipedia",
       "metadata": {
-        "generatedAt": "2026-10-27T05:10:03.069Z",
+        "generatedAt": "2026-10-27T14:34:46.440Z",
         "methodology": "Headline vote estimates from the cited regional polling tables (raw vote-intention duplicates are excluded); the current snapshot averages each pollster's latest post-election poll within 180 days of the latest poll.",
         "rightsSource": "wikipedia",
         "source": "Wikipedia contributors",
