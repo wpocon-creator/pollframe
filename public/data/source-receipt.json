@@ -215,7 +215,7 @@
         "sourceUrl": "https://electiondatavault.co.uk/data/",
         "license": "Free commercial reuse",
         "licenseUrl": "https://electiondatavault.co.uk/about/",
-        "generatedAt": "2026-11-12T07:14:19.301Z",
+        "generatedAt": "2026-11-12T16:50:20.145Z",
         "supplementarySource": {
           "name": "Wikipedia contributors",
           "url": "https://en.wikipedia.org/wiki/Opinion_polling_for_the_next_United_Kingdom_general_election",
@@ -234,7 +234,7 @@
         "license": "Open Parliament Licence",
         "licenseUrl": "https://www.parliament.uk/site-information/copyright/open-parliament-licence/",
         "electionDate": "2024-07-04",
-        "generatedAt": "2026-11-12T07:14:19.301Z"
+        "generatedAt": "2026-11-12T16:50:20.145Z"
       }
     },
     {
@@ -475,7 +475,7 @@
       "file": "/data/spain-regions.json",
       "rightsSource": "wikipedia",
       "metadata": {
-        "generatedAt": "2026-11-12T07:15:28.549Z",
+        "generatedAt": "2026-11-12T16:51:55.735Z",
         "methodology": "Headline vote estimates from the cited regional polling tables (raw vote-intention duplicates are excluded); the current snapshot averages each pollster's latest post-election poll within 180 days of the latest poll.",
         "rightsSource": "wikipedia",
         "source": "Wikipedia contributors",
